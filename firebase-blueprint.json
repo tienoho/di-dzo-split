@@ -1,0 +1,151 @@
+{
+  "entities": {
+    "user": {
+      "title": "User",
+      "description": "User profile metadata",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "displayName": { "type": "string" },
+        "email": { "type": "string" }
+      },
+      "required": ["uid"]
+    },
+    "venue": {
+      "title": "Venue",
+      "description": "A favorite private restaurant/spot saved locally or privately in the user's cloud profile",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "address": { "type": "string" },
+        "notes": { "type": "string" },
+        "rating": { "type": "number" },
+        "visitsCount": { "type": "integer" }
+      },
+      "required": ["id", "name", "address"]
+    },
+    "bill": {
+      "title": "Bill",
+      "description": "Drinking/dining bill shared among participants",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "venueId": { "type": "string" },
+        "venueName": { "type": "string" },
+        "date": { "type": "string" },
+        "rawAmount": { "type": "number" },
+        "tipPercent": { "type": "number" },
+        "tipAmount": { "type": "number" },
+        "additionalFee": { "type": "number" },
+        "discountAmount": { "type": "number" },
+        "totalAmount": { "type": "number" },
+        "splitType": { "type": "string", "enum": ["equal", "percentage", "unequal"] },
+        "note": { "type": "string" },
+        "isArchived": { "type": "boolean" }
+      },
+      "required": ["id", "venueName", "totalAmount"]
+    },
+    "public_venue": {
+      "title": "PublicVenue",
+      "description": "Shared favorite spots listed in the public Dzô Quán tủ community feed",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "address": { "type": "string" },
+        "notes": { "type": "string" },
+        "rating": { "type": "number" },
+        "ratingsCount": { "type": "integer" },
+        "sharedByUid": { "type": "string" },
+        "sharedByName": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "name", "address", "sharedByUid", "sharedByName"]
+    },
+    "public_venue_review": {
+      "title": "PublicVenueReview",
+      "description": "User review and rating for a public shared venue",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "rating": { "type": "number" },
+        "comment": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "authorId", "authorName", "rating"]
+    },
+    "solo_meal": {
+      "title": "SoloMeal",
+      "description": "A personal eating/drinking cost entry recorded for individual calculation",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "venueName": { "type": "string" },
+        "date": { "type": "string" },
+        "rawAmount": { "type": "number" },
+        "drinkAmount": { "type": "number" },
+        "otherAmount": { "type": "number" },
+        "totalAmount": { "type": "number" },
+        "note": { "type": "string" }
+      },
+      "required": ["id", "name", "date", "totalAmount"]
+    },
+    "solo_settings": {
+      "title": "SoloSettings",
+      "description": "Personal configuration such as monthly dining or drink budgets",
+      "type": "object",
+      "properties": {
+        "monthlyBudget": { "type": "number" }
+      },
+      "required": ["monthlyBudget"]
+    },
+    "user_fcm_token": {
+      "title": "UserFCMToken",
+      "description": "FCM registration tokens mapped to participant names for push notifications",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "tokens": { "type": "array" },
+        "updatedAt": { "type": "string" },
+        "userId": { "type": ["string", "null"] },
+        "email": { "type": ["string", "null"] },
+        "isGuest": { "type": "boolean" }
+      },
+      "required": ["name", "tokens"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/venues/{venueId}": {
+      "schema": "venue",
+      "description": "Private favorite spot of the user"
+    },
+    "/users/{userId}/bills/{billId}": {
+      "schema": "bill",
+      "description": "Private bills shared by the user"
+    },
+    "/users/{userId}/solo_meals/{mealId}": {
+      "schema": "solo_meal",
+      "description": "Private solo eating/drinking cost log entries"
+    },
+    "/users/{userId}/solo_settings/settings": {
+      "schema": "solo_settings",
+      "description": "Private solo dining settings such as monthly budgets"
+    },
+    "/public_venues/{venueId}": {
+      "schema": "public_venue",
+      "description": "Public shared spots accessible and reviewable by any user"
+    },
+    "/public_venues/{venueId}/reviews/{reviewId}": {
+      "schema": "public_venue_review",
+      "description": "User reviews for a shared spot"
+    },
+    "/user_fcm_tokens/{tokenDoc}": {
+      "schema": "user_fcm_token",
+      "description": "Mapping from user search handle to their live background browser push tokens"
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "Chia Tiền Nhậu",
+  "description": "Ứng dụng chia tiền nhậu thông minh, hỗ trợ tính tip, nhắc nợ Zalo/Messenger, lưu lịch sử và quán ngon.",
+  "requestFramePermissions": ["camera", "geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
