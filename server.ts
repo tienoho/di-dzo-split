@@ -211,24 +211,38 @@ Mỗi địa điểm gợi ý yêu cầu cung cấp các thông tin cụ thể:
 Bắt buộc trả về DUY NHẤT một chuỗi JSON hợp lệ không lồng trong block markdown hay ký tự bao bọc thừa thãi nào ngoài chuỗi JSON sạch để máy chủ có thể dùng JSON.parse() trực tiếp. Chú ý dấu ngoặc kép và dấu phẩy viết đúng cú pháp JSON.`;
 
     try {
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Yêu cầu AI quá thời gian phản hồi (6 giây).')), 6000)
+      );
+
       let responseText = '';
 
       if (isDeepSeek) {
         console.log('Querying DeepSeek model for dining recommendations...');
-        responseText = await queryDeepSeek(promptText, true);
+        responseText = await Promise.race([
+          queryDeepSeek(promptText, true),
+          timeoutPromise
+        ]);
       } else {
         const client = getGeminiClient();
         console.log(`Querying Gemini ${GEMINI_MODEL} with Google Search grounding for:`, targetLocation, targetCategory);
         
-        const result = await client.models.generateContent({
-          model: GEMINI_MODEL,
-          contents: promptText,
-          config: {
-            tools: [{ googleSearch: {} }],
-            responseMimeType: 'application/json'
-          }
-        });
-        responseText = result.text || '';
+        const geminiPromise = (async () => {
+          const result = await client.models.generateContent({
+            model: GEMINI_MODEL,
+            contents: promptText,
+            config: {
+              tools: [{ googleSearch: {} }],
+              responseMimeType: 'application/json'
+            }
+          });
+          return result.text || '';
+        })();
+
+        responseText = await Promise.race([
+          geminiPromise,
+          timeoutPromise
+        ]);
       }
 
       console.log('Received response from LLM server-side:', responseText);
