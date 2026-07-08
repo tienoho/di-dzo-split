@@ -8,6 +8,8 @@ interface DebtRemindersProps {
   onMarkDebtAsPaid: (billId: string, debtorName: string) => void;
   activeCreatorName: string;
   currentUser?: any;
+  contacts: Record<string, { phone?: string; messenger?: string }>;
+  onSaveContact: (name: string, phone: string, messenger: string) => Promise<void>;
 }
 
 const STICKER_CATEGORIES = [
@@ -65,7 +67,7 @@ const bankCodeMap: Record<string, string> = {
   sacombank: 'STB'
 };
 
-export default function DebtReminders({ debts, onMarkDebtAsPaid, activeCreatorName, currentUser }: DebtRemindersProps) {
+export default function DebtReminders({ debts, onMarkDebtAsPaid, activeCreatorName, currentUser, contacts, onSaveContact }: DebtRemindersProps) {
   const defaultBank = 'mbbank';
   const defaultNo = '';
   const defaultAccountName = '';
@@ -266,24 +268,6 @@ export default function DebtReminders({ debts, onMarkDebtAsPaid, activeCreatorNa
 
   // Virtual Push Notification States
   const [pushNotificationText, setPushNotificationText] = useState<string | null>(null);
-
-  // Load/save custom debtor contacts (SĐT Zalo, Messenger Username) to enable real messaging open link
-  const [contacts, setContacts] = useState<Record<string, { phone?: string; messenger?: string }>>(() => {
-    const local = localStorage.getItem('nhau_contacts');
-    if (local) {
-      try { return JSON.parse(local); } catch (e) { return {}; }
-    }
-    return {};
-  });
-
-  const saveContact = (name: string, phone: string, messenger: string) => {
-    const updated = {
-      ...contacts,
-      [name]: { phone: phone.trim(), messenger: messenger.trim() }
-    };
-    setContacts(updated);
-    localStorage.setItem('nhau_contacts', JSON.stringify(updated));
-  };
 
   const handleOpenZalo = (text: string, debt: Debt) => {
     if (!bankNo || !bankAccountName) {
@@ -983,14 +967,14 @@ Xin chân thành cảm ơn!`;
                                     type="text"
                                     placeholder="SĐT Zalo (09...)"
                                     value={contacts[debt.debtorName]?.phone || ''}
-                                    onChange={(e) => saveContact(debt.debtorName, e.target.value, contacts[debt.debtorName]?.messenger || '')}
+                                    onChange={(e) => onSaveContact(debt.debtorName, e.target.value, contacts[debt.debtorName]?.messenger || '')}
                                     className="text-[10px] font-black bg-white border-2 border-slate-900 rounded-lg px-2 py-1.5 focus:border-teal-500 outline-hidden w-full sm:w-36 text-slate-950 text-center sm:text-left shadow-2xs"
                                   />
                                   <input
                                     type="text"
                                     placeholder="Messenger User"
                                     value={contacts[debt.debtorName]?.messenger || ''}
-                                    onChange={(e) => saveContact(debt.debtorName, contacts[debt.debtorName]?.phone || '', e.target.value)}
+                                    onChange={(e) => onSaveContact(debt.debtorName, contacts[debt.debtorName]?.phone || '', e.target.value)}
                                     className="text-[10px] font-black bg-white border-2 border-slate-900 rounded-lg px-2 py-1.5 focus:border-teal-500 outline-hidden w-full sm:w-36 text-slate-950 text-center sm:text-left shadow-2xs"
                                   />
                                 </div>

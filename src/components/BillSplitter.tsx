@@ -8,6 +8,7 @@ interface BillSplitterProps {
   onAddVenue: (venue: Omit<Venue, 'id' | 'visitsCount'>) => Venue;
   onSaveBill: (bill: Omit<Bill, 'id'>) => void;
   activeCreatorName: string;
+  contacts: Record<string, { phone?: string; messenger?: string }>;
 }
 
 const COMMON_MEMBERS_PRESETS = [
@@ -21,7 +22,10 @@ const COMMON_MEMBERS_PRESETS = [
   'Ngọc Mai'
 ];
 
-export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCreatorName }: BillSplitterProps) {
+export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCreatorName, contacts }: BillSplitterProps) {
+  const presetNames = Object.keys(contacts).length > 0 
+    ? Object.keys(contacts) 
+    : COMMON_MEMBERS_PRESETS;
   // Input states
   const [rawAmount, setRawAmount] = useState<number>(0);
   const [tipPercent, setTipPercent] = useState<number>(0);
@@ -252,7 +256,7 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
     // Collect all unique predefined members (activeUser + clean presets)
     const uniqueNames: string[] = [activeCreatorName];
     
-    COMMON_MEMBERS_PRESETS.forEach(presetName => {
+    presetNames.forEach(presetName => {
       // Clean any "(Bạn)" or extra markers to avoid duplications
       const cleanedPreset = presetName.replace(/\s*\(Bạn\)\s*/gi, '').trim();
       const cleanedActive = activeCreatorName.replace(/\s*\(Bạn\)\s*/gi, '').trim();
@@ -692,7 +696,7 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
                   <Sparkles className="w-5 h-5 text-orange-600 animate-pulse" />
                   <span className="text-xs font-black text-orange-950 uppercase tracking-wider">⚡ Chia Nhanh Nhóm Bạn Thân (Quick Split)</span>
                 </div>
-                <span className="bg-orange-200 text-orange-900 text-[9px] font-black px-2 py-0.5 rounded-full border border-orange-400">Có sẵn {COMMON_MEMBERS_PRESETS.length + 1} người</span>
+                <span className="bg-orange-200 text-orange-900 text-[9px] font-black px-2 py-0.5 rounded-full border border-orange-400">Có sẵn {presetNames.length + 1} người</span>
               </div>
               <p className="text-[10px] font-extrabold text-orange-800 leading-relaxed">
                 Tự động điền nhanh tất cả các chiến hữu trong nhóm cố định và chia đều số tiền {totalAmount.toLocaleString('vi-VN')} đ tăm tắp (Host gánh thanh toán trước tại quán).
@@ -711,7 +715,7 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
             <div className="bg-yellow-50/50 border-3 border-slate-900 p-4 rounded-3xl space-y-2.5">
               <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest block">⭐ Gọi nhanh từ danh bạ:</span>
               <div className="flex flex-wrap gap-1.5">
-                {COMMON_MEMBERS_PRESETS.map((name) => {
+                {presetNames.map((name) => {
                   const alreadyChosen = members.some(m => m.name.toLowerCase() === name.toLowerCase());
                   return (
                     <button

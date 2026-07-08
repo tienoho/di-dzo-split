@@ -7,8 +7,9 @@ import HistoryAndReports from './components/HistoryAndReports';
 import DebtReminders from './components/DebtReminders';
 import AIRecommendations from './components/AIRecommendations';
 import SoloDining from './components/SoloDining';
+import ContactManager from './components/ContactManager';
 import { motion, AnimatePresence } from 'motion/react';
-import { Calculator, Store, Calendar, Bell, Wine, Beer, DollarSign, TrendingUp, Sparkles, User, Settings, Info, Sun, Moon, LogIn, LogOut, UserCheck, Coins } from 'lucide-react';
+import { Calculator, Store, Calendar, Bell, Wine, Beer, DollarSign, TrendingUp, Sparkles, User, Settings, Info, Sun, Moon, LogIn, LogOut, UserCheck, Coins, Users } from 'lucide-react';
 import { 
   auth, 
   onAuthStateChanged, 
@@ -19,7 +20,11 @@ import {
   saveVenueToCloud,
   saveBillToCloud,
   deleteVenueFromCloud,
-  deleteBillFromCloud
+  deleteBillFromCloud,
+  fetchContactsFromCloud,
+  saveContactToCloud,
+  deleteContactFromCloud,
+  syncContactsToCloud
 } from './lib/firebase';
 import AuthModal from './components/AuthModal';
 
@@ -34,7 +39,48 @@ export default function App() {
   const [authChecking, setAuthChecking] = useState<boolean>(true);
   
   // Navigation State
-  const [activeTab, setActiveTab] = useState<'split' | 'venues' | 'history' | 'reminders' | 'recommendations' | 'solo'>('split');
+  const [activeTab, setActiveTab] = useState<'split' | 'venues' | 'history' | 'reminders' | 'recommendations' | 'solo' | 'contacts'>('split');
+
+  // Contacts State
+  const [contacts, setContacts] = useState<Record<string, { phone?: string; messenger?: string }>>(() => {
+    const local = localStorage.getItem('nhau_contacts');
+    if (local) {
+      try { return JSON.parse(local); } catch (e) { return {}; }
+    }
+    return {};
+  });
+
+  const handleSaveContact = async (name: string, phone: string, messenger: string) => {
+    const updated = {
+      ...contacts,
+      [name]: { phone: phone.trim(), messenger: messenger.trim() }
+    };
+    setContacts(updated);
+    localStorage.setItem('nhau_contacts', JSON.stringify(updated));
+
+    if (currentUser) {
+      try {
+        await saveContactToCloud(currentUser.uid, name, phone, messenger);
+      } catch (e) {
+        console.error("Failed to sync contact to cloud:", e);
+      }
+    }
+  };
+
+  const handleDeleteContact = async (name: string) => {
+    const updated = { ...contacts };
+    delete updated[name];
+    setContacts(updated);
+    localStorage.setItem('nhau_contacts', JSON.stringify(updated));
+
+    if (currentUser) {
+      try {
+        await deleteContactFromCloud(currentUser.uid, name);
+      } catch (e) {
+        console.error("Failed to delete contact from cloud:", e);
+      }
+    }
+  };
   
   // Current user configuration settings
   const [activeCreatorName, setActiveCreatorName] = useState<string>('Tuấn Anh (Bạn)');
@@ -70,44 +116,56 @@ export default function App() {
         try {
           const cloudVenues = await fetchVenuesFromCloud(user.uid);
           const cloudBills = await fetchBillsFromCloud(user.uid);
+          const cloudContacts = await fetchContactsFromCloud(user.uid);
           
-          if (cloudVenues.length > 0 || cloudBills.length > 0) {
+          if (cloudVenues.length > 0 || cloudBills.length > 0 || Object.keys(cloudContacts).length > 0) {
             setVenues(cloudVenues);
             setBills(cloudBills);
             setDebts(getActiveDebts(cloudBills));
+            setContacts(cloudContacts);
+            localStorage.setItem('nhau_contacts', JSON.stringify(cloudContacts));
           } else {
             // New user scenario: auto-sync existing offline storage to active cloud
             const localVenues = getStoredVenues();
             const localBills = getStoredBills();
+            const localContacts = JSON.parse(localStorage.getItem('nhau_contacts') || '{}');
             
-            const { syncVenuesToCloud, syncBillsToCloud } = await import('./lib/firebase');
+            const { syncVenuesToCloud, syncBillsToCloud, syncContactsToCloud } = await import('./lib/firebase');
             if (localVenues.length > 0) {
               await syncVenuesToCloud(user.uid, localVenues);
             }
             if (localBills.length > 0) {
               await syncBillsToCloud(user.uid, localBills);
             }
+            if (Object.keys(localContacts).length > 0) {
+              await syncContactsToCloud(user.uid, localContacts);
+            }
             setVenues(localVenues);
             setBills(localBills);
             setDebts(getActiveDebts(localBills));
+            setContacts(localContacts);
           }
         } catch (err) {
           console.error("Error synchronizing with Firestore:", err);
           // Fallback to local
           const localVenues = getStoredVenues();
           const localBills = getStoredBills();
+          const localContacts = JSON.parse(localStorage.getItem('nhau_contacts') || '{}');
           setVenues(localVenues);
           setBills(localBills);
           setDebts(getActiveDebts(localBills));
+          setContacts(localContacts);
         }
       } else {
         setCurrentUser(null);
         // Clean session and reload offline guest records
         const localVenues = getStoredVenues();
         const localBills = getStoredBills();
+        const localContacts = JSON.parse(localStorage.getItem('nhau_contacts') || '{}');
         setVenues(localVenues);
         setBills(localBills);
         setDebts(getActiveDebts(localBills));
+        setContacts(localContacts);
       }
       setAuthChecking(false);
     });
@@ -805,6 +863,19 @@ export default function App() {
             <span>Lịch Sử & Báo Cáo</span>
           </button>
 
+          {/* Tab: Contacts */}
+          <button
+            onClick={() => setActiveTab('contacts')}
+            className={`flex items-center gap-2 py-3 px-5 rounded-2xl text-xs md:text-sm font-black transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === 'contacts' 
+                ? 'bg-indigo-500 text-white shadow-md shadow-indigo-200' 
+                : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            <span>Danh Bạ Chiến Hữu</span>
+          </button>
+
           {/* Tab: Venues */}
           <button
             onClick={() => setActiveTab('venues')}
@@ -863,6 +934,7 @@ export default function App() {
                 onAddVenue={handleAddVenue} 
                 onSaveBill={handleSaveBill} 
                 activeCreatorName={activeCreatorName}
+                contacts={contacts}
               />
             )}
 
@@ -889,6 +961,17 @@ export default function App() {
                 debts={debts} 
                 onMarkDebtAsPaid={handleMarkDebtAsPaid} 
                 activeCreatorName={activeCreatorName}
+                currentUser={currentUser}
+                contacts={contacts}
+                onSaveContact={handleSaveContact}
+              />
+            )}
+
+            {activeTab === 'contacts' && (
+              <ContactManager 
+                contacts={contacts} 
+                onSaveContact={handleSaveContact} 
+                onDeleteContact={handleDeleteContact} 
                 currentUser={currentUser}
               />
             )}

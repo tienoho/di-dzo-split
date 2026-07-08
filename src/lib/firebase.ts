@@ -553,4 +553,64 @@ export const fetchSoloBudgetFromCloud = async (userId: string): Promise<number |
   return null;
 };
 
+export const fetchContactsFromCloud = async (userId: string): Promise<Record<string, { phone?: string; messenger?: string }>> => {
+  try {
+    const q = query(collection(db, 'users', userId, 'contacts'));
+    const querySnapshot = await getDocs(q);
+    const contactsMap: Record<string, { phone?: string; messenger?: string }> = {};
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      contactsMap[doc.id] = {
+        phone: data.phone || '',
+        messenger: data.messenger || ''
+      };
+    });
+    return contactsMap;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, `users/${userId}/contacts`);
+  }
+};
+
+export const saveContactToCloud = async (userId: string, name: string, phone: string, messenger: string) => {
+  try {
+    const contactRef = doc(db, 'users', userId, 'contacts', name);
+    await setDoc(contactRef, {
+      phone: phone.trim(),
+      messenger: messenger.trim(),
+      updatedAt: new Date().toISOString()
+    });
+    console.log(`[Firestore] Successfully saved contact ${name}`);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, `users/${userId}/contacts/${name}`);
+  }
+};
+
+export const deleteContactFromCloud = async (userId: string, name: string) => {
+  try {
+    const contactRef = doc(db, 'users', userId, 'contacts', name);
+    await deleteDoc(contactRef);
+    console.log(`[Firestore] Successfully deleted contact ${name}`);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, `users/${userId}/contacts/${name}`);
+  }
+};
+
+export const syncContactsToCloud = async (userId: string, contacts: Record<string, { phone?: string; messenger?: string }>) => {
+  try {
+    const batch = writeBatch(db);
+    Object.entries(contacts).forEach(([name, data]) => {
+      const contactRef = doc(db, 'users', userId, 'contacts', name);
+      batch.set(contactRef, {
+        phone: (data.phone || '').trim(),
+        messenger: (data.messenger || '').trim(),
+        updatedAt: new Date().toISOString()
+      });
+    });
+    await batch.commit();
+    console.log(`[Firestore] Successfully batch synced ${Object.keys(contacts).length} contacts.`);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, `users/${userId}/contacts [batch]`);
+  }
+};
+
 
