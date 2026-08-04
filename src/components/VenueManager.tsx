@@ -227,7 +227,7 @@ export default function VenueManager({
     setTimeout(() => setSuccessMessage(null), 5000);
   };
 
-  const filteredLocalVenues = venues.filter(v => {
+  const filteredLocalVenues = React.useMemo(() => venues.filter(v => {
     // 1. Text search match
     const matchesSearch = v.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
       (v.address && v.address.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -247,18 +247,18 @@ export default function VenueManager({
     }
 
     return true;
-  });
+  }), [venues, searchTerm, localFilter]);
 
-  const filteredCommunityVenues = publicVenues.filter(v => 
+  const filteredCommunityVenues = React.useMemo(() => publicVenues.filter(v => 
     v.name.toLowerCase().includes(communitySearchTerm.toLowerCase()) || 
     v.address.toLowerCase().includes(communitySearchTerm.toLowerCase()) ||
     v.sharedByName.toLowerCase().includes(communitySearchTerm.toLowerCase())
-  );
+  ), [publicVenues, communitySearchTerm]);
 
   // Personal most visited place
-  const mostVisited = venues.length > 0 
+  const mostVisited = React.useMemo(() => venues.length > 0 
     ? [...venues].sort((a, b) => b.visitsCount - a.visitsCount)[0] 
-    : null;
+    : null, [venues]);
 
   return (
     <div className="space-y-6" id="venue-manager-section">

@@ -138,9 +138,9 @@ export default function ContactManager({ contacts, onSaveContact, onDeleteContac
   };
 
   // Filtered contacts list
-  const filteredContacts = Object.entries(contacts).filter(([contactName]) => 
+  const filteredContacts = React.useMemo(() => Object.entries(contacts).filter(([contactName]) => 
     contactName.toLowerCase().includes(searchTerm.toLowerCase().trim())
-  );
+  ), [contacts, searchTerm]);
 
   return (
     <div className="space-y-6">

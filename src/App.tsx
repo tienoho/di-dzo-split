@@ -8,6 +8,8 @@ import DebtReminders from './components/DebtReminders';
 import AIRecommendations from './components/AIRecommendations';
 import SoloDining from './components/SoloDining';
 import ContactManager from './components/ContactManager';
+import { useCloudSync } from './hooks/useCloudSync';
+import { useFCM } from './hooks/useFCM';
 import { motion, AnimatePresence } from 'motion/react';
 import { Calculator, Store, Calendar, Bell, Wine, Beer, DollarSign, TrendingUp, Sparkles, User, Settings, Info, Sun, Moon, LogIn, LogOut, UserCheck, Coins, Users } from 'lucide-react';
 import { 
@@ -103,160 +105,21 @@ export default function App() {
   // System alert / Push notification state
   const [systAlert, setSystAlert] = useState<{ title: string; message: string; type: 'warning' | 'info' | 'success'; debtId?: string } | null>(null);
 
-  // Auth State Listener & Cloud Sync
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setAuthChecking(true);
-      if (user) {
-        setCurrentUser(user);
-        if (user.displayName) {
-          setActiveCreatorName(user.displayName);
-        }
-        
-        try {
-          const cloudVenues = await fetchVenuesFromCloud(user.uid);
-          const cloudBills = await fetchBillsFromCloud(user.uid);
-          const cloudContacts = await fetchContactsFromCloud(user.uid);
-          
-          if (cloudVenues.length > 0 || cloudBills.length > 0 || Object.keys(cloudContacts).length > 0) {
-            setVenues(cloudVenues);
-            setBills(cloudBills);
-            setDebts(getActiveDebts(cloudBills));
-            setContacts(cloudContacts);
-            localStorage.setItem('nhau_contacts', JSON.stringify(cloudContacts));
-          } else {
-            // New user scenario: auto-sync existing offline storage to active cloud
-            const localVenues = getStoredVenues();
-            const localBills = getStoredBills();
-            const localContacts = JSON.parse(localStorage.getItem('nhau_contacts') || '{}');
-            
-            const { syncVenuesToCloud, syncBillsToCloud, syncContactsToCloud } = await import('./lib/firebase');
-            if (localVenues.length > 0) {
-              await syncVenuesToCloud(user.uid, localVenues);
-            }
-            if (localBills.length > 0) {
-              await syncBillsToCloud(user.uid, localBills);
-            }
-            if (Object.keys(localContacts).length > 0) {
-              await syncContactsToCloud(user.uid, localContacts);
-            }
-            setVenues(localVenues);
-            setBills(localBills);
-            setDebts(getActiveDebts(localBills));
-            setContacts(localContacts);
-          }
-        } catch (err) {
-          console.error("Error synchronizing with Firestore:", err);
-          // Fallback to local
-          const localVenues = getStoredVenues();
-          const localBills = getStoredBills();
-          const localContacts = JSON.parse(localStorage.getItem('nhau_contacts') || '{}');
-          setVenues(localVenues);
-          setBills(localBills);
-          setDebts(getActiveDebts(localBills));
-          setContacts(localContacts);
-        }
-      } else {
-        setCurrentUser(null);
-        // Clean session and reload offline guest records
-        const localVenues = getStoredVenues();
-        const localBills = getStoredBills();
-        const localContacts = JSON.parse(localStorage.getItem('nhau_contacts') || '{}');
-        setVenues(localVenues);
-        setBills(localBills);
-        setDebts(getActiveDebts(localBills));
-        setContacts(localContacts);
-      }
-      setAuthChecking(false);
-    });
+  // Import and use custom hooks for background sync and FCM
+  useCloudSync({
+    setCurrentUser,
+    setActiveCreatorName,
+    setVenues,
+    setBills,
+    setDebts,
+    setContacts,
+    setAuthChecking
+  });
 
-    // Request browser notification permission nicely
-    if ('Notification' in window && Notification.permission === 'default') {
-      setTimeout(() => {
-        Notification.requestPermission().catch(console.error);
-      }, 3500);
-    }
-
-    return () => unsubscribe();
-  }, []);
-
-  // Automatically fetch and bind FCM VAPID key from backend server
-  useEffect(() => {
-    const fetchVapidKey = async () => {
-      const existingKey = localStorage.getItem('nhau_fcm_vapid_key');
-      if (!existingKey) {
-        try {
-          const response = await fetch('/api/fcm-vapid');
-          const data = await response.json();
-          if (data.success && data.key) {
-            localStorage.setItem('nhau_fcm_vapid_key', data.key);
-            console.log('[FCM client] Automatically bound FCM VAPID Key from server environment.');
-            window.dispatchEvent(new Event('storage')); // Notify all components
-          }
-        } catch (err) {
-          console.error('[FCM client] Error auto-fetching VAPID Key:', err);
-        }
-      }
-    };
-    fetchVapidKey();
-  }, []);
-
-  // Synchronize FCM Registration Token with Firestore mapping
-  useEffect(() => {
-    const registerFCM = async () => {
-      if (!('Notification' in window) || Notification.permission !== 'granted') return;
-      
-      try {
-        const { getFirebaseMessaging, saveFCMTokenToCloud } = await import('./lib/firebase');
-        const messaging = await getFirebaseMessaging();
-        if (!messaging) return;
-
-        // Custom or dynamic user VAPID key
-        let vapidKey = localStorage.getItem('nhau_fcm_vapid_key') || ((import.meta as any).env?.VITE_FCM_VAPID_KEY as string | undefined) || undefined;
-        
-        if (!vapidKey) {
-          try {
-            const res = await fetch('/api/fcm-vapid');
-            const data = await res.json();
-            if (data.success && data.key) {
-              vapidKey = data.key;
-              localStorage.setItem('nhau_fcm_vapid_key', data.key);
-              window.dispatchEvent(new Event('storage')); // Notify all listening components
-            }
-          } catch (fetchErr) {
-            console.warn('[FCM client] Direct VAPID fetch fallback failed:', fetchErr);
-          }
-        }
-        
-        let token = '';
-        const { getToken } = await import('firebase/messaging');
-        try {
-          if (vapidKey) {
-            token = await getToken(messaging, { vapidKey });
-          } else {
-            // Fallback: request without explicit key or catch
-            token = await getToken(messaging);
-          }
-        } catch (e) {
-          console.warn('[FCM client] VAPID Key required for standard FCM notifications in this context:', e);
-          return;
-        }
-
-        if (token) {
-          localStorage.setItem('nhau_my_fcm_token', token);
-          if (activeCreatorName && activeCreatorName.trim() !== '') {
-            await saveFCMTokenToCloud(activeCreatorName, token);
-          }
-        }
-      } catch (err) {
-        console.error('[FCM sync failed]', err);
-      }
-    };
-
-    // Delay slight runtime registration to keep main thread light
-    const registerTimerId = setTimeout(registerFCM, 4500);
-    return () => clearTimeout(registerTimerId);
-  }, [activeCreatorName, currentUser]);
+  useFCM({
+    activeCreatorName,
+    currentUser
+  });
 
   // Monitor debts to trigger push notification when user has an outstanding debt
   useEffect(() => {

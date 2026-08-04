@@ -114,7 +114,7 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
   };
 
   // Group bills into selectable months for the filter dropdown based on active archive filter
-  const availableMonths = Array.from(new Set(
+  const availableMonths = React.useMemo(() => Array.from(new Set(
     bills
       .filter(b => archiveFilter === 'archived' ? !!b.isArchived : !b.isArchived)
       .map(b => {
@@ -123,10 +123,10 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
         const month = String(d.getMonth() + 1).padStart(2, '0');
         return `${year}-${month}`;
       })
-  )).sort((a, b) => b.localeCompare(a)); // Newest month first
+  )).sort((a, b) => b.localeCompare(a)), [bills, archiveFilter]); // Newest month first
 
   // Filter logic
-  const filteredBills = bills.filter(bill => {
+  const filteredBills = React.useMemo(() => bills.filter(bill => {
     // Archive classification check
     const isBillArchived = !!bill.isArchived;
     const matchesArchive = archiveFilter === 'archived' ? isBillArchived : !isBillArchived;
@@ -156,7 +156,7 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
     }
 
     return true;
-  });
+  }), [bills, archiveFilter, searchTerm, timeFilterType, selectedMonth]);
 
   // Toggle accordion expand
   const toggleExpand = (id: string) => {
@@ -164,15 +164,18 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
   };
 
   // Calculations for dynamic reports
-  const totalSpendInPeriod = filteredBills.reduce((acc, b) => acc + b.totalAmount, 0);
+  const totalSpendInPeriod = React.useMemo(() => filteredBills.reduce((acc, b) => acc + b.totalAmount, 0), [filteredBills]);
   const totalBillsCount = filteredBills.length;
-  const avgBillInPeriod = totalBillsCount > 0 ? Math.round(totalSpendInPeriod / totalBillsCount) : 0;
+  const avgBillInPeriod = React.useMemo(() => totalBillsCount > 0 ? Math.round(totalSpendInPeriod / totalBillsCount) : 0, [totalSpendInPeriod, totalBillsCount]);
 
   // Expenditures grouped by Venue
-  const venueReport: { [name: string]: number } = {};
-  filteredBills.forEach(b => {
-    venueReport[b.venueName] = (venueReport[b.venueName] || 0) + b.totalAmount;
-  });
+  const venueReport = React.useMemo(() => {
+    const report: { [name: string]: number } = {};
+    filteredBills.forEach(b => {
+      report[b.venueName] = (report[b.venueName] || 0) + b.totalAmount;
+    });
+    return report;
+  }, [filteredBills]);
 
   // Export report to CSV
   const handleExportCSV = () => {
@@ -268,7 +271,7 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
   ];
 
   const pieData = Object.entries(venueReport)
-    .map(([name, amount]) => ({ name, amount }))
+    .map(([name, amount]) => ({ name, amount: amount as number }))
     .sort((a, b) => b.amount - a.amount);
 
   const totalPieAmount = pieData.reduce((sum, item) => sum + item.amount, 0);

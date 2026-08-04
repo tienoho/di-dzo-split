@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Debt, Bill } from '../types';
-import { Bell, Copy, Check, MessageSquare, AlertCircle, Share2, DollarSign, CreditCard, Sparkles, CheckCheck, ExternalLink, QrCode, Smile, HelpCircle, X } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { Bell, Check, MessageSquare, AlertCircle, Share2, Copy, CheckCheck, QrCode, Smile } from 'lucide-react';
+import DebtSettingsPanel from './DebtReminders/DebtSettingsPanel';
+import DebtActionModal from './DebtReminders/DebtActionModal';
 
 interface DebtRemindersProps {
   debts: Debt[];
@@ -488,186 +489,24 @@ Xin chân thành cảm ơn!`;
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* LEFT COLUMN: Banking profile Setup */}
-        <div className="lg:col-span-4 bg-white border-4 border-slate-900 rounded-[32px] shadow-lg p-6 h-fit space-y-5">
-          <div className="space-y-1.5 border-b-2 border-dashed border-slate-100 pb-4">
-            <div className="flex items-center gap-2">
-              <span className="w-3 h-6 bg-teal-400 rounded-full inline-block"></span>
-              <h2 className="text-lg font-black text-slate-900 flex items-center gap-2 tracking-tight">
-                <CreditCard className="w-5 h-5 text-teal-500" />
-                Thụ Hưởng Của Bạn
-              </h2>
-            </div>
-            <p className="text-[11px] font-bold text-slate-500">Nhập đúng STK để app tự tải mã QR và mẫu điền tin nhắn đòi tiền cực nhạy!</p>
-          </div>
-
-          <form onSubmit={saveBankSettings} className="space-y-4">
-            <div className="space-y-1">
-              <label className="text-[10px] font-black text-slate-600 block uppercase tracking-wide">Ngân hàng thụ hưởng</label>
-              <select
-                value={bankName}
-                onChange={(e) => setBankName(e.target.value)}
-                className="w-full text-xs font-black bg-yellow-50/30 border-2 border-slate-900 focus:border-orange-500 rounded-xl p-3 text-slate-800"
-              >
-                <option value="mbbank">MB Bank (Quân Đội)</option>
-                <option value="vcb">Vietcombank (VCB)</option>
-                <option value="tcb">Techcombank</option>
-                <option value="acb">ACB (Á Châu)</option>
-                <option value="bidv">BIDV</option>
-                <option value="vietinbank">Vietinbank</option>
-                <option value="vpb">VPBank</option>
-                <option value="tpbank">TPBank</option>
-                <option value="vib">VIB</option>
-                <option value="hdbank">HDBank</option>
-                <option value="sacombank">Sacombank</option>
-              </select>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-[10px] font-black text-slate-600 block uppercase tracking-wide">Số Tài Khoản (STK) <span className="text-orange-500">*</span></label>
-              <input
-                type="text"
-                required
-                placeholder="Nhập số tài khoản..."
-                value={bankNo}
-                onChange={(e) => setBankNo(e.target.value)}
-                className="w-full text-xs bg-yellow-50/30 border-2 border-slate-900 p-3 rounded-xl font-mono text-slate-900 font-extrabold focus:border-orange-500 outline-hidden"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-[10px] font-black text-slate-600 block uppercase tracking-wide">Tên Chủ Thẻ (VIẾT HOA KHÔNG DẤU) <span className="text-orange-500">*</span></label>
-              <input
-                type="text"
-                required
-                placeholder="Ví dụ: NGUYEN VAN TUAN ANH"
-                value={bankAccountName}
-                onChange={(e) => setBankAccountName(e.target.value.toUpperCase())}
-                className="w-full text-xs bg-yellow-50/30 border-2 border-slate-900 p-3 rounded-xl text-slate-900 font-black focus:border-orange-500 outline-hidden"
-              />
-            </div>
-
-            {settingsSaved && (
-              <p className="text-[11px] text-teal-800 bg-teal-100 border-2 border-slate-900 p-2.5 rounded-xl text-center font-black">
-                ✓ Thiết lập ví thụ hưởng đã được lưu!
-              </p>
-            )}
-
-            <button
-              type="submit"
-              className="w-full bg-slate-900 hover:bg-orange-500 text-white hover:text-slate-900 rounded-2xl py-3 text-xs font-black border-2 border-slate-900 hover:-translate-y-0.5 shadow-sm transition-all cursor-pointer"
-            >
-              Cập Nhật Thẻ Chuyển Khoản
-            </button>
-          </form>
-
-          {/* Automatic Reminder Setup Card */}
-          <div className="bg-orange-50/40 border-2 border-slate-900 rounded-[24px] p-4.5 space-y-3.5 mt-4">
-            <h3 className="text-xs font-black text-slate-950 uppercase tracking-widest flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-orange-500 animate-pulse animate-spin" />
-              Nhắc Nợ Trình Duyệt Tự Động
-            </h3>
-            <p className="text-[10px] text-slate-500 font-extrabold leading-relaxed">
-              Trình duyệt sẽ tự động phát thông báo đẩy (Push Notification) định kỳ khi có cuộc vui trễ hạn quá 24h chưa được thanh toán dứt điểm.
-            </p>
-
-            <div className="space-y-3 pt-1">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={pushEnabled}
-                  onChange={(e) => handleTogglePush(e.target.checked)}
-                  className="w-4 h-4 rounded text-orange-500 border-slate-900 focus:ring-orange-500 accent-orange-500 cursor-pointer"
-                />
-                <span className="text-xs font-black text-slate-800">Bật nhắc nợ tự động đẩy</span>
-              </label>
-
-              {pushEnabled && (
-                <div className="space-y-1">
-                  <label className="text-[9px] font-black text-slate-550 block uppercase tracking-wide">Chu kỳ nhắc lặp lại</label>
-                  <select
-                    value={pushInterval}
-                    onChange={(e) => handleIntervalChange(e.target.value)}
-                    className="w-full text-xs font-black bg-white border-2 border-slate-900 rounded-xl p-2.5 text-slate-800 cursor-pointer"
-                  >
-                    <option value="24h">Lặp lại mỗi 24 giờ (Tiêu chuẩn)</option>
-                    <option value="12h">Lặp lại mỗi 12 giờ</option>
-                    <option value="1h">Lặp lại mỗi 1 giờ</option>
-                    <option value="5m">Lặp lại mỗi 5 phút</option>
-                    <option value="1m">Lặp lại mỗi 1 phút (⚡ Thử nghiệm ngay)</option>
-                  </select>
-                </div>
-              )}
-
-              {/* Browser Permission Request button */}
-              <button
-                type="button"
-                onClick={handleRequestPermission}
-                className="w-full bg-slate-100 hover:bg-orange-104/10 dark:bg-slate-800 text-slate-800 dark:text-slate-300 text-[10px] font-black py-2 rounded-xl border border-slate-300 dark:border-slate-700 hover:border-orange-400 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                <Bell className="w-3.5 h-3.5 text-orange-500" />
-                <span>Cấp quyền thông báo đẩy</span>
-              </button>
-
-              {/* FCM Advanced VAPID settings */}
-              <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 space-y-2 mt-2">
-                <div className="flex items-center gap-1.5 text-xs font-black text-slate-800 dark:text-slate-200">
-                  <QrCode className="w-4 h-4 text-orange-500 animate-pulse" />
-                  <span>Cấu hình VAPID Key (FCM Đám Mây)</span>
-                </div>
-                <p className="text-[9px] text-slate-500 dark:text-slate-400 leading-relaxed font-bold">
-                  Dán khóa <b>Public Key (VAPID)</b> lấy từ <i>Firebase Console &gt; Project Settings &gt; Cloud Messaging &gt; Web Configuration</i> để liên kết thiết bị đòi nợ thực tế:
-                </p>
-                <div className="flex gap-1.5">
-                  <input
-                    type="text"
-                    placeholder="Nhập VAPID Public key từ Firebase..."
-                    value={vapidKeyInput}
-                    onChange={(e) => {
-                      setVapidKeyInput(e.target.value);
-                      localStorage.setItem('nhau_fcm_vapid_key', e.target.value);
-                    }}
-                    className="flex-1 text-[10px] font-mono border border-slate-350 dark:border-slate-700 p-2 rounded-lg outline-hidden bg-white dark:bg-slate-950 text-slate-800 dark:text-white"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleTestFCMRegister}
-                    className="bg-orange-500 hover:bg-orange-600 text-slate-950 text-[10px] font-black px-3 rounded-lg border border-slate-950 transition-all flex-shrink-0 cursor-pointer shadow-xs"
-                  >
-                    Liên Kết PUSH
-                  </button>
-                </div>
-                {localFcmToken && (
-                  <div className="bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-900 p-2.5 rounded-lg space-y-1.5">
-                    <div className="flex items-center gap-1.5 text-[9.5px] font-black text-teal-700 dark:text-emerald-400">
-                      <CheckCheck className="w-4 h-4 text-teal-500" />
-                      <span>Thiết bị của bạn đã liên kết Cloud!</span>
-                    </div>
-                    
-                    <div className="flex flex-wrap gap-1">
-                      <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-sm bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                        {activeCreatorName ? `Tên nhận tin: ${activeCreatorName}` : "Chưa xác minh tên"}
-                      </span>
-                      <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-sm ${currentUser ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-400' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-400'}`}>
-                        {currentUser ? 'Đã đăng nhập (Auth)' : 'Khách chơi (Guest)'}
-                      </span>
-                    </div>
-
-                    <p className="text-[8px] font-mono whitespace-nowrap overflow-hidden text-slate-500 dark:text-slate-400 overflow-ellipsis">
-                      Token: {localFcmToken}
-                    </p>
-                    <button
-                      type="button"
-                      onClick={handleSelfTestFCMNotification}
-                      className="text-[9.5px] font-black text-teal-600 dark:text-teal-400 hover:text-teal-800 flex items-center gap-1 cursor-pointer bg-teal-100/40 dark:bg-teal-950/50 p-1 px-2 rounded-md transition-all self-start border border-teal-200 dark:border-teal-900"
-                    >
-                      <span>⚡ Test bấm phát PUSH về máy</span>
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
+        <DebtSettingsPanel
+          bankName={bankName}
+          setBankName={setBankName}
+          bankNo={bankNo}
+          setBankNo={setBankNo}
+          bankAccountName={bankAccountName}
+          setBankAccountName={setBankAccountName}
+          saveBankSettings={saveBankSettings}
+          settingsSaved={settingsSaved}
+          pushEnabled={pushEnabled}
+          handleTogglePush={handleTogglePush}
+          pushInterval={pushInterval}
+          handleIntervalChange={handleIntervalChange}
+          vapidKeyInput={vapidKeyInput}
+          setVapidKeyInput={setVapidKeyInput}
+          handleTestFCMRegister={handleTestFCMRegister}
+          handleSelfTestFCMNotification={handleSelfTestFCMNotification}
+        />
 
         {/* RIGHT COLUMN: Outstanding Balances List */}
         <div className="lg:col-span-8 bg-white border-4 border-slate-900 rounded-[32px] shadow-lg p-6 space-y-6">
@@ -1157,58 +996,10 @@ Xin chân thành cảm ơn!`;
       </div>
 
       {/* CUSTOM CONFIRMATION DIALOG MODAL */}
-      <AnimatePresence>
-        {confirmDialog && confirmDialog.isOpen && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 15 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 10 }}
-              className="bg-white dark:bg-slate-900 border-4 border-slate-950 rounded-[28px] max-w-md w-full overflow-hidden shadow-2xl relative"
-            >
-              {/* Header/Banner decorative style */}
-              <div className="bg-orange-400 border-b-4 border-slate-950 p-4 flex items-center justify-between text-slate-950">
-                <div className="flex items-center gap-2">
-                  <HelpCircle className="w-5 h-5 text-slate-950" />
-                  <h3 className="font-black text-xs uppercase tracking-tight">{confirmDialog.title}</h3>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setConfirmDialog(null)}
-                  className="rounded-full bg-white/45 hover:bg-white/60 p-1 cursor-pointer transition-all border border-slate-950"
-                  title="Đóng hộp thoại"
-                >
-                  <X className="w-4 h-4 text-slate-950" />
-                </button>
-              </div>
-
-              {/* Main content body */}
-              <div className="p-6 space-y-4">
-                <p className="text-xs font-bold text-slate-700 dark:text-slate-200 leading-relaxed text-center">
-                  {confirmDialog.message}
-                </p>
-
-                <div className="grid grid-cols-2 gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setConfirmDialog(null)}
-                    className="bg-slate-100 hover:bg-slate-200 text-slate-800 font-black text-xs py-2.5 rounded-xl border-2 border-slate-950 shadow-5xs transition-all active:translate-y-0.5 cursor-pointer text-center"
-                  >
-                    Bỏ qua
-                  </button>
-                  <button
-                    type="button"
-                    onClick={confirmDialog.onConfirm}
-                    className="bg-[#22c55e] hover:bg-[#16a34a] text-white font-black text-xs py-2.5 rounded-xl border-2 border-slate-950 shadow-5xs transition-all active:translate-y-0.5 cursor-pointer text-center"
-                  >
-                    Xác nhận
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      <DebtActionModal 
+        confirmDialog={confirmDialog} 
+        setConfirmDialog={setConfirmDialog} 
+      />
 
     </div>
   );

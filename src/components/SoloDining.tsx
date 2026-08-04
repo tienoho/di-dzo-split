@@ -230,14 +230,14 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
   const currentYearMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
   
   // Filter meals & calculate spending
-  const currentMonthMeals = soloMeals.filter(m => m.date.startsWith(currentYearMonth));
-  const currentMonthSoloTotal = currentMonthMeals.reduce((acc, m) => acc + m.totalAmount, 0);
-  const currentMonthSoloDrinks = currentMonthMeals.reduce((acc, m) => acc + m.drinkAmount, 0);
+  const currentMonthMeals = React.useMemo(() => soloMeals.filter(m => m.date.startsWith(currentYearMonth)), [soloMeals, currentYearMonth]);
+  const currentMonthSoloTotal = React.useMemo(() => currentMonthMeals.reduce((acc, m) => acc + m.totalAmount, 0), [currentMonthMeals]);
+  const currentMonthSoloDrinks = React.useMemo(() => currentMonthMeals.reduce((acc, m) => acc + m.drinkAmount, 0), [currentMonthMeals]);
 
   // Group party spending shared portion
   // Look at bills in the current month where the current user name or (Bạn) is in bill members
   // Sum finalShare
-  const currentMonthGroupTotal = bills
+  const currentMonthGroupTotal = React.useMemo(() => bills
     .filter(b => b.date.startsWith(currentYearMonth) && !b.isArchived)
     .reduce((sum, bill) => {
       const userMember = bill.members.find(m => {
@@ -249,7 +249,7 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
                cleanName.includes('bạn');
       });
       return sum + (userMember ? userMember.finalShare : 0);
-    }, 0);
+    }, 0), [bills, currentYearMonth, activeCreatorName]);
 
   const overallSpentThisMonth = currentMonthSoloTotal + currentMonthGroupTotal;
   const budgetPercentage = monthlyBudget > 0 ? (currentMonthSoloTotal / monthlyBudget) * 100 : 0;
@@ -281,16 +281,16 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
   };
 
   // List of all unique months for filter
-  const uniqueMonths: string[] = Array.from(new Set<string>(soloMeals.map(m => m.date.substring(0, 7)))).sort().reverse();
+  const uniqueMonths: string[] = React.useMemo(() => Array.from(new Set<string>(soloMeals.map(m => m.date.substring(0, 7)))).sort().reverse(), [soloMeals]);
 
   // Filtered meals to display
-  const displayedMeals = soloMeals.filter(m => {
+  const displayedMeals = React.useMemo(() => soloMeals.filter(m => {
     const matchSearch = m.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                         (m.venueName && m.venueName.toLowerCase().includes(searchTerm.toLowerCase())) ||
                         (m.note && m.note.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchMonth = monthFilter === 'all' || m.date.startsWith(monthFilter);
     return matchSearch && matchMonth;
-  });
+  }), [soloMeals, searchTerm, monthFilter]);
 
   const budgetStatsStyle = getBudgetStatus(budgetPercentage);
 
