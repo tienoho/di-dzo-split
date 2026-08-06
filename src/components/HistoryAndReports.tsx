@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Bill } from '../types';
-import { Calendar, Search, FileDown, TrendingUp, DollarSign, Users, Store, Trash, ChevronDown, ChevronUp, Archive, Inbox, Filter, Clock, HelpCircle, X, PieChart, Sparkles, Brain, Coins, AlertTriangle } from 'lucide-react';
+import { Calendar, Search, FileDown, TrendingUp, DollarSign, Users, Store, Trash, ChevronDown, ChevronUp, Archive, Inbox, Filter, Clock, HelpCircle, X, PieChart, Sparkles, Brain, Coins, AlertTriangle, Share2, Copy } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface HistoryAndReportsProps {
@@ -218,6 +218,55 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  // Share a bill detail
+  const handleShareBill = async (bill: Bill) => {
+    const dateObj = new Date(bill.date);
+    const friendlyDate = `${dateObj.getDate()} Thg ${dateObj.getMonth() + 1}, ${dateObj.getFullYear()}`;
+    const formattedTime = `${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
+    
+    let text = `🍻 Hóa đơn: ${bill.venueName}\n`;
+    text += `📅 Ngày: ${friendlyDate} lúc ${formattedTime}\n`;
+    text += `💰 Tổng bill: ${bill.totalAmount.toLocaleString('vi-VN')} đ\n\n`;
+    text += `👥 Chi tiết chia:\n`;
+    
+    bill.members.forEach(m => {
+      const diff = m.finalShare - m.initialPaid;
+      text += `- ${m.name}: Chịu ${m.finalShare.toLocaleString('vi-VN')} đ `;
+      text += `(Đã chi ${m.initialPaid.toLocaleString('vi-VN')} đ) `;
+      if (diff > 0) {
+        text += `👉 Còn Nợ ${diff.toLocaleString('vi-VN')} đ\n`;
+      } else if (diff < 0) {
+        text += `👉 Nhận lại ${Math.abs(diff).toLocaleString('vi-VN')} đ\n`;
+      } else {
+        text += `👉 Vừa đủ\n`;
+      }
+    });
+
+    if (bill.note) {
+      text += `\n📝 Ghi chú: ${bill.note}`;
+    }
+    
+    text += `\n\nQuản lý tại: ${window.location.origin}`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `Chia sẻ hóa đơn ${bill.venueName}`,
+          text: text
+        });
+      } catch (err) {
+        console.error('Error sharing', err);
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(text);
+        alert("Thiết bị của bạn không hỗ trợ Web Share API. Chi tiết hóa đơn đã được SAO CHÉP tự động vào bộ nhớ tạm để bạn tự dán gửi Zalo/Messenger!");
+      } catch (err) {
+        alert("Không thể sao chép. Hãy thử lại!");
+      }
+    }
   };
 
   // Generate dynamic chart data for month-by-month spend comparison
@@ -994,7 +1043,17 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
                       </div>
 
                       {/* Action buttons inside item */}
-                      <div className="flex justify-end pt-3 border-t-2 border-dashed border-slate-100">
+                      <div className="flex justify-end pt-3 border-t-2 border-dashed border-slate-100 flex-wrap gap-y-2">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleShareBill(bill);
+                          }}
+                          className="mr-3 text-[10px] font-black text-blue-650 text-blue-600 hover:text-blue-800 flex items-center gap-1.5 cursor-pointer bg-blue-100/30 hover:bg-blue-100 border-2 border-blue-300 p-2 px-3.5 rounded-xl transition-all"
+                        >
+                          <Share2 className="w-3.5 h-3.5" /> Chia sẻ hóa đơn
+                        </button>
                         {bill.isArchived ? (
                           <button
                             type="button"
