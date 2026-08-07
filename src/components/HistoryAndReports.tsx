@@ -235,6 +235,9 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
     bill.members.forEach(m => {
       const diff = m.finalShare - m.initialPaid;
       text += `- ${m.name}: Chịu ${m.finalShare.toLocaleString('vi-VN')} đ `;
+      if (m.penaltyAmount && m.penaltyAmount > 0) {
+        text += `(Bao gồm ${m.penaltyAmount.toLocaleString('vi-VN')}đ phạt) `;
+      }
       text += `(Đã chi ${m.initialPaid.toLocaleString('vi-VN')} đ) `;
       if (diff > 0) {
         text += `👉 Còn Nợ ${diff.toLocaleString('vi-VN')} đ\n`;

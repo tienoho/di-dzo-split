@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 import { Bill, Member, Venue } from '../types';
 import { Plus, Trash, Users, Calculator, Gift, Sparkles, Store, CreditCard, ChevronRight, Camera } from 'lucide-react';
 import ReceiptScanner from './ReceiptScanner';
-
+import Confetti from 'react-confetti';
 interface BillSplitterProps {
   venues: Venue[];
   onAddVenue: (venue: Omit<Venue, 'id' | 'visitsCount'>) => Venue;
@@ -342,6 +342,11 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
     }
     if (members.length === 0) {
       toast.error("Hãy điền ít nhất một người tham gia cuộc nhậu!");
+      return;
+    }
+    
+    if (totalPenalties > totalAmount) {
+      toast.error("Khoản phạt quá lớn, vượt cả tổng hóa đơn! Số tiền chênh lệch sẽ không thể cấn trừ nợ. Vui lòng kiểm tra lại.");
       return;
     }
 
@@ -882,7 +887,10 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
                 )}
                 
                 {luckyWinnerIndex !== null && !isSpinning && members[luckyWinnerIndex] && (
-                  <div className="text-center p-3 bg-red-100 dark:bg-red-900/30 rounded-xl border-2 border-red-500">
+                  <div className="text-center p-3 bg-red-100 dark:bg-red-900/30 rounded-xl border-2 border-red-500 relative">
+                    <div className="fixed inset-0 z-50 pointer-events-none">
+                      <Confetti recycle={false} numberOfPieces={300} gravity={0.3} />
+                    </div>
                     <div className="text-xs font-bold text-red-600 dark:text-red-400">Người được độ đêm nay:</div>
                     <div className="text-lg font-black text-red-700 dark:text-red-300">🚨 {members[luckyWinnerIndex].name} 🚨</div>
                   </div>

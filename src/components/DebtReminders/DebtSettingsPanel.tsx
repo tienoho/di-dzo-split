@@ -1,5 +1,5 @@
-import React from 'react';
-import { CreditCard, Sparkles } from 'lucide-react';
+import React, { useState } from 'react';
+import { CreditCard, Sparkles, Trash2, AlertTriangle } from 'lucide-react';
 
 interface DebtSettingsPanelProps {
   bankName: string;
@@ -30,6 +30,18 @@ export default function DebtSettingsPanel({
   vapidKeyInput, setVapidKeyInput,
   handleTestFCMRegister, handleSelfTestFCMNotification
 }: DebtSettingsPanelProps) {
+  const [resetStep, setResetStep] = useState(0);
+
+  const handleHardReset = () => {
+    if (resetStep === 0) {
+      setResetStep(1);
+      setTimeout(() => setResetStep(0), 3000); // reset if they don't confirm in 3 seconds
+    } else {
+      localStorage.clear();
+      window.location.reload();
+    }
+  };
+
   return (
     <div className="lg:col-span-4 bg-white border-4 border-slate-900 rounded-[32px] shadow-lg p-6 h-fit space-y-5">
       <div className="space-y-1.5 border-b-2 border-dashed border-slate-100 pb-4">
@@ -174,6 +186,35 @@ export default function DebtSettingsPanel({
             </button>
           </div>
         </div>
+      </div>
+
+      
+      {/* Danger Zone */}
+      <div className="pt-4 border-t-2 border-dashed border-red-200 mt-4">
+        <button
+          type="button"
+          onClick={handleHardReset}
+          className={`w-full py-3 rounded-xl border-2 font-black text-xs transition-all flex items-center justify-center gap-2 ${
+            resetStep === 1 
+              ? 'bg-red-600 border-red-800 text-white animate-pulse' 
+              : 'bg-red-50 border-red-200 text-red-600 hover:bg-red-100 hover:border-red-300'
+          }`}
+        >
+          {resetStep === 1 ? (
+            <>
+              <AlertTriangle className="w-4 h-4" /> BẤM LẦN NỮA ĐỂ XÓA TẤT CẢ!
+            </>
+          ) : (
+            <>
+              <Trash2 className="w-4 h-4" /> Làm Lại Cuộc Đời (Xóa Dữ Liệu)
+            </>
+          )}
+        </button>
+        {resetStep === 1 && (
+          <p className="text-center text-[10px] text-red-500 font-bold mt-2">
+            Hành động này sẽ xóa toàn bộ hóa đơn, địa điểm và cài đặt của bạn!
+          </p>
+        )}
       </div>
     </div>
   );
