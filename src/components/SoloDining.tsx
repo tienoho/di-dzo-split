@@ -431,7 +431,7 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
           <div className="space-y-4">
             <div className="flex justify-between items-end">
               <div>
-                <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest block">Đã chi mồi solo</span>
+                <span className="text-xs text-slate-400 font-extrabold uppercase tracking-widest block">Đã chi mồi solo</span>
                 <span className="text-3xl font-black text-slate-900 dark:text-amber-400">
                   {currentMonthSoloTotal.toLocaleString('vi-VN')} đ
                 </span>
@@ -441,8 +441,8 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
               </div>
 
               <div className="text-right">
-                <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest block">Trạng thái hầu bao</span>
-                <span className={`text-[11px] font-black uppercase px-3 py-1 rounded-full border-2 ${budgetStatsStyle.color} mt-1.5 inline-block`}>
+                <span className="text-xs text-slate-400 font-extrabold uppercase tracking-widest block">Trạng thái hầu bao</span>
+                <span className={`text-sm font-black uppercase px-3 py-1 rounded-full border-2 ${budgetStatsStyle.color} mt-1.5 inline-block`}>
                   {budgetStatsStyle.label}
                 </span>
               </div>
@@ -460,7 +460,7 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
                 }`}
                 style={{ width: `${Math.min(100, budgetPercentage)}%` }}
               ></div>
-              <div className="absolute inset-0 flex items-center justify-center text-[10px] font-black text-slate-800">
+              <div className="absolute inset-0 flex items-center justify-center text-xs font-black text-slate-800">
                 {budgetPercentage.toFixed(1)}%
               </div>
             </div>
@@ -500,34 +500,34 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
           <div>
             <div className="flex items-center gap-2 mb-4">
               <TrendingUp className="w-5 h-5 text-emerald-400 animate-pulse" />
-              <span className="text-[10px] uppercase font-black text-slate-400 tracking-widest">
+              <span className="text-xs uppercase font-black text-slate-400 tracking-widest">
                 Tổng hợp chi tiêu tháng này
               </span>
             </div>
             
             <div className="space-y-4">
               <div>
-                <span className="text-[9px] text-slate-400 uppercase font-black tracking-wider">Cá nhân (Solo 食)</span>
+                <span className="text-xs text-slate-400 uppercase font-black tracking-wider">Cá nhân (Solo 食)</span>
                 <div className="text-2xl font-black text-amber-300">
                   {currentMonthSoloTotal.toLocaleString('vi-VN')} đ
                 </div>
-                <div className="text-[10px] text-slate-400 font-extrabold mt-0.5">
+                <div className="text-xs text-slate-400 font-extrabold mt-0.5">
                   Chiếm {overallSpentThisMonth > 0 ? ((currentMonthSoloTotal / overallSpentThisMonth) * 100).toFixed(0) : 0}% ngân quỹ ăn uống
                 </div>
               </div>
 
               <div className="border-t border-slate-800 pt-3">
-                <span className="text-[9px] text-slate-400 uppercase font-black tracking-wider">Đóng góp quây chung (Group 🍻)</span>
+                <span className="text-xs text-slate-400 uppercase font-black tracking-wider">Đóng góp quây chung (Group 🍻)</span>
                 <div className="text-2xl font-black text-teal-300">
                   {currentMonthGroupTotal.toLocaleString('vi-VN')} đ
                 </div>
-                <div className="text-[10px] text-slate-400 font-extrabold mt-0.5">
+                <div className="text-xs text-slate-400 font-extrabold mt-0.5">
                   Chiếm {overallSpentThisMonth > 0 ? ((currentMonthGroupTotal / overallSpentThisMonth) * 100).toFixed(0) : 0}% ngân quỹ từ các bữa tiệc chung
                 </div>
               </div>
 
               <div className="border-t-2 border-dashed border-slate-800 pt-3">
-                <span className="text-[9px] text-gray-400 uppercase font-bold tracking-wider">Tổng chi dạ dày tháng {today.getMonth() + 1}</span>
+                <span className="text-xs text-gray-400 uppercase font-bold tracking-wider">Tổng chi dạ dày tháng {today.getMonth() + 1}</span>
                 <div className="text-3xl font-black text-emerald-400">
                   {overallSpentThisMonth.toLocaleString('vi-VN')} đ
                 </div>
@@ -535,7 +535,7 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
             </div>
           </div>
 
-          <div className="bg-slate-800/60 rounded-2xl p-3 border border-slate-850 mt-4 text-[10px] text-slate-300 font-bold leading-relaxed flex items-start gap-2">
+          <div className="bg-slate-800/60 rounded-2xl p-3 border border-slate-850 mt-4 text-xs text-slate-300 font-bold leading-relaxed flex items-start gap-2">
             <Info className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
             <p>
               Hóa đơn nhóm được tách biệt khỏi ngân quỹ Solo để bảo vệ hầu bao ăn uống hàng ngày độc lập của bạn khỏi các bữa tiệc bất thình lình!
@@ -555,7 +555,7 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
             <div>
               <h3 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2 flex-wrap">
                 Dự báo Chi tiêu & Đề xuất Ngân sách Tháng Sau
-                <span className="bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 text-[10px] uppercase font-black px-2.5 py-0.5 rounded-full border border-amber-300 dark:border-amber-900">
+                <span className="bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 text-xs uppercase font-black px-2.5 py-0.5 rounded-full border border-amber-300 dark:border-amber-900">
                   AI ENGINE TỰ ĐỘNG 🔮
                 </span>
               </h3>
@@ -570,7 +570,7 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
           
           {/* LEFT COLUMN: GORGEOUS DYNAMIC SVG CHART */}
           <div className="lg:col-span-7 bg-slate-50 dark:bg-slate-955 border-2 border-slate-900 dark:border-slate-800 rounded-2xl p-4 space-y-4">
-            <span className="text-[10px] text-slate-400 uppercase font-black tracking-widest block">Biểu đồ dự báo xu hướng chi tiêu</span>
+            <span className="text-xs text-slate-400 uppercase font-black tracking-widest block">Biểu đồ dự báo xu hướng chi tiêu</span>
             
             <div className="relative pt-6 pb-2 px-1">
               {/* Dynamic SVG with bar handles */}
@@ -580,7 +580,7 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
                   return (
                     <div key={idx} className="flex-1 flex flex-col items-center group relative">
                       {/* Floating hover indicator */}
-                      <div className="absolute -top-10 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900 text-white text-[10px] font-black px-2 py-1 rounded-md border border-slate-700 pointer-events-none whitespace-nowrap z-10 shadow-md">
+                      <div className="absolute -top-10 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900 text-white text-xs font-black px-2 py-1 rounded-md border border-slate-700 pointer-events-none whitespace-nowrap z-10 shadow-md">
                         {item.amount.toLocaleString('vi-VN')} đ
                       </div>
 
@@ -615,7 +615,7 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
                 {chartData.map((item, idx) => (
                   <span
                     key={idx}
-                    className={`flex-1 text-center text-[10px] font-black shrink-0 ${
+                    className={`flex-1 text-center text-xs font-black shrink-0 ${
                       item.isForecast ? 'text-amber-500 font-extrabold animate-pulse' : 'text-slate-500 dark:text-slate-400'
                     }`}
                   >
@@ -625,7 +625,7 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
               </div>
             </div>
 
-            <div className="text-[10px] text-slate-400 font-semibold italic flex items-center gap-1.5 justify-center">
+            <div className="text-xs text-slate-400 font-semibold italic flex items-center gap-1.5 justify-center">
               <span className="w-2.5 h-2.5 bg-emerald-400 border border-slate-900 rounded-sm"></span>
               <span>Chi tiêu thực</span>
               <span className="w-2.5 h-2.5 bg-amber-400 border border-slate-900 border-dashed rounded-sm ml-3"></span>
@@ -648,7 +648,7 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
                 <button
                   type="button"
                   onClick={() => setForecastPersona('eco')}
-                  className={`py-2 rounded-lg text-[10px] font-black transition-all cursor-pointer ${
+                  className={`py-2 rounded-lg text-xs font-black transition-all cursor-pointer ${
                     forecastPersona === 'eco'
                       ? 'bg-emerald-500 text-white shadow-md'
                       : 'text-slate-400 hover:text-white'
@@ -659,7 +659,7 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
                 <button
                   type="button"
                   onClick={() => setForecastPersona('balanced')}
-                  className={`py-2 rounded-lg text-[10px] font-black transition-all cursor-pointer ${
+                  className={`py-2 rounded-lg text-xs font-black transition-all cursor-pointer ${
                     forecastPersona === 'balanced'
                       ? 'bg-amber-500 text-slate-950 shadow-md'
                       : 'text-slate-400 hover:text-white'
@@ -670,7 +670,7 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
                 <button
                   type="button"
                   onClick={() => setForecastPersona('generous')}
-                  className={`py-2 rounded-lg text-[10px] font-black transition-all cursor-pointer ${
+                  className={`py-2 rounded-lg text-xs font-black transition-all cursor-pointer ${
                     forecastPersona === 'generous'
                       ? 'bg-orange-500 text-slate-900 shadow-md'
                       : 'text-slate-400 hover:text-white'
@@ -700,7 +700,7 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
 
                 <div className="bg-slate-800 p-3 rounded-xl border border-slate-750 flex justify-between items-center gap-2">
                   <div>
-                    <span className="text-[9px] uppercase font-black text-slate-450 block tracking-wider">Hạn mức đề xuất</span>
+                    <span className="text-xs uppercase font-black text-slate-450 block tracking-wider">Hạn mức đề xuất</span>
                     <span className="text-lg font-black text-emerald-400">{predictedBudget.toLocaleString('vi-VN')} đ</span>
                   </div>
                   <button
@@ -719,7 +719,7 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
                       setSuccessMsg(`Đã thiết lập ngân sách tháng tới thành công: ${predictedBudget.toLocaleString('vi-VN')} đ! 🎯`);
                       setTimeout(() => setSuccessMsg(null), 3000);
                     }}
-                    className="bg-emerald-400 hover:bg-emerald-500 text-slate-950 text-[10px] font-black px-4 py-2.5 rounded-xl border border-slate-950 cursor-pointer shadow-md flex items-center gap-1 shrink-0 transition-transform hover:-translate-y-0.5 active:translate-y-0"
+                    className="bg-emerald-400 hover:bg-emerald-500 text-slate-950 text-xs font-black px-4 py-2.5 rounded-xl border border-slate-950 cursor-pointer shadow-md flex items-center gap-1 shrink-0 transition-transform hover:-translate-y-0.5 active:translate-y-0"
                   >
                     <span>Lên Luôn 🎯</span>
                   </button>
@@ -727,7 +727,7 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
               </div>
             </div>
 
-            <div className="bg-amber-50 dark:bg-slate-900 border-2 border-dashed border-amber-300 dark:border-slate-800 rounded-2xl p-4 text-[10px] font-bold leading-relaxed text-slate-700 dark:text-slate-400 flex items-start gap-2.5">
+            <div className="bg-amber-50 dark:bg-slate-900 border-2 border-dashed border-amber-300 dark:border-slate-800 rounded-2xl p-4 text-xs font-bold leading-relaxed text-slate-700 dark:text-slate-400 flex items-start gap-2.5">
               <Calculator className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
               <p>
                 <b>Phương pháp tính toán:</b> Hệ thống tính số trung bình cộng di động của tổng chi tiêu các tháng gần nhất, sau đó nhân với chỉ số hành vi mục tiêu của bạn để tìm điểm cân bằng tài chính tốt nhất.
@@ -755,26 +755,26 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
 
           {/* Presets buttons */}
           <div className="space-y-2">
-            <span className="text-[9px] text-slate-400 uppercase font-black tracking-wider block">Bơm đồ mẫu nhanh:</span>
+            <span className="text-xs text-slate-400 uppercase font-black tracking-wider block">Bơm đồ mẫu nhanh:</span>
             <div className="flex flex-wrap gap-1.5">
               <button
                 type="button"
                 onClick={() => applyPresetMeal('com-tam')}
-                className="bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 hover:bg-slate-200 text-slate-800 dark:text-slate-300 text-[10px] font-black px-2.5 py-1.5 rounded-lg border border-transparent dark:border-slate-700"
+                className="bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 hover:bg-slate-200 text-slate-800 dark:text-slate-300 text-xs font-black px-2.5 py-1.5 rounded-lg border border-transparent dark:border-slate-700"
               >
                 🍛 Cơm tấm (65k)
               </button>
               <button
                 type="button"
                 onClick={() => applyPresetMeal('an-choi')}
-                className="bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 hover:bg-slate-200 text-slate-800 dark:text-slate-300 text-[10px] font-black px-2.5 py-1.5 rounded-lg border border-transparent dark:border-slate-700"
+                className="bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 hover:bg-slate-200 text-slate-800 dark:text-slate-300 text-xs font-black px-2.5 py-1.5 rounded-lg border border-transparent dark:border-slate-700"
               >
                 🍟 Ăn vặt chiều (47k)
               </button>
               <button
                 type="button"
                 onClick={() => applyPresetMeal('nhau-solo')}
-                className="bg-amber-100 dark:bg-amber-950/20 hover:bg-amber-250 text-amber-900 overflow-hidden text-[10px] font-black px-2.5 py-1.5 rounded-lg border border-amber-200"
+                className="bg-amber-100 dark:bg-amber-950/20 hover:bg-amber-250 text-amber-900 overflow-hidden text-xs font-black px-2.5 py-1.5 rounded-lg border border-amber-200"
               >
                 🍺 Nhậu Solo (250k)
               </button>
@@ -817,11 +817,11 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
             {/* Venue Toggle & inputs */}
             <div className="bg-slate-50 dark:bg-slate-950 p-3.5 rounded-2xl border-2 border-slate-900 dark:border-slate-700 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] text-slate-700 dark:text-slate-300 font-extrabold uppercase tracking-wider">Quán quen tủ hay viết tay?</span>
+                <span className="text-xs text-slate-700 dark:text-slate-300 font-extrabold uppercase tracking-wider">Quán quen tủ hay viết tay?</span>
                 <button
                   type="button"
                   onClick={() => setUseCustomVenue(!useCustomVenue)}
-                  className="bg-slate-200 dark:bg-slate-855 text-slate-800 dark:text-slate-300 text-[9px] font-black px-2 py-1 rounded-sm border border-slate-900"
+                  className="bg-slate-200 dark:bg-slate-855 text-slate-800 dark:text-slate-300 text-xs font-black px-2 py-1 rounded-sm border border-slate-900"
                 >
                   {useCustomVenue ? "Chọn quán quen" : "Điền thủ công"}
                 </button>
@@ -829,7 +829,7 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
 
               {useCustomVenue ? (
                 <div className="space-y-1">
-                  <label className="text-[10px] text-slate-500 font-bold block">Tên quán ăn / địa điểm viết tay</label>
+                  <label className="text-xs text-slate-500 font-bold block">Tên quán ăn / địa điểm viết tay</label>
                   <input
                     type="text"
                     value={customVenueName}
@@ -840,7 +840,7 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
                 </div>
               ) : (
                 <div className="space-y-1">
-                  <label className="text-[10px] text-slate-500 font-bold block">Chọn quán tủ đã lưu</label>
+                  <label className="text-xs text-slate-500 font-bold block">Chọn quán tủ đã lưu</label>
                   {venues.length > 0 ? (
                     <select
                       value={selectedVenueId}
@@ -853,7 +853,7 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
                       ))}
                     </select>
                   ) : (
-                    <p className="text-[10px] text-slate-400 font-semibold italic">Bạn chưa lưu quán tủ quen nào, có thể bấm "Điền thủ công"!</p>
+                    <p className="text-xs text-slate-400 font-semibold italic">Bạn chưa lưu quán tủ quen nào, có thể bấm "Điền thủ công"!</p>
                   )}
                 </div>
               )}
@@ -921,7 +921,7 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
             {/* Total visual preview block */}
             <div className="bg-slate-900 text-slate-100 rounded-2xl p-4 flex items-center justify-between border-2 border-slate-950">
               <div>
-                <span className="text-[10px] text-slate-400 uppercase font-black block">Tổng chi bữa đơn</span>
+                <span className="text-xs text-slate-400 uppercase font-black block">Tổng chi bữa đơn</span>
                 <span className="text-2xl font-black text-emerald-400">
                   {(rawAmount + drinkAmount + otherAmount).toLocaleString('vi-VN')} đ
                 </span>
@@ -987,7 +987,7 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
             <div className="py-16 text-center border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-2xl bg-slate-50 dark:bg-slate-955 space-y-2">
               <span className="text-3xl">🏜️</span>
               <p className="text-xs font-bold text-slate-500 dark:text-slate-400">Không tìm thấy bữa ăn Solo nào trong dòng thời gian!</p>
-              <p className="text-[10px] text-slate-400 font-medium">Hãy dùng ô Ghi bữa ăn Solo mới bên trái để khởi động hành trình giữ dáng hầu bao cá nhân sòng phẳng.</p>
+              <p className="text-xs text-slate-400 font-medium">Hãy dùng ô Ghi bữa ăn Solo mới bên trái để khởi động hành trình giữ dáng hầu bao cá nhân sòng phẳng.</p>
             </div>
           ) : (
             <div className="space-y-3 max-h-[460px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-slate-300">
@@ -1011,7 +1011,7 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
                           {meal.name}
                         </h4>
                         
-                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-slate-500 font-extrabold">
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500 font-extrabold">
                           <span className="flex items-center gap-1 text-slate-400">
                             <MapPin className="w-3.5 h-3.5" />
                             {meal.venueName}
@@ -1025,7 +1025,7 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
                         </div>
 
                         {/* Cost allocations breakdown */}
-                        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[9px] text-slate-400 font-extrabold pt-0.5">
+                        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-slate-400 font-extrabold pt-0.5">
                           <span>Mồi: {meal.rawAmount.toLocaleString('vi-VN')}đ</span>
                           <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
                           <span>Nước: {meal.drinkAmount.toLocaleString('vi-VN')}đ</span>
@@ -1044,7 +1044,7 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
                         <span className="text-sm font-black text-slate-900 dark:text-white font-mono block">
                           {meal.totalAmount.toLocaleString('vi-VN')} đ
                         </span>
-                        <span className="text-[9px] text-slate-400 font-extrabold uppercase">tổng một sòng</span>
+                        <span className="text-xs text-slate-400 font-extrabold uppercase">tổng một sòng</span>
                       </div>
 
                       <button

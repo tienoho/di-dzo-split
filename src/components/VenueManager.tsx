@@ -324,7 +324,7 @@ export default function VenueManager({
                 <AlertCircle className="w-5 h-5 text-slate-900" />
               </div>
               <div className="space-y-1">
-                <span className="text-[10px] uppercase font-black text-orange-600 tracking-wider">MẸO KHÁM PHÁ CỘNG ĐỒNG</span>
+                <span className="text-xs uppercase font-black text-orange-600 tracking-wider">MẸO KHÁM PHÁ CỘNG ĐỒNG</span>
                 <p className="text-xs font-black text-slate-800 leading-relaxed">
                   Bạn đang xem với tư cách khách khứa chưa đăng nhập. Bạn có thể thả ga xem địa bàn và đánh giá, nhưng hãy nhấn <span className="underline cursor-pointer text-orange-600" onClick={() => document.getElementById('venue-manager-section')?.scrollIntoView({ behavior: 'smooth' })}>Đăng nhập mây ☁️</span> để bắt đầu chia sẻ quán quen ruột của bản thân và gửi bình luận đắc sòng nhất!
                 </p>
@@ -402,13 +402,13 @@ export default function VenueManager({
                     <div className="space-y-2">
                       <div className="flex items-start justify-between gap-2 border-b border-dashed border-slate-200 pb-2">
                         <div>
-                          <span className="text-[9px] uppercase font-black text-pink-500 tracking-wider">🏠 Dzô Quán tủ cộng đồng</span>
+                          <span className="text-xs uppercase font-black text-pink-500 tracking-wider">🏠 Dzô Quán tủ cộng đồng</span>
                           <h3 className="text-base font-black text-slate-900 dark:text-white mt-1">🍢 {pub.name}</h3>
                         </div>
                         
                         <button
                           onClick={() => handleImportVenue(pub)}
-                          className="flex items-center gap-1 bg-teal-500 hover:bg-teal-600 text-slate-950 font-black text-[10px] uppercase border-2 border-slate-950 px-2.5 py-1.5 rounded-xl cursor-pointer shadow-sm transition-all active:translate-y-0.5"
+                          className="flex items-center gap-1 bg-teal-500 hover:bg-teal-600 text-slate-950 font-black text-xs uppercase border-2 border-slate-950 px-2.5 py-1.5 rounded-xl cursor-pointer shadow-sm transition-all active:translate-y-0.5"
                           title="Lưu quán ngon này về danh sách local của riêng bạn để sài khi lập hóa đơn"
                         >
                           <Download className="w-3.5 h-3.5" />
@@ -428,7 +428,7 @@ export default function VenueManager({
                         </p>
                       </div>
 
-                      <div className="flex flex-wrap items-center gap-4 text-[10px] font-black pt-1">
+                      <div className="flex flex-wrap items-center gap-4 text-xs font-black pt-1">
                         <div className="flex items-center gap-1.5">
                           <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
                           <span className="text-slate-700 dark:text-slate-300 text-xs">{pub.rating.toFixed(1)} / 5 ({pub.ratingsCount} đánh giá)</span>
@@ -444,7 +444,7 @@ export default function VenueManager({
                     <div className="border-t-2 border-slate-100 dark:border-slate-800 pt-3">
                       <button
                         onClick={() => handleToggleExpandVenue(pub.id)}
-                        className="w-full bg-slate-100 dark:bg-slate-850 hover:bg-slate-200 dark:hover:bg-slate-800 border-2 border-slate-900 dark:border-slate-700 p-2.5 rounded-2xl text-[11px] font-black text-slate-800 dark:text-slate-200 flex items-center justify-between cursor-pointer"
+                        className="w-full bg-slate-100 dark:bg-slate-850 hover:bg-slate-200 dark:hover:bg-slate-800 border-2 border-slate-900 dark:border-slate-700 p-2.5 rounded-2xl text-sm font-black text-slate-800 dark:text-slate-200 flex items-center justify-between cursor-pointer"
                       >
                         <span className="flex items-center gap-1">
                           <MessageSquare className="w-4 h-4 text-pink-500 animate-pulse" />
@@ -458,7 +458,7 @@ export default function VenueManager({
                           
                           {/* Add a review Form section */}
                           <div className="bg-yellow-50/15 dark:bg-slate-950/20 border-2 border-slate-900 dark:border-slate-700 p-3.5 rounded-2xl space-y-3">
-                            <span className="text-[10px] uppercase font-black text-slate-800 dark:text-slate-200 block">Thêm bình phẩm + chấm điểm:</span>
+                            <span className="text-xs uppercase font-black text-slate-800 dark:text-slate-200 block">Thêm bình phẩm + chấm điểm:</span>
                             
                             <div className="flex items-center gap-2">
                               <span className="text-xs font-bold text-slate-500">Chấm sao:</span>
@@ -499,7 +499,7 @@ export default function VenueManager({
                           {/* Reviews List output */}
                           <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
                             {reviewsLoading ? (
-                              <p className="text-center text-[10px] text-slate-400 uppercase font-black py-4">Đang xúc xắc tìm bình luận...</p>
+                              <p className="text-center text-xs text-slate-400 uppercase font-black py-4">Đang xúc xắc tìm bình luận...</p>
                             ) : reviews.length === 0 ? (
                               <p className="text-center text-xs text-slate-400 font-bold py-4">Chưa có bình luận nào. Hãy khai lộc bằng bài bình phán đầu tiên!</p>
                             ) : (
@@ -511,13 +511,13 @@ export default function VenueManager({
                                     </span>
                                     <div className="flex items-center gap-1">
                                       <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                                      <span className="text-[10px] font-black">{rev.rating}</span>
+                                      <span className="text-xs font-black">{rev.rating}</span>
                                     </div>
                                   </div>
                                   
                                   <p className="text-xs font-bold leading-normal text-slate-755 text-slate-700 dark:text-slate-355 italic">&ldquo; {rev.comment} &rdquo;</p>
                                   
-                                  <div className="text-[9px] text-slate-400 flex items-center gap-1">
+                                  <div className="text-xs text-slate-400 flex items-center gap-1">
                                     <Clock className="w-3 h-3" />
                                     <span>{new Date(rev.createdAt).toLocaleDateString('vi', {day:'numeric', month:'short', year:'numeric'})}</span>
                                   </div>
@@ -544,7 +544,7 @@ export default function VenueManager({
           <div className="bg-white dark:bg-slate-900 border-4 border-slate-900 rounded-[32px] p-6 shadow-lg space-y-4 animate-slideIn">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b-2 border-slate-900 dark:border-slate-800 pb-4">
               <div className="space-y-1">
-                <span className="text-[10px] uppercase font-black text-orange-500 tracking-wider">🎯 TRÌNH TRA CỨU & BỘ LỌC THÔNG MINH</span>
+                <span className="text-xs uppercase font-black text-orange-500 tracking-wider">🎯 TRÌNH TRA CỨU & BỘ LỌC THÔNG MINH</span>
                 <h3 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
                   Bộ Sưu Tập Quán Quen Tủ cá nhân ({venues.length})
                 </h3>
@@ -554,7 +554,7 @@ export default function VenueManager({
               <div className="flex items-center gap-4 bg-orange-50 dark:bg-slate-800 border-2 border-slate-900 dark:border-slate-700 px-4 py-2 rounded-2xl text-xs font-black">
                 <div className="text-slate-950 dark:text-white">
                   🏆 Hay đi nhất: <span className="text-orange-600 font-extrabold">{mostVisited ? mostVisited.name : 'Chưa có'}</span>
-                  {mostVisited && <span className="text-[10px] text-slate-400 font-bold ml-1">({mostVisited.visitsCount} lần)</span>}
+                  {mostVisited && <span className="text-xs text-slate-400 font-bold ml-1">({mostVisited.visitsCount} lần)</span>}
                 </div>
               </div>
             </div>
@@ -586,7 +586,7 @@ export default function VenueManager({
                 <button
                   type="button"
                   onClick={() => setLocalFilter('all')}
-                  className={`px-3 py-2 text-[11px] font-black cursor-pointer rounded-xl transition-all border-2 ${
+                  className={`px-3 py-2 text-sm font-black cursor-pointer rounded-xl transition-all border-2 ${
                     localFilter === 'all'
                       ? 'bg-slate-900 text-white border-slate-900 dark:bg-slate-700 dark:border-slate-600'
                       : 'bg-white dark:bg-slate-850 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-400'
@@ -598,7 +598,7 @@ export default function VenueManager({
                 <button
                   type="button"
                   onClick={() => setLocalFilter('high-rated')}
-                  className={`px-3 py-2 text-[11px] font-black cursor-pointer rounded-xl transition-all border-2 flex items-center gap-1 ${
+                  className={`px-3 py-2 text-sm font-black cursor-pointer rounded-xl transition-all border-2 flex items-center gap-1 ${
                     localFilter === 'high-rated'
                       ? 'bg-amber-500 text-slate-950 border-slate-950 dark:bg-amber-500 dark:text-slate-950'
                       : 'bg-white dark:bg-slate-850 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-400'
@@ -611,7 +611,7 @@ export default function VenueManager({
                 <button
                   type="button"
                   onClick={() => setLocalFilter('most-visited')}
-                  className={`px-3 py-2 text-[11px] font-black cursor-pointer rounded-xl transition-all border-2 flex items-center gap-1 ${
+                  className={`px-3 py-2 text-sm font-black cursor-pointer rounded-xl transition-all border-2 flex items-center gap-1 ${
                     localFilter === 'most-visited'
                       ? 'bg-orange-500 text-white border-slate-950 dark:bg-orange-500'
                       : 'bg-white dark:bg-slate-850 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-400'
@@ -623,7 +623,7 @@ export default function VenueManager({
                 <button
                   type="button"
                   onClick={() => setLocalFilter('unvisited')}
-                  className={`px-3 py-2 text-[11px] font-black cursor-pointer rounded-xl transition-all border-2 flex items-center gap-1 ${
+                  className={`px-3 py-2 text-sm font-black cursor-pointer rounded-xl transition-all border-2 flex items-center gap-1 ${
                     localFilter === 'unvisited'
                       ? 'bg-teal-500 text-slate-950 border-slate-950 dark:bg-teal-500 dark:text-slate-950'
                       : 'bg-white dark:bg-slate-850 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-400'
@@ -727,7 +727,7 @@ export default function VenueManager({
                   Danh Sách Quán Đã Lưu ({filteredLocalVenues.length})
                 </h3>
                 {searchTerm && (
-                  <span className="text-[10px] text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-slate-800 px-2 py-0.5 rounded border border-orange-200 dark:border-orange-900 font-extrabold font-mono">
+                  <span className="text-xs text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-slate-800 px-2 py-0.5 rounded border border-orange-200 dark:border-orange-900 font-extrabold font-mono">
                     Đang tìm kiếm...
                   </span>
                 )}
@@ -773,19 +773,19 @@ export default function VenueManager({
                         </div>
                       </div>
 
-                      <p className="text-[11px] font-bold text-slate-600 dark:text-slate-300 flex items-start gap-1 line-clamp-2">
+                      <p className="text-sm font-bold text-slate-600 dark:text-slate-300 flex items-start gap-1 line-clamp-2">
                         <MapPin className="w-3.5 h-3.5 text-orange-500 flex-shrink-0 mt-0.5" />
                         {v.address || 'Chưa định địa chỉ cụ thể'}
                       </p>
 
                       {v.notes && (
-                        <p className="text-[10px] text-slate-700 dark:text-slate-300 font-bold bg-white dark:bg-slate-900 border-2 border-slate-900 dark:border-slate-800 p-2.5 rounded-xl italic leading-relaxed">
+                        <p className="text-xs text-slate-700 dark:text-slate-300 font-bold bg-white dark:bg-slate-900 border-2 border-slate-900 dark:border-slate-800 p-2.5 rounded-xl italic leading-relaxed">
                           &ldquo; {v.notes} &rdquo;
                         </p>
                       )}
                     </div>
 
-                    <div className="flex items-center justify-between pt-2.5 border-t border-dashed border-slate-200 dark:border-slate-800 text-[10px] font-black">
+                    <div className="flex items-center justify-between pt-2.5 border-t border-dashed border-slate-200 dark:border-slate-800 text-xs font-black">
                       <div className="flex items-center gap-1.5">
                         <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
                         <span className="text-slate-700 dark:text-slate-350">{v.rating ? v.rating.toFixed(1) : '5.0'} / 5.0</span>

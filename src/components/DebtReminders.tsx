@@ -476,7 +476,7 @@ Xin chân thành cảm ơn!`;
           </div>
           <div className="flex-1 space-y-1">
             <h4 className="text-xs font-black tracking-widest text-orange-400 uppercase">THÔNG BÁO TỨ THÌ 📬</h4>
-            <p className="text-[11px] text-slate-200 font-extrabold leading-relaxed">{pushNotificationText}</p>
+            <p className="text-sm text-slate-200 font-extrabold leading-relaxed">{pushNotificationText}</p>
           </div>
           <button 
             onClick={() => setPushNotificationText(null)}
@@ -540,7 +540,7 @@ Xin chân thành cảm ơn!`;
                     <div key={debt.id} className="bg-white border-2 border-red-500 rounded-2xl p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                       <div>
                         <span className="text-xs font-black text-slate-900">💸 Bạn còn nợ {debt.creditorName}</span>
-                        <p className="text-[10px] text-slate-500 font-bold mt-0.5 mt-1">Tại cuộc nhậu {debt.venueName} • {new Date(debt.billDate).toLocaleDateString('vi-VN')}</p>
+                        <p className="text-xs text-slate-500 font-bold mt-0.5 mt-1">Tại cuộc nhậu {debt.venueName} • {new Date(debt.billDate).toLocaleDateString('vi-VN')}</p>
                       </div>
                       <div className="flex items-center gap-2 self-stretch sm:self-auto justify-between sm:justify-end">
                         <span className="text-xs font-black text-red-600 bg-red-105 bg-red-100 border border-red-200 px-3 py-1.5 rounded-xl">
@@ -554,7 +554,7 @@ Xin chân thành cảm ơn!`;
                               "Xác nhận chuyển khoản"
                             );
                           }}
-                          className="bg-red-500 hover:bg-emerald-500 text-white font-black text-[10px] px-3.5 py-2 rounded-xl border-2 border-slate-900 hover:text-white transition-colors cursor-pointer shadow-sm animate-pulse"
+                          className="bg-red-500 hover:bg-emerald-500 text-white font-black text-xs px-3.5 py-2 rounded-xl border-2 border-slate-900 hover:text-white transition-colors cursor-pointer shadow-sm animate-pulse"
                         >
                           Đã CK Trả Xong
                         </button>
@@ -593,7 +593,7 @@ Xin chân thành cảm ơn!`;
                     <div className="text-center py-16 bg-yellow-50/20 rounded-[28px] border-3 border-dashed border-slate-300">
                       <CheckCheck className="w-14 h-14 text-orange-500 mx-auto mb-3" />
                       <span className="text-xs text-slate-600 font-black block uppercase tracking-wide">Không Có Ai Nợ Bạn Cả! Tuyệt Vời!</span>
-                      <span className="text-[11px] text-slate-400 font-extrabold mt-1 block">Mọi cuộc vui sòng phẳng, tinh thần đồng đội cực cao.</span>
+                      <span className="text-sm text-slate-400 font-extrabold mt-1 block">Mọi cuộc vui sòng phẳng, tinh thần đồng đội cực cao.</span>
                     </div>
                   ) : (
                     sortedOtherDebts.map((debt) => {
@@ -620,27 +620,27 @@ Xin chân thành cảm ơn!`;
                               <div className="flex flex-wrap items-center gap-2">
                                 <span className={`text-sm font-black ${debt.isPaid ? 'text-slate-500 line-through' : 'text-slate-900 dark:text-slate-550'}`}>👤 {debt.debtorName}</span>
                                 {debt.isPaid ? (
-                                  <span className="text-[10px] bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-400 border border-emerald-300 px-2.5 py-0.5 rounded-full font-black flex items-center gap-1">
+                                  <span className="text-xs bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-400 border border-emerald-300 px-2.5 py-0.5 rounded-full font-black flex items-center gap-1">
                                     <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> Đã Trả Xong
                                   </span>
                                 ) : (
-                                  <span className="text-[11px] bg-orange-100 text-orange-600 border-2 border-orange-200 px-2.5 py-0.5 rounded-full font-black">
+                                  <span className="text-sm bg-orange-100 text-orange-600 border-2 border-orange-200 px-2.5 py-0.5 rounded-full font-black">
                                     {debt.amount.toLocaleString('vi-VN')} đ
                                   </span>
                                 )}
                               </div>
-                              <p className="text-[11px] font-bold text-slate-400 mt-1">
+                              <p className="text-sm font-bold text-slate-400 mt-1">
                                 Sản phẩm tại <strong className="text-slate-705 text-slate-700">{debt.venueName}</strong> • {new Date(debt.billDate).toLocaleDateString('vi-VN')}
                               </p>
                               {/* Display filled contact indications */}
                               <div className="flex items-center gap-2 mt-1">
                                 {contacts[debt.debtorName]?.phone && (
-                                  <span className="text-[9px] font-black text-teal-700 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded-md">
+                                  <span className="text-xs font-black text-teal-700 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded-md">
                                     💬 Zalo: {contacts[debt.debtorName]?.phone}
                                   </span>
                                 )}
                                 {contacts[debt.debtorName]?.messenger && (
-                                  <span className="text-[9px] font-black text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded-md">
+                                  <span className="text-xs font-black text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded-md">
                                     🔵 Messenger: {contacts[debt.debtorName]?.messenger}
                                   </span>
                                 )}
@@ -659,7 +659,7 @@ Xin chân thành cảm ơn!`;
                                       "Báo chưa thanh toán"
                                     );
                                   }}
-                                  className="bg-slate-200 hover:bg-rose-100 border-2 border-slate-900 text-slate-700 hover:text-rose-700 text-[10px] font-black px-3 py-2.5 rounded-xl transition-all shadow-sm cursor-pointer flex items-center justify-center gap-1 w-full sm:w-auto text-center font-mono"
+                                  className="bg-slate-200 hover:bg-rose-100 border-2 border-slate-900 text-slate-700 hover:text-rose-700 text-xs font-black px-3 py-2.5 rounded-xl transition-all shadow-sm cursor-pointer flex items-center justify-center gap-1 w-full sm:w-auto text-center font-mono"
                                   title="Đặt lại thành chưa thanh toán"
                                 >
                                   ↩️ Báo Chưa Trả
@@ -675,7 +675,7 @@ Xin chân thành cảm ơn!`;
                                         "Xác nhận Trả Xong"
                                       );
                                     }}
-                                    className="bg-[#22c55e] hover:bg-[#16a34a] border-2 border-slate-900 text-white text-[10px] font-black px-3 py-2.5 rounded-xl transition-all hover:-translate-y-0.5 shadow-sm cursor-pointer flex items-center justify-center gap-1 w-full sm:w-auto text-center"
+                                    className="bg-[#22c55e] hover:bg-[#16a34a] border-2 border-slate-900 text-white text-xs font-black px-3 py-2.5 rounded-xl transition-all hover:-translate-y-0.5 shadow-sm cursor-pointer flex items-center justify-center gap-1 w-full sm:w-auto text-center"
                                   >
                                     <Check className="w-3.5 h-3.5 shrink-0" /> Trả Xong
                                   </button>
@@ -690,7 +690,7 @@ Xin chân thành cảm ơn!`;
                                       const text = getReminderMessage(debt, 'friendly');
                                       copyToClipboard(text, `quick-copy-${debt.id}`);
                                     }}
-                                    className="bg-indigo-600 hover:bg-indigo-750 text-white text-[10px] font-black px-3 py-2.5 rounded-xl transition-all hover:-translate-y-0.5 shadow-sm cursor-pointer flex items-center justify-center gap-1 w-full sm:w-auto text-center"
+                                    className="bg-indigo-600 hover:bg-indigo-750 text-white text-xs font-black px-3 py-2.5 rounded-xl transition-all hover:-translate-y-0.5 shadow-sm cursor-pointer flex items-center justify-center gap-1 w-full sm:w-auto text-center"
                                     title="Sao chép nhanh lời nhắc nợ kèm mã QR sòng phẳng vào bộ nhớ tạm"
                                   >
                                     {copiedNotification === `quick-copy-${debt.id}` ? (
@@ -709,7 +709,7 @@ Xin chân thành cảm ơn!`;
                                   {/* Trigger virtual push notice */}
                                   <button
                                     onClick={() => handleTriggerVirtualPush(debt)}
-                                    className="bg-amber-400 hover:bg-amber-500 border-2 border-slate-900 text-slate-900 text-[10px] font-black px-3 py-2.5 rounded-xl transition-all hover:-translate-y-0.5 shadow-sm cursor-pointer flex items-center justify-center gap-1 w-full sm:w-auto text-center"
+                                    className="bg-amber-400 hover:bg-amber-500 border-2 border-slate-900 text-slate-900 text-xs font-black px-3 py-2.5 rounded-xl transition-all hover:-translate-y-0.5 shadow-sm cursor-pointer flex items-center justify-center gap-1 w-full sm:w-auto text-center"
                                     title="Gửi thông báo đẩy giả lập đến điện thoại đối phương"
                                   >
                                     <Bell className="w-3.5 h-3.5 shrink-0" /> <span className="truncate">Nhắc Đẩy (Push)</span>
@@ -718,7 +718,7 @@ Xin chân thành cảm ơn!`;
                                   {/* Open customized message templates panel */}
                                   <button
                                     onClick={() => setSelectedDebt(isSelected ? null : debt)}
-                                    className="bg-slate-900 hover:bg-slate-850 text-white text-[10px] font-black px-3 py-2.5 rounded-xl transition-all hover:-translate-y-0.5 shadow-sm cursor-pointer flex items-center justify-center gap-1 w-full sm:w-auto text-center"
+                                    className="bg-slate-900 hover:bg-slate-850 text-white text-xs font-black px-3 py-2.5 rounded-xl transition-all hover:-translate-y-0.5 shadow-sm cursor-pointer flex items-center justify-center gap-1 w-full sm:w-auto text-center"
                                   >
                                     <MessageSquare className="w-3.5 h-3.5 text-orange-400 shrink-0" /> <span className="truncate">Đòi Zalo / FB</span>
                                   </button>
@@ -731,7 +731,7 @@ Xin chân thành cảm ơn!`;
                           {!debt.isPaid && (
                             <div className="bg-white dark:bg-slate-900 border-2 border-slate-900 dark:border-slate-800 p-3 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-5xs text-xs">
                               <div className="flex flex-wrap items-center gap-2">
-                                <span className="text-[10px] uppercase font-black text-indigo-500 bg-indigo-50 dark:bg-indigo-950/40 dark:text-indigo-400 px-2.5 py-1 rounded-md animate-pulse">STK Thụ hưởng</span>
+                                <span className="text-xs uppercase font-black text-indigo-500 bg-indigo-50 dark:bg-indigo-950/40 dark:text-indigo-400 px-2.5 py-1 rounded-md animate-pulse">STK Thụ hưởng</span>
                                 <span className="font-extrabold text-slate-700 dark:text-slate-300">
                                   {mappedBankCode.toUpperCase()}:
                                 </span>
@@ -757,7 +757,7 @@ Xin chân thành cảm ơn!`;
                                   href={vietQrUrl}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 bg-rose-500 hover:bg-rose-600 text-white font-black text-[10.5px] uppercase border-2 border-slate-900 px-3.5 py-1.5 rounded-xl cursor-pointer shadow-sm transition-all text-center"
+                                  className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 bg-rose-500 hover:bg-rose-600 text-white font-black text-xs uppercase border-2 border-slate-900 px-3.5 py-1.5 rounded-xl cursor-pointer shadow-sm transition-all text-center"
                                   title="Nhấp để MỞ trang ảnh mã QR kèm số tiền đã pre-fill"
                                 >
                                   <QrCode className="w-3.5 h-3.5" />
@@ -769,7 +769,7 @@ Xin chân thành cảm ơn!`;
                                   onClick={() => {
                                     copyToClipboard(vietQrUrl, `link-${debt.id}`);
                                   }}
-                                  className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-150 font-extrabold text-[10.5px] border-2 border-slate-900 dark:border-slate-705 px-3.5 py-1.5 rounded-xl cursor-pointer transition-all shadow-5xs"
+                                  className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-150 font-extrabold text-xs border-2 border-slate-900 dark:border-slate-705 px-3.5 py-1.5 rounded-xl cursor-pointer transition-all shadow-5xs"
                                   title="Sao chép đường dẫn ảnh mã QR này để gửi nhanh khắp nơi!"
                                 >
                                   {copiedNotification === `link-${debt.id}` ? (
@@ -797,8 +797,8 @@ Xin chân thành cảm ơn!`;
                                 <div className="flex items-center gap-2 self-start sm:self-auto">
                                   <span className="text-xl">⚙️</span>
                                   <div>
-                                    <h5 className="text-[11px] font-black text-slate-850">Liên kết nhanh</h5>
-                                    <p className="text-[9px] text-slate-500 font-bold">Lưu thông tin liên hệ giúp nhảy thẳng tới ứng dụng nhắn tin đòi nợ!</p>
+                                    <h5 className="text-sm font-black text-slate-850">Liên kết nhanh</h5>
+                                    <p className="text-xs text-slate-500 font-bold">Lưu thông tin liên hệ giúp nhảy thẳng tới ứng dụng nhắn tin đòi nợ!</p>
                                   </div>
                                 </div>
                                 <div className="grid grid-cols-2 gap-2 w-full sm:flex sm:items-center sm:w-auto">
@@ -807,21 +807,21 @@ Xin chân thành cảm ơn!`;
                                     placeholder="SĐT Zalo (09...)"
                                     value={contacts[debt.debtorName]?.phone || ''}
                                     onChange={(e) => onSaveContact(debt.debtorName, e.target.value, contacts[debt.debtorName]?.messenger || '')}
-                                    className="text-[10px] font-black bg-white border-2 border-slate-900 rounded-lg px-2 py-1.5 focus:border-teal-500 outline-hidden w-full sm:w-36 text-slate-950 text-center sm:text-left shadow-2xs"
+                                    className="text-xs font-black bg-white border-2 border-slate-900 rounded-lg px-2 py-1.5 focus:border-teal-500 outline-hidden w-full sm:w-36 text-slate-950 text-center sm:text-left shadow-2xs"
                                   />
                                   <input
                                     type="text"
                                     placeholder="Messenger User"
                                     value={contacts[debt.debtorName]?.messenger || ''}
                                     onChange={(e) => onSaveContact(debt.debtorName, contacts[debt.debtorName]?.phone || '', e.target.value)}
-                                    className="text-[10px] font-black bg-white border-2 border-slate-900 rounded-lg px-2 py-1.5 focus:border-teal-500 outline-hidden w-full sm:w-36 text-slate-950 text-center sm:text-left shadow-2xs"
+                                    className="text-xs font-black bg-white border-2 border-slate-900 rounded-lg px-2 py-1.5 focus:border-teal-500 outline-hidden w-full sm:w-36 text-slate-950 text-center sm:text-left shadow-2xs"
                                   />
                                 </div>
                               </div>
 
                               {/* Text Message Templates Column */}
                               <div className="md:col-span-8 space-y-3.5">
-                                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">💬 PHÒNG SOẠN TIN ĐÒI NỢ THÂN THIỆN</span>
+                                 <span className="text-xs font-black text-slate-400 uppercase tracking-widest block">💬 PHÒNG SOẠN TIN ĐÒI NỢ THÂN THIỆN</span>
                                  
                                  <div className="bg-slate-50 dark:bg-slate-900/60 p-4 border-2 border-slate-900 rounded-2xl space-y-3 shadow-5xs">
                                    
@@ -863,7 +863,7 @@ Xin chân thành cảm ơn!`;
 
                                    {/* Sticker & Emoji library section */}
                                    <div className="bg-white dark:bg-slate-950 p-2.5 rounded-xl border-2 border-slate-900/40 space-y-2">
-                                     <div className="flex items-center gap-1.5 text-[10px] uppercase font-black text-rose-600 dark:text-rose-450 border-b pb-1.5 border-slate-100 dark:border-slate-800">
+                                     <div className="flex items-center gap-1.5 text-xs uppercase font-black text-rose-600 dark:text-rose-450 border-b pb-1.5 border-slate-100 dark:border-slate-800">
                                        <span>🎨 Thư viện Sticker & Emoji nịnh bợ:</span>
                                      </div>
                                      
@@ -874,7 +874,7 @@ Xin chân thành cảm ơn!`;
                                            key={idx}
                                            type="button"
                                            onClick={() => setActiveStickerTab(idx)}
-                                           className={`px-2 py-1 rounded-md text-[9px] font-black transition-all cursor-pointer ${
+                                           className={`px-2 py-1 rounded-md text-xs font-black transition-all cursor-pointer ${
                                              activeStickerTab === idx
                                                ? 'bg-rose-550 bg-rose-500 text-white border border-rose-600 shadow-4xs'
                                                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
@@ -912,7 +912,7 @@ Xin chân thành cảm ơn!`;
                                          }
                                          copyToClipboard(customMessage, `custom-copy-${debt.id}`);
                                        }}
-                                       className="text-[10px] font-black bg-white dark:bg-slate-800 hover:bg-slate-50 text-slate-700 dark:text-slate-200 px-3 py-2.5 rounded-xl border-2 border-slate-900 flex items-center justify-center gap-1.5 transition-all cursor-pointer text-center shadow-5xs active:translate-y-0.5"
+                                       className="text-xs font-black bg-white dark:bg-slate-800 hover:bg-slate-50 text-slate-700 dark:text-slate-200 px-3 py-2.5 rounded-xl border-2 border-slate-900 flex items-center justify-center gap-1.5 transition-all cursor-pointer text-center shadow-5xs active:translate-y-0.5"
                                      >
                                        {copiedNotification === `custom-copy-${debt.id}` ? (
                                          <>
@@ -930,7 +930,7 @@ Xin chân thành cảm ơn!`;
                                      <button
                                        type="button"
                                        onClick={() => handleOpenZalo(customMessage, debt)}
-                                       className="text-[10px] font-black bg-teal-500 hover:bg-teal-600 text-white px-3 py-2.5 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer transition-colors border-2 border-slate-900 shadow-5xs active:translate-y-0.5 text-center"
+                                       className="text-xs font-black bg-teal-500 hover:bg-teal-600 text-white px-3 py-2.5 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer transition-colors border-2 border-slate-900 shadow-5xs active:translate-y-0.5 text-center"
                                        title="Gửi tin nhắn tuỳ chỉnh này qua Zalo"
                                      >
                                        💬 <span>Gửi qua Zalo</span>
@@ -939,7 +939,7 @@ Xin chân thành cảm ơn!`;
                                      <button
                                        type="button"
                                        onClick={() => handleOpenMessenger(customMessage, debt)}
-                                       className="text-[10px] font-black bg-blue-600 hover:bg-blue-700 text-white px-3 py-2.5 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer transition-colors border-2 border-slate-900 shadow-5xs active:translate-y-0.5 text-center"
+                                       className="text-xs font-black bg-blue-600 hover:bg-blue-700 text-white px-3 py-2.5 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer transition-colors border-2 border-slate-900 shadow-5xs active:translate-y-0.5 text-center"
                                        title="Gửi tin nhắn tuỳ chỉnh này qua Messenger"
                                      >
                                        🔵 <span>Gửi Messenger</span>
@@ -951,13 +951,13 @@ Xin chân thành cảm ơn!`;
 
                               {/* VietQR code column */}
                               <div className="md:col-span-4 bg-white/80 dark:bg-slate-900/45 p-4 border-2 border-slate-900 rounded-2xl flex flex-col items-center justify-center space-y-3 shadow-5xs text-center">
-                                <span className="text-[10px] font-black text-slate-800 text-center uppercase tracking-wide">QUÉT QR VIETQR SÒNG PHẲNG 💸</span>
+                                <span className="text-xs font-black text-slate-800 text-center uppercase tracking-wide">QUÉT QR VIETQR SÒNG PHẲNG 💸</span>
                                 
                                 {(!bankNo || !bankAccountName) ? (
                                   <div className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-red-300 rounded-xl bg-red-50 text-red-700 min-h-[144px]">
                                     <AlertCircle className="w-8 h-8 mb-2 animate-bounce text-red-500" />
-                                    <span className="text-[10px] font-black uppercase text-red-900">Thiếu Thông Tin</span>
-                                    <p className="text-[9px] font-bold mt-1 text-red-600 leading-relaxed">
+                                    <span className="text-xs font-black uppercase text-red-900">Thiếu Thông Tin</span>
+                                    <p className="text-xs font-bold mt-1 text-red-600 leading-relaxed">
                                       Vui lòng nhập Số Tài Khoản và Tên thụ hưởng ở ô cài đặt để hiển thị mã QR.
                                     </p>
                                   </div>
@@ -974,7 +974,7 @@ Xin chân thành cảm ơn!`;
                                       />
                                     </div>
                                     
-                                    <span className="text-[10px] text-slate-500 font-bold text-center leading-relaxed">
+                                    <span className="text-xs text-slate-500 font-bold text-center leading-relaxed">
                                       Gửi ảnh QR này để đối phương tự điền số tiền <strong className="text-slate-900">{debt.amount.toLocaleString('vi-VN')} đ</strong> và chính xác thông tin thụ hưởng của bạn.
                                     </span>
                                   </>

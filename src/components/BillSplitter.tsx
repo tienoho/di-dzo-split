@@ -379,9 +379,9 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
   return (
     <div className="space-y-6" id="bill-splitter-section">
       {savedSuccess && (
-        <div id="alert-save-success" className="bg-emerald-400 border-4 border-slate-900 text-slate-900 px-5 py-4 rounded-3xl shadow-md flex items-center justify-between animate-bounce">
+        <div id="alert-save-success" className="bg-emerald-400 border-4 border-slate-900 dark:border-slate-700 text-slate-900 dark:text-slate-100 px-5 py-4 rounded-3xl shadow-md flex items-center justify-between animate-bounce">
           <div className="flex items-center space-x-3">
-            <Sparkles className="w-6 h-6 text-slate-900" />
+            <Sparkles className="w-6 h-6 text-slate-900 dark:text-slate-100" />
             <span className="text-sm font-black">
               YÊU CẦU ĐÃ LƯU! Hóa đơn cuộc nhậu đã được chia đều & lưu lịch sử thành công sòng phẳng!
             </span>
@@ -392,23 +392,23 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         {/* LEFT COLUMN: Input Details */}
-        <div className="lg:col-span-7 bg-white border-4 border-slate-900 rounded-[32px] shadow-lg p-6 space-y-6">
+        <div className="lg:col-span-7 bg-white dark:bg-slate-900 border-4 border-slate-900 dark:border-slate-700 rounded-[32px] shadow-lg p-6 space-y-6">
           <div className="space-y-1.5 border-b-2 border-dashed border-slate-100 pb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <div className="flex items-center gap-3">
                 <span className="w-3.5 h-7 bg-orange-500 rounded-full inline-block"></span>
-                <h2 className="text-2xl font-black text-slate-900 flex items-center gap-2 tracking-tight">
+                <h2 className="text-2xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-2 tracking-tight">
                   <Calculator className="w-6 h-6 text-orange-500" />
                   Điền Tiền Hóa Đơn
                 </h2>
               </div>
-              <p className="text-xs font-bold text-slate-500">Thiết lập chi tiết hóa đơn, cước bổ sung và tích vào quán quen.</p>
+              <p className="text-xs font-bold text-slate-500 dark:text-slate-400">Thiết lập chi tiết hóa đơn, cước bổ sung và tích vào quán quen.</p>
             </div>
             
             <button
               type="button"
               onClick={() => setShowScanner(true)}
-              className="flex items-center justify-center gap-2 bg-slate-950 text-white font-extrabold text-[11px] uppercase tracking-wide px-4 py-3 rounded-2xl hover:bg-orange-600 hover:text-slate-950 hover:-translate-y-0.5 border-2 border-slate-950 cursor-pointer shadow-md transition-all shrink-0 animate-pulse"
+              className="flex items-center justify-center gap-2 bg-slate-950 text-white font-extrabold text-sm uppercase tracking-wide px-4 py-3 rounded-2xl hover:bg-orange-600 hover:text-slate-950 hover:-translate-y-0.5 border-2 border-slate-950 cursor-pointer shadow-md transition-all shrink-0 animate-pulse"
             >
               <Camera className="w-4 h-4 text-orange-400" />
               <span>Quét Hóa Đơn AI 🤖</span>
@@ -423,16 +423,16 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
                   <div className="relative group shrink-0">
                     <img 
                       src={scannedReceiptImage} 
-                      className="w-12 h-12 object-cover rounded-xl border-2 border-slate-900 shadow-xs" 
+                      className="w-12 h-12 object-cover rounded-xl border-2 border-slate-900 dark:border-slate-700 shadow-xs" 
                       referrerPolicy="no-referrer"
                       alt="Receipt Proof" 
                     />
                   </div>
                   <div>
-                    <span className="text-xs font-black text-slate-900 block flex items-center gap-1.5">
+                    <span className="text-xs font-black text-slate-900 dark:text-slate-100 block flex items-center gap-1.5">
                       🧾 Đã đính biên lai làm bằng chứng!
                     </span>
-                    <span className="text-[10px] text-slate-500 font-extrabold block mt-0.5 leading-snug">
+                    <span className="text-xs text-slate-500 dark:text-slate-400 font-extrabold block mt-0.5 leading-snug">
                       Ảnh chụp này sẽ lưu vào lịch sử làm bằng chứng đóng góp sòng phẳng.
                     </span>
                   </div>
@@ -440,7 +440,7 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
                 <button 
                   type="button" 
                   onClick={() => setScannedReceiptImage(undefined)}
-                  className="text-[9px] font-black text-slate-50 bg-red-600 hover:bg-red-700 border-2 border-slate-900 px-2.5 py-1.5 rounded-xl cursor-pointer transition-all hover:-translate-y-0.5 active:translate-y-0 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)]"
+                  className="text-xs font-black text-slate-50 bg-red-600 hover:bg-red-700 border-2 border-slate-900 dark:border-slate-700 px-2.5 py-1.5 rounded-xl cursor-pointer transition-all hover:-translate-y-0.5 active:translate-y-0 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)]"
                 >
                   GỠ KHỎI BILL
                 </button>
@@ -458,7 +458,7 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
                   placeholder="0"
                   value={rawAmount || ''}
                   onChange={(e) => setRawAmount(Number(e.target.value))}
-                  className="w-full text-2xl font-black bg-yellow-50/50 border-3 border-slate-900 focus:border-orange-500 focus:bg-white rounded-2xl py-4 pl-5 pr-12 text-slate-900 tracking-wide transition-all focus:outline-hidden"
+                  className="w-full text-2xl font-black bg-yellow-50 dark:bg-slate-900/50 dark:bg-slate-800 border-3 border-slate-900 dark:border-slate-700 focus:border-orange-500 focus:bg-white dark:bg-slate-900 rounded-2xl py-4 pl-5 pr-12 text-slate-900 dark:text-slate-100 tracking-wide transition-all focus:outline-hidden"
                 />
                 <span className="absolute right-5 top-1/2 -translate-y-1/2 text-lg font-black text-slate-400">đ</span>
               </div>
@@ -469,7 +469,7 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
                   <button
                     key={amt}
                     onClick={() => setRawAmount(amt)}
-                    className="px-3.5 py-2 text-xs font-black bg-yellow-100 hover:bg-orange-400 hover:text-white text-slate-800 border-2 border-slate-900 rounded-xl hover:-translate-y-0.5 transition-all cursor-pointer"
+                    className="px-3.5 py-2 text-xs font-black bg-yellow-100 hover:bg-orange-400 hover:text-white text-slate-800 dark:text-slate-200 border-2 border-slate-900 dark:border-slate-700 rounded-xl hover:-translate-y-0.5 transition-all cursor-pointer"
                   >
                     +{amt.toLocaleString('vi-VN')} đ
                   </button>
@@ -494,7 +494,7 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
               </div>
 
               {showNewVenueForm ? (
-                <form onSubmit={handleCreateVenueInline} className="bg-yellow-50/80 border-3 border-slate-900 rounded-2xl p-4 space-y-3">
+                <form onSubmit={handleCreateVenueInline} className="bg-yellow-50 dark:bg-slate-900/80 border-3 border-slate-900 dark:border-slate-700 rounded-2xl p-4 space-y-3">
                   <h3 className="text-xs font-black text-orange-600 uppercase tracking-wider flex items-center gap-1">📍 Thêm địa bàn ăn uống mới</h3>
                   <div className="grid grid-cols-2 gap-2">
                     <input
@@ -503,14 +503,14 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
                       required
                       value={newVenueName}
                       onChange={(e) => setNewVenueName(e.target.value)}
-                      className="text-xs bg-white border-2 border-slate-900 outline-hidden focus:border-orange-500 p-2 rounded-xl font-bold"
+                      className="text-xs bg-white dark:bg-slate-900 border-2 border-slate-900 dark:border-slate-700 outline-hidden focus:border-orange-500 p-2 rounded-xl font-bold"
                     />
                     <input
                       type="text"
                       placeholder="Địa chỉ..."
                       value={newVenueAddress}
                       onChange={(e) => setNewVenueAddress(e.target.value)}
-                      className="text-xs bg-white border-2 border-slate-900 outline-hidden focus:border-orange-500 p-2 rounded-xl font-bold"
+                      className="text-xs bg-white dark:bg-slate-900 border-2 border-slate-900 dark:border-slate-700 outline-hidden focus:border-orange-500 p-2 rounded-xl font-bold"
                     />
                   </div>
                   <input
@@ -518,12 +518,12 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
                     placeholder="Món đinh (ví dụ: Chân gà quái thú 10 điểm)..."
                     value={newVenueNotes}
                     onChange={(e) => setNewVenueNotes(e.target.value)}
-                    className="w-full text-xs bg-white border-2 border-slate-900 outline-hidden focus:border-orange-500 p-2 rounded-xl font-bold"
+                    className="w-full text-xs bg-white dark:bg-slate-900 border-2 border-slate-900 dark:border-slate-700 outline-hidden focus:border-orange-500 p-2 rounded-xl font-bold"
                   />
                   <div className="flex justify-end gap-2">
                     <button
                       type="submit"
-                      className="px-3 py-1.5 bg-slate-900 text-white rounded-lg text-xs font-black hover:bg-orange-500 border border-slate-900 transition-colors"
+                      className="px-3 py-1.5 bg-slate-900 text-white rounded-lg text-xs font-black hover:bg-orange-500 border border-slate-900 dark:border-slate-700 transition-colors"
                     >
                       Tạo & Chọn Luôn
                     </button>
@@ -533,7 +533,7 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
                 <select
                   value={selectedVenueId}
                   onChange={(e) => setSelectedVenueId(e.target.value)}
-                  className="w-full bg-yellow-50/20 border-3 border-slate-900 outline-hidden focus:border-orange-500 focus:bg-white rounded-2xl py-3 px-4 text-slate-800 text-xs font-black transition-all"
+                  className="w-full bg-yellow-50 dark:bg-slate-900/20 border-3 border-slate-900 dark:border-slate-700 outline-hidden focus:border-orange-500 focus:bg-white dark:bg-slate-900 rounded-2xl py-3 px-4 text-slate-800 dark:text-slate-200 text-xs font-black transition-all"
                 >
                   <option value="">-- Click chọn quán trong danh sách quán quen của nhóm --</option>
                   {venues.map((venue) => (
@@ -549,21 +549,21 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
               
               {/* Tip Input */}
-              <div className="border-3 border-slate-900 rounded-[20px] p-4 bg-orange-50/50 space-y-3">
+              <div className="border-3 border-slate-900 dark:border-slate-700 rounded-[20px] p-4 bg-orange-50/50 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-slate-800 uppercase tracking-wide">Tiền Bo / Tip</span>
+                  <span className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wide">Tiền Bo / Tip</span>
                   <div className="flex items-center bg-slate-200/80 p-0.5 rounded-lg border border-slate-400">
                     <button
                       type="button"
                       onClick={() => setUseTipPercent(true)}
-                      className={`px-2.5 py-1 text-[10px] font-black rounded-md transition-colors ${useTipPercent ? 'bg-orange-500 text-white shadow-xs' : 'text-slate-600'}`}
+                      className={`px-2.5 py-1 text-xs font-black rounded-md transition-colors ${useTipPercent ? 'bg-orange-500 text-white shadow-xs' : 'text-slate-600'}`}
                     >
                       %
                     </button>
                     <button
                       type="button"
                       onClick={() => setUseTipPercent(false)}
-                      className={`px-2.5 py-1 text-[10px] font-black rounded-md transition-colors ${!useTipPercent ? 'bg-orange-500 text-white shadow-xs' : 'text-slate-600'}`}
+                      className={`px-2.5 py-1 text-xs font-black rounded-md transition-colors ${!useTipPercent ? 'bg-orange-500 text-white shadow-xs' : 'text-slate-600'}`}
                     >
                       đ
                     </button>
@@ -582,9 +582,9 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
                         onChange={(e) => setTipPercent(Number(e.target.value))}
                         className="w-full h-2 bg-slate-300 rounded-lg appearance-none cursor-pointer accent-orange-500"
                       />
-                      <span className="text-xs font-black text-slate-900 w-10 text-right bg-white px-1.5 py-0.5 rounded border border-slate-350">{tipPercent}%</span>
+                      <span className="text-xs font-black text-slate-900 dark:text-slate-100 w-10 text-right bg-white dark:bg-slate-900 px-1.5 py-0.5 rounded border border-slate-350">{tipPercent}%</span>
                     </div>
-                    <p className="text-[10px] font-bold text-slate-500">Quy đổi: +{tipAmount.toLocaleString('vi-VN')} đ</p>
+                    <p className="text-xs font-bold text-slate-500 dark:text-slate-400">Quy đổi: +{tipAmount.toLocaleString('vi-VN')} đ</p>
                   </div>
                 ) : (
                   <div className="relative">
@@ -593,7 +593,7 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
                       placeholder="Nhập mốc tiền bo..."
                       value={tipAmount || ''}
                       onChange={(e) => setTipAmount(Number(e.target.value))}
-                      className="w-full text-xs font-bold bg-white border-2 border-slate-900 focus:border-orange-500 rounded-xl p-2.5 pr-6"
+                      className="w-full text-xs font-bold bg-white dark:bg-slate-900 border-2 border-slate-900 dark:border-slate-700 focus:border-orange-500 rounded-xl p-2.5 pr-6"
                     />
                     <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-black text-slate-400">đ</span>
                   </div>
@@ -601,15 +601,15 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
               </div>
 
               {/* VAT & Fees */}
-              <div className="border-3 border-slate-900 rounded-[20px] p-4 bg-teal-50/50 space-y-3">
-                <span className="text-xs font-black text-slate-800 uppercase tracking-wide block">VAT / Phụ Thu (Khăn, Đá)</span>
+              <div className="border-3 border-slate-900 dark:border-slate-700 rounded-[20px] p-4 bg-teal-50/50 space-y-3">
+                <span className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wide block">VAT / Phụ Thu (Khăn, Đá)</span>
                 <div className="relative">
                   <input
                     type="number"
                     placeholder="0"
                     value={additionalFee || ''}
                     onChange={(e) => setAdditionalFee(Number(e.target.value))}
-                    className="w-full text-xs font-bold bg-white border-2 border-slate-900 focus:border-teal-500 rounded-xl p-2.5 pr-6"
+                    className="w-full text-xs font-bold bg-white dark:bg-slate-900 border-2 border-slate-900 dark:border-slate-700 focus:border-teal-500 rounded-xl p-2.5 pr-6"
                   />
                   <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-black text-slate-400">đ</span>
                 </div>
@@ -618,7 +618,7 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
                 <button
                   type="button"
                   onClick={() => setAdditionalFee(Math.round(rawAmount * 0.1))}
-                  className="w-full text-[10px] text-center bg-white hover:bg-teal-400 hover:text-white border-2 border-slate-900 py-1.5 rounded-xl text-slate-800 font-extrabold transition-all"
+                  className="w-full text-xs text-center bg-white dark:bg-slate-900 hover:bg-teal-400 hover:text-white border-2 border-slate-900 dark:border-slate-700 py-1.5 rounded-xl text-slate-800 dark:text-slate-200 font-extrabold transition-all"
                 >
                   Tự động tính thêm 10% VAT
                 </button>
@@ -628,8 +628,8 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
 
             {/* Voucher discount */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="border-3 border-slate-900 rounded-[20px] p-4 bg-yellow-50/40 space-y-2">
-                <span className="text-xs font-black text-slate-800 uppercase tracking-wide flex items-center gap-1">
+              <div className="border-3 border-slate-900 dark:border-slate-700 rounded-[20px] p-4 bg-yellow-50 dark:bg-slate-900/40 space-y-2">
+                <span className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wide flex items-center gap-1">
                   <Gift className="w-4 h-4 text-orange-500 animate-bounce" />
                   Mã Giảm Giá / Voucher (VND)
                 </span>
@@ -639,33 +639,33 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
                     placeholder="Nhập tiền được giảm..."
                     value={discountAmount || ''}
                     onChange={(e) => setDiscountAmount(Number(e.target.value))}
-                    className="w-full text-xs bg-white border-2 border-slate-900 focus:border-orange-500 rounded-xl p-2.5 pr-6 font-bold"
+                    className="w-full text-xs bg-white dark:bg-slate-900 border-2 border-slate-900 dark:border-slate-700 focus:border-orange-500 rounded-xl p-2.5 pr-6 font-bold"
                   />
                   <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-black text-slate-400">đ</span>
                 </div>
               </div>
 
-              <div className="border-3 border-slate-900 rounded-[20px] p-4 bg-slate-50 space-y-2">
-                <span className="text-xs font-black text-slate-800 uppercase tracking-wide block">Nhãn / Ghi chú buổi nhậu</span>
+              <div className="border-3 border-slate-900 dark:border-slate-700 rounded-[20px] p-4 bg-slate-50 space-y-2">
+                <span className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wide block">Nhãn / Ghi chú buổi nhậu</span>
                 <input
                   type="text"
                   placeholder="Ví dụ: Sinh nhật Cu Tý, Tết Đoan Ngọ..."
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
-                  className="w-full text-xs bg-white border-2 border-slate-900 focus:border-slate-800 rounded-xl p-2.5 font-bold"
+                  className="w-full text-xs bg-white dark:bg-slate-900 border-2 border-slate-900 dark:border-slate-700 focus:border-slate-800 rounded-xl p-2.5 font-bold"
                 />
               </div>
             </div>
 
             {/* GRAND TOTAL BOARD DESIGN - NEO BRUTALIST VIBRANT YELLOW/ORANGE */}
-            <div className="bg-orange-500 text-slate-900 rounded-[24px] border-4 border-slate-900 p-6 shadow-[6px_6px_0px_0px_rgba(15,23,42,1)] flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="bg-orange-500 text-slate-900 dark:text-slate-100 rounded-[24px] border-4 border-slate-900 dark:border-slate-700 p-6 shadow-[6px_6px_0px_0px_rgba(15,23,42,1)] flex flex-col sm:flex-row items-center justify-between gap-4">
               <div>
                 <span className="text-xs text-white font-black block uppercase tracking-wider mb-1">Cộng Tổng Tiền Toàn Bill</span>
                 <span className="text-3xl font-black tracking-tight text-white drop-shadow-[2px_2px_0px_rgba(15,23,42,0.8)]">
                   {totalAmount.toLocaleString('vi-VN')} <span className="text-lg">VND</span>
                 </span>
               </div>
-              <div className="text-right text-[11px] text-slate-900 font-extrabold space-y-1 bg-yellow-100 p-3 rounded-2xl border-2 border-slate-900 w-full sm:w-auto">
+              <div className="text-right text-sm text-slate-900 dark:text-slate-100 font-extrabold space-y-1 bg-yellow-100 p-3 rounded-2xl border-2 border-slate-900 dark:border-slate-700 w-full sm:w-auto">
                 <div>Gốc nước: {rawAmount.toLocaleString('vi-VN')} đ</div>
                 <div className="text-orange-600">Tip & Phụ phí: +{(tipAmount + additionalFee).toLocaleString('vi-VN')} đ</div>
                 <div className="text-emerald-600">Giảm trừ voucher: -{discountAmount.toLocaleString('vi-VN')} đ</div>
@@ -676,17 +676,17 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
         </div>
         
         {/* RIGHT COLUMN: Member Setup & Contribution split */}
-        <div className="lg:col-span-5 bg-white border-4 border-slate-900 rounded-[32px] shadow-lg p-6 flex flex-col justify-between space-y-6">
+        <div className="lg:col-span-5 bg-white dark:bg-slate-900 border-4 border-slate-900 dark:border-slate-700 rounded-[32px] shadow-lg p-6 flex flex-col justify-between space-y-6">
           <div className="space-y-4">
             <div className="space-y-1.5 border-b-2 border-dashed border-slate-100 pb-4">
               <div className="flex items-center gap-3">
                 <span className="w-3.5 h-7 bg-teal-500 rounded-full inline-block"></span>
-                <h2 className="text-2xl font-black text-slate-900 flex items-center gap-2 tracking-tight">
+                <h2 className="text-2xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-2 tracking-tight">
                   <Users className="w-6 h-6 text-teal-500" />
                   Chiến Hữu Vào Cuộc
                 </h2>
               </div>
-              <p className="text-xs font-bold text-slate-500">Cộng thêm người và điều chỉnh số mồi nước họ đã đóng góp.</p>
+              <p className="text-xs font-bold text-slate-500 dark:text-slate-400">Cộng thêm người và điều chỉnh số mồi nước họ đã đóng góp.</p>
             </div>
 
             {/* Quick Split Board */}
@@ -696,15 +696,15 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
                   <Sparkles className="w-5 h-5 text-orange-600 animate-pulse" />
                   <span className="text-xs font-black text-orange-950 uppercase tracking-wider">⚡ Chia Nhanh Nhóm Bạn Thân (Quick Split)</span>
                 </div>
-                <span className="bg-orange-200 text-orange-900 text-[9px] font-black px-2 py-0.5 rounded-full border border-orange-400">Có sẵn {presetNames.length + 1} người</span>
+                <span className="bg-orange-200 text-orange-900 text-xs font-black px-2 py-0.5 rounded-full border border-orange-400">Có sẵn {presetNames.length + 1} người</span>
               </div>
-              <p className="text-[10px] font-extrabold text-orange-800 leading-relaxed">
+              <p className="text-xs font-extrabold text-orange-800 leading-relaxed">
                 Tự động điền nhanh tất cả các chiến hữu trong nhóm cố định và chia đều số tiền {totalAmount.toLocaleString('vi-VN')} đ tăm tắp (Host gánh thanh toán trước tại quán).
               </p>
               <button
                 type="button"
                 onClick={handleQuickSplit}
-                className="w-full bg-orange-500 hover:bg-orange-600 text-white font-black text-xs uppercase tracking-wider py-3 px-4 border-2 border-slate-900 rounded-2xl hover:-translate-y-0.5 active:translate-y-0 hover:shadow-[3px_3px_0px_0px_rgba(15,23,42,1)] cursor-pointer transition-all flex items-center justify-center gap-2"
+                className="w-full bg-orange-500 hover:bg-orange-600 text-white font-black text-xs uppercase tracking-wider py-3 px-4 border-2 border-slate-900 dark:border-slate-700 rounded-2xl hover:-translate-y-0.5 active:translate-y-0 hover:shadow-[3px_3px_0px_0px_rgba(15,23,42,1)] cursor-pointer transition-all flex items-center justify-center gap-2"
               >
                 <Calculator className="w-4 h-4 text-white" />
                 <span>Chia Đều Cả Nhóm Ngay 🍻</span>
@@ -712,8 +712,8 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
             </div>
 
             {/* Quick Presets for Members */}
-            <div className="bg-yellow-50/50 border-3 border-slate-900 p-4 rounded-3xl space-y-2.5">
-              <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest block">⭐ Gọi nhanh từ danh bạ:</span>
+            <div className="bg-yellow-50 dark:bg-slate-900/50 dark:bg-slate-800 border-3 border-slate-900 dark:border-slate-700 p-4 rounded-3xl space-y-2.5">
+              <span className="text-xs font-black text-slate-600 uppercase tracking-widest block">⭐ Gọi nhanh từ danh bạ:</span>
               <div className="flex flex-wrap gap-1.5">
                 {presetNames.map((name) => {
                   const alreadyChosen = members.some(m => m.name.toLowerCase() === name.toLowerCase());
@@ -722,10 +722,10 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
                       key={name}
                       onClick={() => handleTogglePresetMember(name)}
                       type="button"
-                      className={`text-[10px] px-3 py-1.5 rounded-xl font-black border-2 transition-transform cursor-pointer ${
+                      className={`text-xs px-3 py-1.5 rounded-xl font-black border-2 transition-transform cursor-pointer ${
                         alreadyChosen
-                          ? 'bg-teal-500 text-white border-slate-900 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] -translate-y-0.5'
-                          : 'bg-white hover:bg-orange-100 text-slate-800 border-slate-900 hover:-translate-y-0.5 active:translate-y-0'
+                          ? 'bg-teal-500 text-white border-slate-900 dark:border-slate-700 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] -translate-y-0.5'
+                          : 'bg-white dark:bg-slate-900 hover:bg-orange-100 text-slate-800 dark:text-slate-200 border-slate-900 dark:border-slate-700 hover:-translate-y-0.5 active:translate-y-0'
                       }`}
                     >
                       {alreadyChosen ? '✓' : '+'} {name}
@@ -736,11 +736,11 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
             </div>
 
             {/* Split Strategy Choice */}
-            <div className="grid grid-cols-3 gap-1.5 bg-yellow-105 bg-yellow-100 border-2 border-slate-900 p-1.5 rounded-2xl">
+            <div className="grid grid-cols-3 gap-1.5 bg-yellow-105 bg-yellow-100 border-2 border-slate-900 dark:border-slate-700 p-1.5 rounded-2xl">
               <button
                 type="button"
                 onClick={() => setSplitType('equal')}
-                className={`text-[10px] sm:text-xs py-2 text-center font-black rounded-xl cursor-pointer transition-all ${splitType === 'equal' ? 'bg-orange-500 text-white shadow-xs border border-transparent' : 'text-slate-700 hover:bg-yellow-50/50'}`}
+                className={`text-xs sm:text-xs py-2 text-center font-black rounded-xl cursor-pointer transition-all ${splitType === 'equal' ? 'bg-orange-500 text-white shadow-xs border border-transparent' : 'text-slate-700 hover:bg-yellow-50 dark:bg-slate-900/50 dark:bg-slate-800'}`}
               >
                 Chia Đều
               </button>
@@ -750,14 +750,14 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
                   setSplitType('percentage');
                   setMembers(prev => autoDistributePercentages(prev));
                 }}
-                className={`text-[10px] sm:text-xs py-2 text-center font-black rounded-xl cursor-pointer transition-all ${splitType === 'percentage' ? 'bg-orange-500 text-white shadow-xs border border-transparent' : 'text-slate-700 hover:bg-yellow-50/50'}`}
+                className={`text-xs sm:text-xs py-2 text-center font-black rounded-xl cursor-pointer transition-all ${splitType === 'percentage' ? 'bg-orange-500 text-white shadow-xs border border-transparent' : 'text-slate-700 hover:bg-yellow-50 dark:bg-slate-900/50 dark:bg-slate-800'}`}
               >
                 Tỷ lệ %
               </button>
               <button
                 type="button"
                 onClick={() => setSplitType('unequal')}
-                className={`text-[10px] sm:text-xs py-2 text-center font-black rounded-xl cursor-pointer transition-all ${splitType === 'unequal' ? 'bg-orange-500 text-white shadow-xs border border-transparent' : 'text-slate-700 hover:bg-yellow-50/50'}`}
+                className={`text-xs sm:text-xs py-2 text-center font-black rounded-xl cursor-pointer transition-all ${splitType === 'unequal' ? 'bg-orange-500 text-white shadow-xs border border-transparent' : 'text-slate-700 hover:bg-yellow-50 dark:bg-slate-900/50 dark:bg-slate-800'}`}
               >
                 Nhập tay tiền
               </button>
@@ -771,11 +771,11 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
                 value={newMemberName}
                 onChange={(e) => setNewMemberName(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleAddMember(newMemberName)}
-                className="flex-1 text-xs bg-slate-50 border-2 border-slate-900 outline-hidden focus:border-orange-500 rounded-xl p-3 text-slate-900 font-extrabold"
+                className="flex-1 text-xs bg-slate-50 border-2 border-slate-900 dark:border-slate-700 outline-hidden focus:border-orange-500 rounded-xl p-3 text-slate-900 dark:text-slate-100 font-extrabold"
               />
               <button
                 onClick={() => handleAddMember(newMemberName)}
-                className="px-4 py-2 bg-slate-900 hover:bg-teal-500 text-white rounded-xl text-xs font-black border-2 border-slate-900 hover:-translate-y-0.5 transition-all flex items-center gap-1 cursor-pointer"
+                className="px-4 py-2 bg-slate-900 hover:bg-teal-500 text-white rounded-xl text-xs font-black border-2 border-slate-900 dark:border-slate-700 hover:-translate-y-0.5 transition-all flex items-center gap-1 cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" /> Thêm
               </button>
@@ -786,13 +786,13 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
               {members.map((member, index) => {
                 const owes = member.finalShare - member.initialPaid;
                 return (
-                  <div key={member.name} className="bg-yellow-50/10 border-2 border-slate-900 rounded-2xl p-4.5 space-y-3 relative shadow-inner">
+                  <div key={member.name} className="bg-yellow-50 dark:bg-slate-900/10 border-2 border-slate-900 dark:border-slate-700 rounded-2xl p-4.5 space-y-3 relative shadow-inner">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-black text-slate-900 flex items-center gap-1">👤 {member.name}</span>
+                      <span className="text-xs font-black text-slate-900 dark:text-slate-100 flex items-center gap-1">👤 {member.name}</span>
                       {member.name !== activeCreatorName && (
                         <button
                           onClick={() => handleRemoveMember(index)}
-                          className="text-slate-400 hover:text-red-500 border border-slate-200 hover:border-red-200 p-1 rounded-md transition-colors cursor-pointer"
+                          className="text-slate-400 hover:text-red-500 border border-slate-200 dark:border-slate-700 hover:border-red-200 p-1 rounded-md transition-colors cursor-pointer"
                         >
                           <Trash className="w-3.5 h-3.5" />
                         </button>
@@ -802,22 +802,22 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
                     <div className="grid grid-cols-2 gap-3">
                       {/* Initial Paid Amount */}
                       <div>
-                        <label className="text-[10px] text-slate-500 font-black block mb-1 uppercase">Đã trả trước tại bàn (đ)</label>
+                        <label className="text-xs text-slate-500 dark:text-slate-400 font-black block mb-1 uppercase">Đã trả trước tại bàn (đ)</label>
                         <input
                           type="number"
                           placeholder="0"
                           value={member.initialPaid || ''}
                           onChange={(e) => handleInitialPaidChange(index, Number(e.target.value))}
-                          className="w-full text-xs bg-white border-2 border-slate-900 outline-hidden focus:border-orange-500 p-2 rounded-xl text-slate-900 font-black"
+                          className="w-full text-xs bg-white dark:bg-slate-900 border-2 border-slate-900 dark:border-slate-700 outline-hidden focus:border-orange-500 p-2 rounded-xl text-slate-900 dark:text-slate-100 font-black"
                         />
                       </div>
 
                       {/* Final Due Amount / Percentage custom interface */}
                       {splitType === 'percentage' ? (
                         <div>
-                          <label className="text-[10px] text-slate-500 font-black block mb-1 uppercase flex justify-between items-center">
+                          <label className="text-xs text-slate-500 dark:text-slate-400 font-black block mb-1 uppercase flex justify-between items-center">
                             <span>Tỷ lệ gánh (%)</span>
-                            <span className="text-[11px] text-orange-600 font-black">{member.finalShare.toLocaleString('vi-VN')} đ</span>
+                            <span className="text-sm text-orange-600 font-black">{member.finalShare.toLocaleString('vi-VN')} đ</span>
                           </label>
                           <div className="flex items-center gap-2">
                             <div className="relative w-18 shrink-0">
@@ -827,9 +827,9 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
                                 max="100"
                                 value={member.percentage !== undefined ? member.percentage : 0}
                                 onChange={(e) => handlePercentageChange(index, Number(e.target.value))}
-                                className="w-full text-xs bg-white border-2 border-orange-500 outline-hidden focus:border-orange-600 p-2 text-center text-slate-900 font-black rounded-xl pr-5"
+                                className="w-full text-xs bg-white dark:bg-slate-900 border-2 border-orange-500 outline-hidden focus:border-orange-600 p-2 text-center text-slate-900 dark:text-slate-100 font-black rounded-xl pr-5"
                               />
-                              <span className="absolute right-1 px-1.5 top-1/2 -translate-y-1/2 text-[10px] font-black text-orange-500 pointer-events-none">%</span>
+                              <span className="absolute right-1 px-1.5 top-1/2 -translate-y-1/2 text-xs font-black text-orange-500 pointer-events-none">%</span>
                             </div>
                             <input
                               type="range"
@@ -844,7 +844,7 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
                         </div>
                       ) : (
                         <div>
-                          <label className="text-[10px] text-slate-500 font-black block mb-1 uppercase">
+                          <label className="text-xs text-slate-500 dark:text-slate-400 font-black block mb-1 uppercase">
                             {splitType === 'equal' ? 'Trách nhiệm gánh (đ)' : 'Nhập tay số cần gánh'}
                           </label>
                           <input
@@ -852,18 +852,18 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
                             readOnly={splitType === 'equal'}
                             value={member.finalShare || ''}
                             onChange={(e) => handleCustomShareChange(index, Number(e.target.value))}
-                            className={`w-full text-xs p-2 rounded-xl text-slate-900 font-black ${
+                            className={`w-full text-xs p-2 rounded-xl text-slate-900 dark:text-slate-100 font-black ${
                               splitType === 'equal' 
-                                ? 'bg-slate-150 text-slate-450 border-2 border-slate-200 cursor-not-allowed text-center'
-                                : 'bg-white border-2 border-orange-500'
+                                ? 'bg-slate-150 text-slate-450 border-2 border-slate-200 dark:border-slate-700 cursor-not-allowed text-center'
+                                : 'bg-white dark:bg-slate-900 border-2 border-orange-500'
                             }`}
                           />
                         </div>
                       )}
                     </div>
 
-                    <div className="flex justify-between items-center bg-white p-2 rounded-xl border border-slate-250 text-[10px] font-bold">
-                      <span className="text-slate-500">Cân đối ví tiền:</span>
+                    <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-2 rounded-xl border border-slate-250 text-xs font-bold">
+                      <span className="text-slate-500 dark:text-slate-400">Cân đối ví tiền:</span>
                       {owes > 0 ? (
                         <span className="font-extrabold text-red-600">Cần đóng: +{owes.toLocaleString('vi-VN')} đ</span>
                       ) : owes < 0 ? (
@@ -881,7 +881,7 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
           {/* Validation indicators */}
           <div className="pt-4 border-t-2 border-slate-100 space-y-3">
             {splitType === 'percentage' && sumPercentages !== 100 && (
-              <div className="text-[11px] bg-red-100 text-red-950 p-3.5 rounded-2xl border-2 border-red-350 font-extrabold space-y-2">
+              <div className="text-sm bg-red-100 text-red-950 p-3.5 rounded-2xl border-2 border-red-350 font-extrabold space-y-2">
                 <div>
                   ⚠️ Tổng tỷ lệ phần trăm phân chi đang là <strong className="text-red-650 font-black text-xs">{sumPercentages}%</strong>. Cần điều chỉnh về đúng <strong className="text-teal-600 font-black text-xs">100%</strong> (Lệch {100 - sumPercentages}%).
                 </div>
@@ -890,22 +890,40 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
                   onClick={() => {
                     setMembers(prev => autoDistributePercentages(prev));
                   }}
-                  className="w-full bg-slate-900 hover:bg-orange-600 text-white hover:text-slate-900 text-[10px] py-1.5 px-3 rounded-xl border-2 border-slate-950 font-black uppercase tracking-wider cursor-pointer shadow-xs transition-colors"
+                  className="w-full bg-slate-900 hover:bg-orange-600 text-white hover:text-slate-900 dark:text-slate-100 text-xs py-1.5 px-3 rounded-xl border-2 border-slate-950 font-black uppercase tracking-wider cursor-pointer shadow-xs transition-colors"
                 >
                   🪄 Click Phân bổ đều % cho khớp tự động
                 </button>
               </div>
             )}
 
-            {splitType === 'unequal' && Math.abs(discrepancyShare) > 1 && (
-              <div className="text-[11px] bg-red-100 text-red-800 p-3 rounded-2xl border-2 border-red-300 font-bold">
-                ⚠️ Số tiền nhập thủ công bị chênh lệch so với hóa đơn tổng:{' '}
-                <strong>{discrepancyShare.toLocaleString('vi-VN')}đ</strong>. Hãy phân chia lại cho đều.
+            {splitType === 'unequal' && (
+              <div className="space-y-2 p-3 bg-slate-50 dark:bg-slate-800 rounded-2xl border-2 border-slate-200 dark:border-slate-700">
+                <div className="flex justify-between text-xs font-black text-slate-600 dark:text-slate-300">
+                  <span>Đã chia: {sumFinalShare.toLocaleString('vi-VN')}đ</span>
+                  <span>Tổng: {totalAmount.toLocaleString('vi-VN')}đ</span>
+                </div>
+                <div className="w-full h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden border border-slate-300 dark:border-slate-600">
+                  <div 
+                    className={`h-full transition-all duration-300 ${Math.abs(discrepancyShare) <= 1 ? 'bg-teal-500' : discrepancyShare > 0 ? 'bg-orange-500' : 'bg-red-500'}`}
+                    style={{ width: `${Math.min(100, totalAmount > 0 ? (sumFinalShare / totalAmount) * 100 : 0)}%` }}
+                  />
+                </div>
+                {Math.abs(discrepancyShare) > 1 && (
+                  <p className={`text-xs font-black ${discrepancyShare > 0 ? 'text-orange-600 dark:text-orange-400' : 'text-red-600 dark:text-red-400'}`}>
+                    ⚠️ {discrepancyShare > 0 ? 'Còn thiếu:' : 'Bị lố (Dư):'} {Math.abs(discrepancyShare).toLocaleString('vi-VN')}đ
+                  </p>
+                )}
+                {Math.abs(discrepancyShare) <= 1 && (
+                  <p className="text-xs font-black text-teal-600 dark:text-teal-400">
+                    ✅ Đã khớp hoàn toàn!
+                  </p>
+                )}
               </div>
             )}
 
             {Math.abs(discrepancyPaid) > 1 && (
-              <div className="text-[11px] bg-orange-100 text-orange-950 p-3 rounded-2xl border-2 border-orange-300 font-bold">
+              <div className="text-sm bg-orange-100 text-orange-950 p-3 rounded-2xl border-2 border-orange-300 font-bold">
                 ⚠️ Tổng hóa đơn là {totalAmount.toLocaleString('vi-VN')}đ nhưng tổng tiền mọi người chi tại chỗ mới là{' '}
                 {sumInitialPaid.toLocaleString('vi-VN')}đ. Hãy điền ai là người thanh toán thực tế (hoặc tích Host trả trước).
               </div>
@@ -913,7 +931,7 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
 
             <button
               onClick={handleSaveForm}
-              className="w-full bg-slate-900 hover:bg-orange-500 text-white hover:text-slate-900 rounded-2xl py-4 text-xs font-black tracking-wider uppercase shadow-[4px_4px_0px_0px_rgba(251,146,60,0.8)] hover:shadow-[4px_4px_0px_0px_rgba(15,23,42,1)] border-2 border-slate-900 flex items-center justify-center gap-2 cursor-pointer transition-all hover:scale-[1.01] active:translate-y-0.5"
+              className="w-full bg-slate-900 hover:bg-orange-500 text-white hover:text-slate-900 dark:text-slate-100 rounded-2xl py-4 text-xs font-black tracking-wider uppercase shadow-[4px_4px_0px_0px_rgba(251,146,60,0.8)] hover:shadow-[4px_4px_0px_0px_rgba(15,23,42,1)] border-2 border-slate-900 dark:border-slate-700 flex items-center justify-center gap-2 cursor-pointer transition-all hover:scale-[1.01] active:translate-y-0.5"
             >
               <CreditCard className="w-4 h-4" /> Lưu & Hoàn Tất Cuộc Nhậu
             </button>

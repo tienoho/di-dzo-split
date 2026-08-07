@@ -156,7 +156,7 @@ export default function ContactManager({ contacts, onSaveContact, onDeleteContac
           </p>
         </div>
         {currentUser && (
-          <span className="text-[10px] font-black text-emerald-800 bg-emerald-50 border-2 border-emerald-300 px-3 py-1.5 rounded-full flex items-center gap-1.5">
+          <span className="text-xs font-black text-emerald-800 bg-emerald-50 border-2 border-emerald-300 px-3 py-1.5 rounded-full flex items-center gap-1.5">
             <Check className="w-3.5 h-3.5" /> Đã kết nối Cloud Sync
           </span>
         )}
@@ -193,12 +193,12 @@ export default function ContactManager({ contacts, onSaveContact, onDeleteContac
                 Thêm Chiến Hữu
               </h2>
             </div>
-            <p className="text-[11px] font-bold text-slate-500">Tạo thông tin của bạn bè để gọi chọn nhanh khi chia hóa đơn.</p>
+            <p className="text-sm font-bold text-slate-500">Tạo thông tin của bạn bè để gọi chọn nhanh khi chia hóa đơn.</p>
           </div>
 
           <form onSubmit={handleAddContact} className="space-y-4">
             <div className="space-y-1">
-              <label className="text-[10px] font-black text-slate-600 block uppercase tracking-wide">
+              <label className="text-xs font-black text-slate-600 block uppercase tracking-wide">
                 Tên Chiến Hữu <span className="text-red-500">*</span>
               </label>
               <input
@@ -212,7 +212,7 @@ export default function ContactManager({ contacts, onSaveContact, onDeleteContac
             </div>
 
             <div className="space-y-1">
-              <label className="text-[10px] font-black text-slate-600 block uppercase tracking-wide">
+              <label className="text-xs font-black text-slate-600 block uppercase tracking-wide">
                 Số Điện Thoại Zalo
               </label>
               <input
@@ -222,11 +222,11 @@ export default function ContactManager({ contacts, onSaveContact, onDeleteContac
                 onChange={(e) => setPhone(e.target.value)}
                 className="w-full text-xs bg-slate-50 border-2 border-slate-900 p-3 rounded-xl font-mono text-slate-900 font-extrabold focus:border-indigo-500 outline-hidden"
               />
-              <p className="text-[9px] font-bold text-slate-400">Dùng để mở chat Zalo đòi nợ trực tiếp.</p>
+              <p className="text-xs font-bold text-slate-400">Dùng để mở chat Zalo đòi nợ trực tiếp.</p>
             </div>
 
             <div className="space-y-1">
-              <label className="text-[10px] font-black text-slate-600 block uppercase tracking-wide">
+              <label className="text-xs font-black text-slate-600 block uppercase tracking-wide">
                 Messenger Username
               </label>
               <input
@@ -236,7 +236,7 @@ export default function ContactManager({ contacts, onSaveContact, onDeleteContac
                 onChange={(e) => setMessenger(e.target.value)}
                 className="w-full text-xs bg-slate-50 border-2 border-slate-900 p-3 rounded-xl text-slate-900 font-extrabold focus:border-indigo-500 outline-hidden"
               />
-              <p className="text-[9px] font-bold text-slate-400">Username của link m.me/username chat Facebook.</p>
+              <p className="text-xs font-bold text-slate-400">Username của link m.me/username chat Facebook.</p>
             </div>
 
             <button
@@ -273,7 +273,7 @@ export default function ContactManager({ contacts, onSaveContact, onDeleteContac
               <div className="text-center py-12 bg-slate-50 dark:bg-slate-805 dark:bg-slate-800 rounded-2xl border-2 border-dashed border-slate-200">
                 <Users className="w-10 h-10 text-slate-300 mx-auto mb-2.5" />
                 <p className="text-xs font-black text-slate-400">Không tìm thấy chiến hữu nào.</p>
-                <p className="text-[10px] font-bold text-slate-400 mt-1">Hãy nhập thông tin ở cột trái để thêm mới danh bạ nhậu!</p>
+                <p className="text-xs font-bold text-slate-400 mt-1">Hãy nhập thông tin ở cột trái để thêm mới danh bạ nhậu!</p>
               </div>
             ) : (
               filteredContacts.map(([contactName, data]) => {
@@ -294,14 +294,14 @@ export default function ContactManager({ contacts, onSaveContact, onDeleteContac
                           placeholder="Số điện thoại Zalo"
                           value={editPhone}
                           onChange={(e) => setEditPhone(e.target.value)}
-                          className="text-[11px] font-bold bg-white border-2 border-slate-900 rounded-lg px-2.5 py-1.5 focus:border-indigo-500 outline-hidden"
+                          className="text-sm font-bold bg-white border-2 border-slate-900 rounded-lg px-2.5 py-1.5 focus:border-indigo-500 outline-hidden"
                         />
                         <input
                           type="text"
                           placeholder="Messenger Username"
                           value={editMessenger}
                           onChange={(e) => setEditMessenger(e.target.value)}
-                          className="text-[11px] font-bold bg-white border-2 border-slate-900 rounded-lg px-2.5 py-1.5 focus:border-indigo-500 outline-hidden"
+                          className="text-sm font-bold bg-white border-2 border-slate-900 rounded-lg px-2.5 py-1.5 focus:border-indigo-500 outline-hidden"
                         />
                       </div>
                     ) : (
@@ -312,20 +312,20 @@ export default function ContactManager({ contacts, onSaveContact, onDeleteContac
                         </h4>
                         <div className="flex flex-wrap gap-1.5">
                           {data.phone ? (
-                            <span className="text-[9px] font-black text-teal-700 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-md flex items-center gap-1">
+                            <span className="text-xs font-black text-teal-700 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-md flex items-center gap-1">
                               <Phone className="w-2.5 h-2.5" /> Zalo: {data.phone}
                             </span>
                           ) : (
-                            <span className="text-[9px] font-bold text-slate-400 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md">
+                            <span className="text-xs font-bold text-slate-400 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md">
                               Chưa cấu hình SĐT
                             </span>
                           )}
                           {data.messenger ? (
-                            <span className="text-[9px] font-black text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-md flex items-center gap-1">
+                            <span className="text-xs font-black text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-md flex items-center gap-1">
                               <MessageSquare className="w-2.5 h-2.5" /> Messenger: {data.messenger}
                             </span>
                           ) : (
-                            <span className="text-[9px] font-bold text-slate-400 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md">
+                            <span className="text-xs font-bold text-slate-400 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md">
                               Chưa cấu hình Messenger
                             </span>
                           )}

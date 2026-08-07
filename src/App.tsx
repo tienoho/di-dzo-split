@@ -680,15 +680,15 @@ export default function App() {
 
       {/* PRIMARY TAB SELECTOR CONTROLLER */}
       <nav className="max-w-7xl mx-auto px-4 mb-8">
-        <div className="bg-white rounded-3xl p-2 shadow-md border-2 border-yellow-100 flex overflow-x-auto scrollbar-none gap-2">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-2 shadow-md border-2 border-yellow-100 dark:border-slate-800 flex overflow-x-auto scrollbar-none gap-2">
           
           {/* Tab: Split */}
           <button
             onClick={() => setActiveTab('split')}
             className={`flex items-center gap-2 py-3 px-5 rounded-2xl text-xs md:text-sm font-black transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'split' 
-                ? 'bg-orange-500 text-white shadow-md shadow-orange-200' 
-                : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
+                ? 'bg-orange-500 text-white shadow-md shadow-orange-200 dark:shadow-none' 
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'
             }`}
           >
             <Calculator className="w-4 h-4" />
@@ -700,8 +700,8 @@ export default function App() {
             onClick={() => setActiveTab('reminders')}
             className={`relative flex items-center gap-2 py-3 px-5 rounded-2xl text-xs md:text-sm font-black transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'reminders' 
-                ? 'bg-blue-500 text-white shadow-md shadow-blue-200' 
-                : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
+                ? 'bg-blue-500 text-white shadow-md shadow-blue-200 dark:shadow-none' 
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'
             }`}
           >
             <Bell className="w-4 h-4" />
@@ -718,8 +718,8 @@ export default function App() {
             onClick={() => setActiveTab('history')}
             className={`flex items-center gap-2 py-3 px-5 rounded-2xl text-xs md:text-sm font-black transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'history' 
-                ? 'bg-purple-500 text-white shadow-md shadow-purple-200' 
-                : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
+                ? 'bg-purple-500 text-white shadow-md shadow-purple-200 dark:shadow-none' 
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'
             }`}
           >
             <Calendar className="w-4 h-4" />
@@ -731,8 +731,8 @@ export default function App() {
             onClick={() => setActiveTab('contacts')}
             className={`flex items-center gap-2 py-3 px-5 rounded-2xl text-xs md:text-sm font-black transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'contacts' 
-                ? 'bg-indigo-500 text-white shadow-md shadow-indigo-200' 
-                : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
+                ? 'bg-indigo-500 text-white shadow-md shadow-indigo-200 dark:shadow-none' 
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'
             }`}
           >
             <Users className="w-4 h-4" />
@@ -744,8 +744,8 @@ export default function App() {
             onClick={() => setActiveTab('venues')}
             className={`flex items-center gap-2 py-3 px-5 rounded-2xl text-xs md:text-sm font-black transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'venues' 
-                ? 'bg-pink-500 text-white shadow-md shadow-pink-200' 
-                : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
+                ? 'bg-pink-500 text-white shadow-md shadow-pink-200 dark:shadow-none' 
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'
             }`}
           >
             <Store className="w-4 h-4" />
@@ -757,8 +757,8 @@ export default function App() {
             onClick={() => setActiveTab('recommendations')}
             className={`flex items-center gap-2 py-3 px-5 rounded-2xl text-xs md:text-sm font-black transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'recommendations' 
-                ? 'bg-amber-500 text-white shadow-md shadow-amber-200 animate-pulse' 
-                : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
+                ? 'bg-amber-500 text-white shadow-md shadow-amber-200 dark:shadow-none animate-pulse' 
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'
             }`}
           >
             <Sparkles className="w-4 h-4 text-orange-200" />
@@ -770,8 +770,8 @@ export default function App() {
             onClick={() => setActiveTab('solo')}
             className={`flex items-center gap-2 py-3 px-5 rounded-2xl text-xs md:text-sm font-black transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'solo' 
-                ? 'bg-emerald-500 text-white shadow-md shadow-emerald-250' 
-                : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
+                ? 'bg-emerald-500 text-white shadow-md shadow-emerald-250 dark:shadow-none' 
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'
             }`}
           >
             <Coins className="w-4 h-4 text-emerald-200" />
@@ -859,9 +859,9 @@ export default function App() {
       </main>
 
       {/* FOOTER */}
-      <footer className="bg-white border-t border-slate-200 py-6 text-center mt-12 text-slate-400 text-xs font-semibold">
+      <footer className="bg-transparent border-t-2 border-slate-200 dark:border-slate-800 py-6 text-center mt-12 text-slate-500 dark:text-slate-400 text-xs font-semibold">
         <p>© 2026 Chia Tiền Nhậu - Built with ❤️ for Vietnam drinking communities.</p>
-        <p className="mt-1 text-[10px] text-slate-300">Giải pháp sòng phẳng tối thượng, giữ trọn chân tình anh em.</p>
+        <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">Giải pháp sòng phẳng tối thượng, giữ trọn chân tình anh em.</p>
       </footer>
 
       {/* AUTH SYSTEM POPUP/MODAL */}
