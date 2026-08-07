@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import toast from 'react-hot-toast';
 import { Bill, Member, Venue } from '../types';
 import { Plus, Trash, Users, Calculator, Gift, Sparkles, Store, CreditCard, ChevronRight, Camera } from 'lucide-react';
 import ReceiptScanner from './ReceiptScanner';
@@ -47,7 +49,12 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
     { name: activeCreatorName, initialPaid: 0, finalShare: 0, hasPaidDebt: true, percentage: 100 }
   ]);
   const [newMemberName, setNewMemberName] = useState<string>('');
-  const [splitType, setSplitType] = useState<'equal' | 'percentage' | 'unequal'>('equal');
+  const [splitType, setSplitType] = useState<'equal' | 'percentage' | 'unequal' | 'roulette'>('equal');
+
+  // Roulette States
+  const [roulettePenaltyPercent, setRoulettePenaltyPercent] = useState<number>(50);
+  const [isSpinning, setIsSpinning] = useState<boolean>(false);
+  const [luckyWinnerIndex, setLuckyWinnerIndex] = useState<number | null>(null);
 
   // Success indicator
   const [savedSuccess, setSavedSuccess] = useState<boolean>(false);
@@ -55,6 +62,11 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
   // AI Receipt scanner states
   const [showScanner, setShowScanner] = useState<boolean>(false);
   const [scannedReceiptImage, setScannedReceiptImage] = useState<string | undefined>(undefined);
+
+  // Calculations that depend on inputs
+  const totalAmount = Math.max(0, rawAmount + tipAmount + additionalFee - discountAmount);
+  const totalPenalties = members.reduce((acc, m) => acc + (m.penaltyAmount || 0), 0);
+  const netAmountToSplit = Math.max(0, totalAmount - totalPenalties);
 
   // Helper function to distribute percentages as evenly as imaginable
   const autoDistributePercentages = (currentMembers: Member[]): Member[] => {
@@ -66,7 +78,7 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
       return {
         ...m,
         percentage: pct,
-        finalShare: Math.round((totalAmount * pct) / 100)
+        finalShare: Math.round((netAmountToSplit * pct) / 100) + (m.penaltyAmount || 0)
       };
     });
   };
@@ -120,18 +132,15 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
     }
   }, [rawAmount, tipPercent, tipAmount, useTipPercent]);
 
-  // Recalculate bill summary totals
-  const totalAmount = Math.max(0, rawAmount + tipAmount + additionalFee - discountAmount);
-
-  // Recalculate equal shares or prepare unequal template
+  // Recalculate shares based on split type, penalties, and roulette
   useEffect(() => {
     if (members.length === 0) return;
     
     if (splitType === 'equal') {
-      const perCapitaShare = totalAmount / members.length;
+      const perCapitaShare = netAmountToSplit / members.length;
       setMembers(prev => prev.map(m => ({
         ...m,
-        finalShare: Math.round(perCapitaShare)
+        finalShare: Math.round(perCapitaShare) + (m.penaltyAmount || 0)
       })));
     } else if (splitType === 'percentage') {
       setMembers(prev => prev.map(m => {
@@ -139,17 +148,45 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
         return {
           ...m,
           percentage: pct,
-          finalShare: Math.round((totalAmount * pct) / 100)
+          finalShare: Math.round((netAmountToSplit * pct) / 100) + (m.penaltyAmount || 0)
         };
       }));
+    } else if (splitType === 'roulette') {
+      setMembers(prev => prev.map((m, idx) => {
+        if (luckyWinnerIndex === null || luckyWinnerIndex === -1) {
+          // If no winner yet, distribute equally as a placeholder
+          const perCapitaShare = netAmountToSplit / members.length;
+          return {
+            ...m,
+            finalShare: Math.round(perCapitaShare) + (m.penaltyAmount || 0)
+          };
+        }
+
+        if (idx === luckyWinnerIndex) {
+          const victimShare = (netAmountToSplit * roulettePenaltyPercent) / 100;
+          return {
+            ...m,
+            finalShare: Math.round(victimShare) + (m.penaltyAmount || 0)
+          };
+        } else {
+          // The remaining amount is split among the others
+          const remainingAmount = netAmountToSplit - ((netAmountToSplit * roulettePenaltyPercent) / 100);
+          const othersCount = members.length > 1 ? members.length - 1 : 1;
+          const otherShare = remainingAmount / othersCount;
+          return {
+            ...m,
+            finalShare: Math.round(otherShare) + (m.penaltyAmount || 0)
+          };
+        }
+      }));
     }
-  }, [totalAmount, splitType, members.length]);
+  }, [totalAmount, totalPenalties, splitType, members.length, luckyWinnerIndex, roulettePenaltyPercent, netAmountToSplit]);
 
   const handleAddMember = (name: string) => {
     const trimmed = name.trim();
     if (!trimmed) return;
     if (members.some(m => m.name.toLowerCase() === trimmed.toLowerCase())) {
-      alert("Người này đã có trong danh sách nhóm!");
+      toast.error("Người này đã có trong danh sách nhóm!");
       return;
     }
     const isSelf = trimmed === activeCreatorName;
@@ -171,7 +208,7 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
     const existingIndex = members.findIndex(m => m.name.toLowerCase() === trimmed.toLowerCase());
     if (existingIndex > -1) {
       if (members.length <= 1) {
-        alert("Cuộc nhậu phải có ít nhất 1 người tham gia gánh vác chứ!");
+        toast.error("Cuộc nhậu phải có ít nhất 1 người tham gia gánh vác chứ!");
         return;
       }
       const filtered = members.filter((_, i) => i !== existingIndex);
@@ -194,7 +231,7 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
 
   const handleRemoveMember = (index: number) => {
     if (members.length <= 1) {
-      alert("Cuộc nhậu phải có ít nhất 1 người tham gia gánh vác chứ!");
+      toast.error("Cuộc nhậu phải có ít nhất 1 người tham gia gánh vác chứ!");
       return;
     }
     const filtered = members.filter((_, i) => i !== index);
@@ -211,6 +248,18 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
 
   const handleCustomShareChange = (index: number, val: number) => {
     setMembers(prev => prev.map((m, i) => i === index ? { ...m, finalShare: val } : m));
+  };
+
+  const handleAddPenalty = (index: number, amount: number) => {
+    setMembers(prev => prev.map((m, i) => {
+      if (i === index) {
+        return {
+          ...m,
+          penaltyAmount: (m.penaltyAmount || 0) + amount
+        };
+      }
+      return m;
+    }));
   };
 
   const handlePercentageChange = (index: number, val: number) => {
@@ -287,29 +336,25 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
   };
 
   const handleSaveForm = () => {
-    if (rawAmount <= 0) {
-      alert("Hãy nhập số tiền hóa đơn hợp lệ (> 0đ) trước khi lưu!");
+    if (totalAmount <= 0) {
+      toast.error("Hãy nhập số tiền hóa đơn hợp lệ (> 0đ) trước khi lưu!");
       return;
     }
-
     if (members.length === 0) {
-      alert("Hãy điền ít nhất một người tham gia cuộc nhậu!");
+      toast.error("Hãy điền ít nhất một người tham gia cuộc nhậu!");
       return;
     }
 
-    // Check custom paid discrepancy
-    if (Math.abs(discrepancyPaid) > 100) {
-      alert(`Tổng số tiền các thành viên đã thanh toán trên bàn ăn (đã đưa cho quán) là ${sumInitialPaid.toLocaleString('vi-VN')}đ, nhưng tổng hóa đơn thực tế là ${totalAmount.toLocaleString('vi-VN')}đ.\n\nVui lòng điều chỉnh ai là người đã chi trả cho khớp!`);
+    if (discrepancyPaid > 0 || discrepancyPaid < 0) {
+      toast.error(`Tổng số tiền các thành viên đã thanh toán trên bàn ăn là ${sumInitialPaid.toLocaleString('vi-VN')}đ, nhưng tổng hóa đơn là ${totalAmount.toLocaleString('vi-VN')}đ.\n\nVui lòng điều chỉnh lại cho khớp!`);
       return;
     }
-
     if (splitType === 'unequal' && Math.abs(discrepancyShare) > 100) {
-      alert(`Bạn chọn chia tùy chỉnh nhưng tổng tiền đóng góp của mọi người (${sumFinalShare.toLocaleString('vi-VN')}đ) chưa khớp với tổng hóa đơn phải trả (${totalAmount.toLocaleString('vi-VN')}đ).\n\nMức chênh lệch hiện tại: ${discrepancyShare.toLocaleString('vi-VN')}đ.`);
+      toast.error(`Bạn chọn chia tùy chỉnh nhưng tổng tiền mọi người gánh (${sumFinalShare.toLocaleString('vi-VN')}đ) chưa khớp hóa đơn (${totalAmount.toLocaleString('vi-VN')}đ).\n\nChênh lệch: ${discrepancyShare.toLocaleString('vi-VN')}đ.`);
       return;
     }
-
     if (splitType === 'percentage' && sumPercentages !== 100) {
-      alert(`Tổng tỷ lệ phần trăm hiện tại là ${sumPercentages}%. Để chia tiền theo %, tổng tỷ lệ phần trăm của tất cả chiến hữu phải bằng đúng 100%!`);
+      toast.error(`Tổng tỷ lệ phần trăm hiện tại là ${sumPercentages}%. Phải bằng đúng 100%!`);
       return;
     }
 
@@ -736,11 +781,11 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
             </div>
 
             {/* Split Strategy Choice */}
-            <div className="grid grid-cols-3 gap-1.5 bg-yellow-105 bg-yellow-100 border-2 border-slate-900 dark:border-slate-700 p-1.5 rounded-2xl">
+            <div className="grid grid-cols-4 gap-1.5 bg-yellow-105 bg-yellow-100 border-2 border-slate-900 dark:border-slate-700 p-1.5 rounded-2xl">
               <button
                 type="button"
                 onClick={() => setSplitType('equal')}
-                className={`text-xs sm:text-xs py-2 text-center font-black rounded-xl cursor-pointer transition-all ${splitType === 'equal' ? 'bg-orange-500 text-white shadow-xs border border-transparent' : 'text-slate-700 hover:bg-yellow-50 dark:bg-slate-900/50 dark:bg-slate-800'}`}
+                className={`text-[10px] sm:text-xs py-2 text-center font-black rounded-xl cursor-pointer transition-all ${splitType === 'equal' ? 'bg-orange-500 text-white shadow-xs border border-transparent' : 'text-slate-700 hover:bg-yellow-50 dark:bg-slate-900/50 dark:bg-slate-800'}`}
               >
                 Chia Đều
               </button>
@@ -750,16 +795,23 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
                   setSplitType('percentage');
                   setMembers(prev => autoDistributePercentages(prev));
                 }}
-                className={`text-xs sm:text-xs py-2 text-center font-black rounded-xl cursor-pointer transition-all ${splitType === 'percentage' ? 'bg-orange-500 text-white shadow-xs border border-transparent' : 'text-slate-700 hover:bg-yellow-50 dark:bg-slate-900/50 dark:bg-slate-800'}`}
+                className={`text-[10px] sm:text-xs py-2 text-center font-black rounded-xl cursor-pointer transition-all ${splitType === 'percentage' ? 'bg-orange-500 text-white shadow-xs border border-transparent' : 'text-slate-700 hover:bg-yellow-50 dark:bg-slate-900/50 dark:bg-slate-800'}`}
               >
                 Tỷ lệ %
               </button>
               <button
                 type="button"
                 onClick={() => setSplitType('unequal')}
-                className={`text-xs sm:text-xs py-2 text-center font-black rounded-xl cursor-pointer transition-all ${splitType === 'unequal' ? 'bg-orange-500 text-white shadow-xs border border-transparent' : 'text-slate-700 hover:bg-yellow-50 dark:bg-slate-900/50 dark:bg-slate-800'}`}
+                className={`text-[10px] sm:text-xs py-2 text-center font-black rounded-xl cursor-pointer transition-all ${splitType === 'unequal' ? 'bg-orange-500 text-white shadow-xs border border-transparent' : 'text-slate-700 hover:bg-yellow-50 dark:bg-slate-900/50 dark:bg-slate-800'}`}
               >
-                Nhập tay tiền
+                Tùy chỉnh
+              </button>
+              <button
+                type="button"
+                onClick={() => setSplitType('roulette')}
+                className={`text-[10px] sm:text-xs py-2 text-center font-black rounded-xl cursor-pointer transition-all ${splitType === 'roulette' ? 'bg-orange-500 text-white shadow-xs border border-transparent' : 'text-slate-700 hover:bg-yellow-50 dark:bg-slate-900/50 dark:bg-slate-800'}`}
+              >
+                🎡 Roulette
               </button>
             </div>
 
@@ -781,14 +833,116 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
               </button>
             </div>
 
+            {/* Roulette Config */}
+            {splitType === 'roulette' && (
+              <div className="bg-orange-100 dark:bg-orange-900/30 border-2 border-orange-500 rounded-2xl p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-black text-sm text-orange-800 dark:text-orange-200">🎡 Vòng Quay Nhân Phẩm</h3>
+                  <select 
+                    value={roulettePenaltyPercent} 
+                    onChange={(e) => setRoulettePenaltyPercent(Number(e.target.value))}
+                    className="text-xs bg-white dark:bg-slate-800 border-2 border-orange-500 rounded-lg p-1 font-bold text-slate-900 dark:text-slate-100"
+                  >
+                    <option value={50}>Gánh 50% Bill</option>
+                    <option value={75}>Gánh 75% Bill</option>
+                    <option value={100}>Gánh 100% Bill</option>
+                  </select>
+                </div>
+                
+                {isSpinning ? (
+                  <div className="py-8 flex flex-col items-center justify-center">
+                    <motion.div 
+                      className="text-5xl"
+                      animate={{ rotate: 3600, scale: [1, 1.2, 1] }}
+                      transition={{ duration: 2.5, ease: "circOut" }}
+                    >
+                      🎲
+                    </motion.div>
+                    <div className="mt-4 text-sm font-black animate-pulse text-orange-600">Đang chọn người xui xẻo...</div>
+                  </div>
+                ) : (
+                  <button 
+                    onClick={() => {
+                      if (members.length <= 1) {
+                        toast.error('Cần ít nhất 2 người để chơi vòng quay nhân phẩm!');
+                        return;
+                      }
+                      setIsSpinning(true);
+                      setLuckyWinnerIndex(null);
+                      setTimeout(() => {
+                        setIsSpinning(false);
+                        const winner = Math.floor(Math.random() * members.length);
+                        setLuckyWinnerIndex(winner);
+                      }, 2500);
+                    }}
+                    className="w-full py-3 bg-orange-500 hover:bg-orange-600 text-white font-black rounded-xl border-2 border-orange-700 shadow-[2px_2px_0px_0px_rgba(194,65,12,1)] active:translate-y-1 active:shadow-none transition-all cursor-pointer"
+                  >
+                    BẮT ĐẦU QUAY
+                  </button>
+                )}
+                
+                {luckyWinnerIndex !== null && !isSpinning && members[luckyWinnerIndex] && (
+                  <div className="text-center p-3 bg-red-100 dark:bg-red-900/30 rounded-xl border-2 border-red-500">
+                    <div className="text-xs font-bold text-red-600 dark:text-red-400">Người được độ đêm nay:</div>
+                    <div className="text-lg font-black text-red-700 dark:text-red-300">🚨 {members[luckyWinnerIndex].name} 🚨</div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* List of current session members */}
-            <div className="space-y-3.5 max-h-[300px] overflow-y-auto pr-1">
-              {members.map((member, index) => {
-                const owes = member.finalShare - member.initialPaid;
-                return (
-                  <div key={member.name} className="bg-yellow-50 dark:bg-slate-900/10 border-2 border-slate-900 dark:border-slate-700 rounded-2xl p-4.5 space-y-3 relative shadow-inner">
+            <div className={`space-y-3.5 max-h-[400px] overflow-y-auto pr-1 ${splitType === 'roulette' && isSpinning ? 'opacity-50 pointer-events-none blur-sm transition-all' : 'transition-all'}`}>
+              <AnimatePresence>
+                {members.map((member, index) => {
+                  const owes = member.finalShare - member.initialPaid;
+                  return (
+                    <motion.div 
+                      key={member.name} 
+                      initial={{ opacity: 0, y: -20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.9, height: 0, marginBottom: 0, overflow: 'hidden' }}
+                      transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                      className="bg-yellow-50 dark:bg-slate-900/10 border-2 border-slate-900 dark:border-slate-700 rounded-2xl p-4.5 space-y-3 relative shadow-inner"
+                    >
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-black text-slate-900 dark:text-slate-100 flex items-center gap-1">👤 {member.name}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-black text-slate-900 dark:text-slate-100 flex items-center gap-1">
+                          👤 {member.name}
+                        </span>
+                        {/* Penalty feature dropdown */}
+                        <details className="relative z-10 group">
+                          <summary className="list-none text-[10px] bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 font-bold px-2.5 py-0.5 rounded-full border border-red-200 dark:border-red-800 flex items-center gap-1 cursor-pointer hover:bg-red-200 dark:hover:bg-red-900/60 shadow-xs transition-colors">
+                            🍺 Phạt {member.penaltyAmount ? `(+${member.penaltyAmount.toLocaleString('vi-VN')})` : ''}
+                          </summary>
+                          <div className="absolute left-0 top-full mt-2 bg-white dark:bg-slate-800 border-2 border-slate-900 dark:border-slate-700 rounded-xl p-2 w-48 shadow-[4px_4px_0px_0px_rgba(15,23,42,1)] dark:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                            <div className="text-[10px] font-black text-slate-500 dark:text-slate-400 mb-1">Cộng tiền phạt mồi:</div>
+                            <button onClick={() => { handleAddPenalty(index, 20000); }} className="w-full text-left text-xs font-bold p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-700 dark:text-slate-200 cursor-pointer">📱 Bấm đt (+20k)</button>
+                            <button onClick={() => { handleAddPenalty(index, 50000); }} className="w-full text-left text-xs font-bold p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-700 dark:text-slate-200 cursor-pointer">🐌 Tới trễ (+50k)</button>
+                            <button onClick={() => { handleAddPenalty(index, 100000); }} className="w-full text-left text-xs font-bold p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-700 dark:text-slate-200 cursor-pointer">🏃 Về sớm (+100k)</button>
+                            <div className="flex mt-1 pt-2 border-t border-slate-100 dark:border-slate-700 items-center gap-1">
+                              <input 
+                                type="number" 
+                                placeholder="Khác (Vd: 30000)" 
+                                className="w-full text-[10px] bg-slate-50 dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-md p-1 outline-hidden focus:border-orange-500 font-bold" 
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    const val = Number(e.currentTarget.value);
+                                    if (val > 0) handleAddPenalty(index, val);
+                                    e.currentTarget.value = '';
+                                  }
+                                }}
+                              />
+                            </div>
+                            {member.penaltyAmount && member.penaltyAmount > 0 ? (
+                              <button onClick={() => {
+                                setMembers(prev => prev.map((m, i) => i === index ? { ...m, penaltyAmount: 0 } : m));
+                              }} className="w-full text-left text-[10px] font-bold p-1.5 mt-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg cursor-pointer">❌ Xóa hết phạt</button>
+                            ) : null}
+                          </div>
+                        </details>
+                      </div>
+
                       {member.name !== activeCreatorName && (
                         <button
                           onClick={() => handleRemoveMember(index)}
@@ -872,9 +1026,10 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
                         <span className="font-extrabold text-[#111827]">Đã về mốc 0đ (Hòa)</span>
                       )}
                     </div>
-                  </div>
+                  </motion.div>
                 );
               })}
+              </AnimatePresence>
             </div>
           </div>
 

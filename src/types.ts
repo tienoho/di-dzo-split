@@ -5,6 +5,7 @@ export interface Member {
   hasPaidDebt: boolean; // Indicates if this person has settled their debt if they owe
   phone?: string;
   percentage?: number; // Optional percentage split info
+  penaltyAmount?: number; // Accumulated penalty amount for this person (e.g. late arrival, phone usage)
 }
 
 export interface Venue {
@@ -28,7 +29,7 @@ export interface Bill {
   discountAmount: number;
   totalAmount: number;
   members: Member[];
-  splitType: 'equal' | 'percentage' | 'unequal';
+  splitType: 'equal' | 'percentage' | 'unequal' | 'roulette';
   note?: string;
   receiptImage?: string; // Base64 compressed invoice proof
   isArchived?: boolean; // True if the bill has been archived to tidy up history

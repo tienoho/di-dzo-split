@@ -10,7 +10,8 @@ import SoloDining from './components/SoloDining';
 import ContactManager from './components/ContactManager';
 import { useCloudSync } from './hooks/useCloudSync';
 import { useFCM } from './hooks/useFCM';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Toaster } from 'react-hot-toast';
 import { Calculator, Store, Calendar, Bell, Wine, Beer, DollarSign, TrendingUp, Sparkles, User, Settings, Info, Sun, Moon, LogIn, LogOut, UserCheck, Coins, Users } from 'lucide-react';
 import { 
   auth, 
@@ -879,6 +880,32 @@ export default function App() {
         )}
       </AnimatePresence>
 
+      <Toaster 
+        position="bottom-center"
+        toastOptions={{
+          style: {
+            background: 'white',
+            color: '#0f172a',
+            border: '2px solid #0f172a',
+            boxShadow: '4px 4px 0px 0px rgba(15,23,42,1)',
+            fontWeight: '900',
+            fontSize: '12px',
+            borderRadius: '12px',
+          },
+          success: {
+            iconTheme: {
+              primary: '#10b981',
+              secondary: 'white',
+            },
+          },
+          error: {
+            iconTheme: {
+              primary: '#ef4444',
+              secondary: 'white',
+            },
+          },
+        }}
+      />
     </div>
   );
 }

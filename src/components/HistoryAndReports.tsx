@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Bill } from '../types';
 import { Calendar, Search, FileDown, TrendingUp, DollarSign, Users, Store, Trash, ChevronDown, ChevronUp, Archive, Inbox, Filter, Clock, HelpCircle, X, PieChart, Sparkles, Brain, Coins, AlertTriangle, Share2, Copy } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
+import toast from 'react-hot-toast';
 
 interface HistoryAndReportsProps {
   bills: Bill[];
@@ -180,7 +181,7 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
   // Export report to CSV
   const handleExportCSV = () => {
     if (filteredBills.length === 0) {
-      alert("Không có dữ liệu hóa đơn nào trong khoảng thời gian đã chọn để xuất báo cáo!");
+      toast.error("Không có dữ liệu hóa đơn nào trong khoảng thời gian đã chọn để xuất báo cáo!");
       return;
     }
 
@@ -262,9 +263,9 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
     } else {
       try {
         await navigator.clipboard.writeText(text);
-        alert("Thiết bị của bạn không hỗ trợ Web Share API. Chi tiết hóa đơn đã được SAO CHÉP tự động vào bộ nhớ tạm để bạn tự dán gửi Zalo/Messenger!");
+        toast.success("Sao chép thành công vào bộ nhớ tạm. Hãy dán gửi bạn bè!");
       } catch (err) {
-        alert("Không thể sao chép. Hãy thử lại!");
+        toast.error("Không thể sao chép. Hãy thử lại!");
       }
     }
   };
@@ -905,7 +906,8 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
               <span className="text-xs text-slate-500 font-black uppercase tracking-wide block">Chưa Tìm Thấy Cuộc Nhậu Nào!</span>
             </div>
           ) : (
-            filteredBills.map((bill) => {
+            <AnimatePresence>
+              {filteredBills.map((bill, index) => {
               const isExpanded = expandedBillId === bill.id;
               const dateObj = new Date(bill.date);
               const formattedDate = `${dateObj.getDate()} Thg ${dateObj.getMonth() + 1}, ${dateObj.getFullYear()}`;
@@ -916,8 +918,13 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
               const hostName = hosts.length > 0 ? hosts.map(h => h.name).join(', ') : 'Thành viên chia tại bàn';
 
               return (
-                <div 
+                <motion.div 
                   key={bill.id} 
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.3, delay: index * 0.05, type: "spring", stiffness: 300, damping: 25 }}
+                  whileHover={{ y: -4 }}
                   className={`border-3 border-slate-900 rounded-[24px] overflow-hidden transition-all duration-300 ${isExpanded ? 'bg-orange-50/15 shadow-sm' : 'bg-slate-50/30'}`}
                 >
                   {/* Collapsible Trigger Row */}
@@ -1100,9 +1107,10 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
                       </div>
                     </div>
                   )}
-                </div>
+                </motion.div>
               );
-            })
+            })}
+            </AnimatePresence>
           )}
         </div>
       </div>

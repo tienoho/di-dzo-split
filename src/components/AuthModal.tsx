@@ -8,7 +8,7 @@ import {
   signInWithGoogle
 } from '../lib/firebase';
 import { Mail, Lock, User, Sparkles, AlertCircle, X, ShieldAlert, Check, CheckCircle2 } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion } from 'framer-motion';
 
 interface AuthModalProps {
   currentUser: FirebaseUser | null;
@@ -52,12 +52,13 @@ export default function AuthModal({ currentUser, onClose, onSuccess }: AuthModal
         await updateProfile(userCredential.user, {
           displayName: displayName.trim()
         });
-
-        setSuccessMsg('Đăng ký tài khoản sòng phẳng thành công! 🎉');
+        
+        setSuccessMsg(`Chào mừng ${displayName.trim()} đến với bàn nhậu! 🍻`);
         setTimeout(() => {
           onSuccess(userCredential.user, displayName.trim());
           onClose();
         }, 1500);
+
       } else {
         // Sign in
         const userCredential = await signInWithEmailAndPassword(
@@ -66,8 +67,8 @@ export default function AuthModal({ currentUser, onClose, onSuccess }: AuthModal
           password
         );
         
-        const nameToUse = userCredential.user.displayName || userCredential.user.email?.split('@')[0] || 'Chiến hữu';
-        setSuccessMsg(`Chào mừng bạng ${nameToUse} đã trở lại bàn nhậu! 🍻`);
+        const nameToUse = userCredential.user.displayName || email.split('@')[0];
+        setSuccessMsg(`Đã đăng nhập thành công. Chào mừng trở lại, ${nameToUse}! 🥂`);
         setTimeout(() => {
           onSuccess(userCredential.user, nameToUse);
           onClose();
@@ -75,19 +76,13 @@ export default function AuthModal({ currentUser, onClose, onSuccess }: AuthModal
       }
     } catch (err: any) {
       console.error(err);
-      let translatedError = err.message;
-      if (err.code === 'auth/email-already-in-use') {
-        translatedError = 'Email này đã được sử dụng rồi!';
-      } else if (err.code === 'auth/invalid-email') {
-        translatedError = 'Địa chỉ email không hợp lệ!';
-      } else if (err.code === 'auth/weak-password') {
-        translatedError = 'Mật khẩu yếu, vui lòng lấy khó hơn chút!';
-      } else if (err.code === 'auth/missing-password') {
-        translatedError = 'Vui lòng cung cấp mật khẩu mật!';
-      } else if (err.code === 'auth/invalid-credential') {
-        translatedError = 'Thông tin đăng nhập email hoặc mật khẩu không chính xác!';
-      }
-      setError(translatedError);
+      let errMsg = 'Đã có lỗi xảy ra. Vui lòng thử lại sau.';
+      if (err.code === 'auth/email-already-in-use') errMsg = 'Email này đã được đăng ký!';
+      if (err.code === 'auth/invalid-credential') errMsg = 'Sai email hoặc mật khẩu!';
+      if (err.code === 'auth/weak-password') errMsg = 'Mật khẩu quá yếu!';
+      if (err.code === 'auth/too-many-requests') errMsg = 'Nhập sai quá nhiều lần. Vui lòng thử lại sau!';
+      
+      setError(errMsg);
     } finally {
       setLoading(false);
     }
@@ -125,16 +120,20 @@ export default function AuthModal({ currentUser, onClose, onSuccess }: AuthModal
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
-      <div 
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
         className="absolute inset-0 bg-slate-900/60 backdrop-blur-xs cursor-pointer"
         onClick={onClose}
       />
 
       {/* Frame Container */}
       <motion.div
-        initial={{ scale: 0.95, opacity: 0, y: 15 }}
+        initial={{ scale: 0.8, opacity: 0, y: 50 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
-        exit={{ scale: 0.95, opacity: 0, y: 15 }}
+        exit={{ scale: 0.8, opacity: 0, y: 50 }}
+        transition={{ type: "spring", stiffness: 400, damping: 25 }}
         className="relative bg-white dark:bg-slate-900 w-full max-w-md border-4 border-slate-900 dark:border-slate-700 rounded-[32px] shadow-2xl p-6 md:p-8 overflow-hidden z-10 text-slate-800 dark:text-slate-100"
       >
         {/* Close Button */}
