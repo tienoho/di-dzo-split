@@ -8,6 +8,8 @@ import DebtReminders from './components/DebtReminders';
 import AIRecommendations from './components/AIRecommendations';
 import SoloDining from './components/SoloDining';
 import ContactManager from './components/ContactManager';
+import PublicBillViewerModal from './components/PublicBillViewerModal';
+import { resolveBillFromUrl } from './utils/shareLink';
 import { useCloudSync } from './hooks/useCloudSync';
 import { useFCM } from './hooks/useFCM';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -121,6 +123,30 @@ export default function App() {
   
   // System alert / Push notification state
   const [systAlert, setSystAlert] = useState<{ title: string; message: string; type: 'warning' | 'info' | 'success'; debtId?: string } | null>(null);
+
+  // State for viewing public shared bill via URL
+  const [publicViewingBill, setPublicViewingBill] = useState<Bill | null>(null);
+
+  // Check URL parameters on mount to automatically open shared bill viewer
+  useEffect(() => {
+    if (window.location.search) {
+      resolveBillFromUrl(window.location.search)
+        .then((bill) => {
+          if (bill) {
+            setPublicViewingBill(bill);
+          }
+        })
+        .catch(console.error);
+    }
+  }, []);
+
+  const handleClosePublicBillModal = () => {
+    setPublicViewingBill(null);
+    // Clean up URL query parameters without page reload
+    if (window.history.replaceState) {
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  };
 
   // Import and use custom hooks for background sync and FCM
   useCloudSync({
@@ -880,6 +906,16 @@ export default function App() {
               setActiveCreatorName(name);
               setShowAuthModal(false);
             }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* PUBLIC SHARED BILL VIEWER MODAL */}
+      <AnimatePresence>
+        {publicViewingBill && (
+          <PublicBillViewerModal 
+            bill={publicViewingBill}
+            onClose={handleClosePublicBillModal}
           />
         )}
       </AnimatePresence>

@@ -414,6 +414,52 @@ export const addPublicVenueReviewCloud = async (
   }
 };
 
+// Save a bill to public_bills collection for shareable web links
+export const savePublicBillToCloud = async (bill: Bill): Promise<void> => {
+  try {
+    const docRef = doc(db, 'public_bills', bill.id);
+    const sanitized = sanitizeFirestoreData(bill);
+    await setDoc(docRef, {
+      ...sanitized,
+      sharedAt: new Date().toISOString()
+    });
+  } catch (error) {
+    console.warn("Could not save bill to public cloud, relying on URL encoding fallback:", error);
+  }
+};
+
+// Fetch a public bill by ID from public_bills collection
+export const fetchPublicBillFromCloud = async (billId: string): Promise<Bill | null> => {
+  try {
+    const docRef = doc(db, 'public_bills', billId);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+      return {
+        id: docSnap.id,
+        venueId: data.venueId || 'shared-venue',
+        venueName: data.venueName || 'Quán nhậu',
+        totalAmount: data.totalAmount || 0,
+        rawAmount: data.rawAmount || data.totalAmount || 0,
+        tipPercent: data.tipPercent || 0,
+        tipAmount: data.tipAmount || 0,
+        additionalFee: data.additionalFee || 0,
+        discountAmount: data.discountAmount || 0,
+        date: data.date || new Date().toISOString(),
+        members: Array.isArray(data.members) ? data.members : [],
+        splitType: data.splitType || 'equal',
+        note: data.note || '',
+        receiptImage: data.receiptImage || undefined,
+        isArchived: data.isArchived ?? false
+      };
+    }
+    return null;
+  } catch (error) {
+    console.warn("Could not fetch public bill from cloud:", error);
+    return null;
+  }
+};
+
 // Google login Helper
 export const signInWithGoogle = async (): Promise<FirebaseUser> => {
   const provider = new GoogleAuthProvider();

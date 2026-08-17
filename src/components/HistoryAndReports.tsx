@@ -3,6 +3,7 @@ import { Bill } from '../types';
 import { Calendar, Search, FileDown, TrendingUp, DollarSign, Users, Store, Trash, ChevronDown, ChevronUp, Archive, Inbox, Filter, Clock, HelpCircle, X, PieChart, Sparkles, Brain, Coins, AlertTriangle, Share2, Copy } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
+import { generateShareableBillUrl } from '../utils/shareLink';
 
 interface HistoryAndReportsProps {
   bills: Bill[];
@@ -228,7 +229,8 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
     const dateObj = new Date(bill.date);
     const friendlyDate = `${dateObj.getDate()} Thg ${dateObj.getMonth() + 1}, ${dateObj.getFullYear()}`;
     const formattedTime = `${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
-    
+    const shareUrl = await generateShareableBillUrl(bill);
+
     let text = `🍻 Hóa đơn: ${bill.venueName}\n`;
     text += `📅 Ngày: ${friendlyDate} lúc ${formattedTime}\n`;
     text += `💰 Tổng bill: ${bill.totalAmount.toLocaleString('vi-VN')} đ\n\n`;
@@ -254,7 +256,7 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
       text += `\n📝 Ghi chú: ${bill.note}`;
     }
     
-    text += `\n\nQuản lý tại: ${window.location.origin}`;
+    text += `\n\n🔗 Xem chi tiết trực tiếp trên web:\n${shareUrl}`;
 
     if (navigator.share) {
       try {
@@ -272,6 +274,17 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
       } catch (err) {
         toast.error("Không thể sao chép. Hãy thử lại!");
       }
+    }
+  };
+
+  // Direct copy of the web viewing link
+  const handleCopyBillLink = async (bill: Bill) => {
+    try {
+      const shareUrl = await generateShareableBillUrl(bill);
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success("Đã sao chép Link Web xem hóa đơn! 🔗");
+    } catch (err) {
+      toast.error("Không thể sao chép link.");
     }
   };
 
@@ -1066,12 +1079,24 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
+                            handleCopyBillLink(bill);
+                          }}
+                          className="mr-3 text-xs font-black text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 flex items-center gap-1.5 cursor-pointer bg-indigo-100/30 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 border-2 border-indigo-300 dark:border-indigo-700 p-3 px-4 rounded-xl transition-all"
+                          title="Sao chép link web để gửi bạn bè mở xem hóa đơn trực tiếp"
+                        >
+                          <Copy className="w-4 h-4" />
+                          <span className="hidden sm:inline">Sao chép Link Web</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
                             handleShareBill(bill);
                           }}
                           className="mr-3 text-xs font-black text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 flex items-center gap-1.5 cursor-pointer bg-blue-100/30 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 border-2 border-blue-300 dark:border-blue-700 p-3 px-4 rounded-xl transition-all"
                         >
                           <Share2 className="w-4 h-4" />
-                          <span className="hidden sm:inline">Chia sẻ hóa đơn</span>
+                          <span className="hidden sm:inline">Chia sẻ tin nhắn</span>
                         </button>
                         <button
                           onClick={(e) => {
