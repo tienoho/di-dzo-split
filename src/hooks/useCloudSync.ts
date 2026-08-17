@@ -5,6 +5,8 @@ import {
   fetchVenuesFromCloud, 
   fetchBillsFromCloud, 
   fetchContactsFromCloud,
+  syncVenuesToCloud,
+  syncBillsToCloud,
   FirebaseUser
 } from '../lib/firebase';
 import { getStoredVenues, saveStoredVenues, getStoredBills, saveStoredBills, getActiveDebts } from '../utils/storage';
@@ -59,15 +61,35 @@ export function useCloudSync({
           const cloudBills = await fetchBillsFromCloud(user.uid);
           const cloudContacts = await fetchContactsFromCloud(user.uid);
           
-          setVenues(cloudVenues);
-          setBills(cloudBills);
-          setDebts(getActiveDebts(cloudBills));
-          setContacts(cloudContacts);
+          let finalVenues = cloudVenues;
+          let finalBills = cloudBills;
+          let finalContacts = cloudContacts;
+
+          // If brand-new or empty cloud account, automatically migrate offline guest bills & venues
+          if (cloudBills.length === 0 && cachedBills.length === 0) {
+            const guestBills = getStoredBills('guest');
+            const guestVenues = getStoredVenues('guest');
+            if (guestBills.length > 0 || guestVenues.length > 0) {
+              if (guestBills.length > 0) {
+                await syncBillsToCloud(user.uid, guestBills);
+                finalBills = guestBills;
+              }
+              if (guestVenues.length > 0) {
+                await syncVenuesToCloud(user.uid, guestVenues);
+                finalVenues = guestVenues;
+              }
+            }
+          }
+
+          setVenues(finalVenues);
+          setBills(finalBills);
+          setDebts(getActiveDebts(finalBills));
+          setContacts(finalContacts);
 
           // Save cloud data directly to user's local cache
-          saveStoredVenues(cloudVenues, user.uid);
-          saveStoredBills(cloudBills, user.uid);
-          localStorage.setItem(`nhau_contacts_${user.uid}`, JSON.stringify(cloudContacts));
+          saveStoredVenues(finalVenues, user.uid);
+          saveStoredBills(finalBills, user.uid);
+          localStorage.setItem(`nhau_contacts_${user.uid}`, JSON.stringify(finalContacts));
         } catch (err) {
           console.error("Error synchronizing with Firestore, retaining local cache:", err);
           const localVenues = getStoredVenues(user.uid);

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { 
+  auth,
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
   updateProfile,
@@ -42,8 +43,7 @@ export default function AuthModal({ currentUser, onClose, onSuccess }: AuthModal
 
         // Create user
         const userCredential = await createUserWithEmailAndPassword(
-          // Ensure correct instance import and call
-          requireFirebaseInternalAuth(), 
+          auth, 
           email.trim(), 
           password
         );
@@ -62,7 +62,7 @@ export default function AuthModal({ currentUser, onClose, onSuccess }: AuthModal
       } else {
         // Sign in
         const userCredential = await signInWithEmailAndPassword(
-          requireFirebaseInternalAuth(),
+          auth,
           email.trim(),
           password
         );
@@ -110,12 +110,6 @@ export default function AuthModal({ currentUser, onClose, onSuccess }: AuthModal
       setLoading(false);
     }
   };
-
-  // Safe client auth import
-  function requireFirebaseInternalAuth() {
-    const { auth } = require('../lib/firebase');
-    return auth;
-  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
