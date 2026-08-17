@@ -2,7 +2,7 @@ import { Bill } from '../types';
 import { savePublicBillToCloud, fetchPublicBillFromCloud } from '../lib/firebase';
 
 /**
- * Encode compact bill details into a base64 string safe for URLs
+ * Encode compact bill details into a base64 string safe for URLs (legacy/offline fallback)
  */
 export function compressBillForUrl(bill: Bill): string {
   try {
@@ -90,8 +90,8 @@ export function decompressBillFromUrl(encoded: string): Bill | null {
 }
 
 /**
- * Generate a complete, shareable web link to view a bill.
- * Proactively saves to Cloud (for short link) and includes encoded fallback.
+ * Generate a clean, concise, short shareable web link to view a bill.
+ * Automatically saves the enriched bill to Cloud Firestore `public_bills`.
  */
 export async function generateShareableBillUrl(bill: Bill): Promise<string> {
   const origin = window.location.origin + window.location.pathname;
@@ -104,35 +104,54 @@ export async function generateShareableBillUrl(bill: Bill): Promise<string> {
     bankAccountName: bill.bankAccountName || localStorage.getItem('nhau_bank_account_name') || ''
   };
 
-  // Save to public collection on Firebase
-  savePublicBillToCloud(enrichedBill).catch(console.warn);
-
-  const encodedPayload = compressBillForUrl(enrichedBill);
-  if (encodedPayload) {
-    return `${origin}?b=${encodedPayload}`;
+  // Asynchronously save to public collection on Firebase for 100% cloud availability
+  try {
+    await savePublicBillToCloud(enrichedBill);
+  } catch (e) {
+    console.warn("Public cloud save skipped, falling back:", e);
   }
-  return `${origin}?bill=${bill.id}`;
+
+  // Return clean, short link
+  return `${origin}?b=${enrichedBill.id}`;
 }
 
 /**
- * Resolve a bill from either the URL parameter or Cloud storage
+ * Resolve a bill from either a Short Bill ID or Legacy Compressed URL parameter
  */
 export async function resolveBillFromUrl(search: string): Promise<Bill | null> {
   const params = new URLSearchParams(search);
-  
-  // 1. Try compressed payload (0ms instant offline decode)
-  const encodedPayload = params.get('b');
-  if (encodedPayload) {
-    const decoded = decompressBillFromUrl(encodedPayload);
-    if (decoded) return decoded;
+  const paramVal = params.get('b') || params.get('bill') || params.get('billId');
+  if (!paramVal) return null;
+
+  // 1. If it's a short ID (clean short link), fetch from Firestore public_bills
+  if (paramVal.length < 80) {
+    try {
+      const cloudBill = await fetchPublicBillFromCloud(paramVal);
+      if (cloudBill) return cloudBill;
+    } catch (e) {
+      console.warn("[Short Link] Cloud fetch failed, trying local fallbacks:", e);
+    }
   }
 
-  // 2. Try bill ID from Firestore or Local Cache
-  const billId = params.get('bill') || params.get('billId');
-  if (billId) {
-    const cloudBill = await fetchPublicBillFromCloud(billId);
+  // 2. Try decompressing base64 payload (for legacy long links)
+  try {
+    const decoded = decompressBillFromUrl(paramVal);
+    if (decoded) return decoded;
+  } catch (e) {}
+
+  // 3. Fallback: check local storage cache if available on this browser
+  try {
+    const { getStoredBills } = await import('./storage');
+    const localBills = getStoredBills();
+    const found = localBills.find(b => b.id === paramVal);
+    if (found) return found;
+  } catch (e) {}
+
+  // 4. Last try fetch from cloud in case it was a long ID
+  try {
+    const cloudBill = await fetchPublicBillFromCloud(paramVal);
     if (cloudBill) return cloudBill;
-  }
+  } catch (e) {}
 
   return null;
 }

@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
+import { generateShareableBillUrl } from '../utils/shareLink';
 
 interface PublicBillViewerModalProps {
   bill: Bill;
@@ -112,9 +113,10 @@ export default function PublicBillViewerModal({ bill, onClose }: PublicBillViewe
 
   const handleCopyLink = async () => {
     try {
-      await navigator.clipboard.writeText(window.location.href);
+      const shortUrl = await generateShareableBillUrl(bill);
+      await navigator.clipboard.writeText(shortUrl);
       setCopiedLink(true);
-      toast.success("Đã sao chép Link xem hóa đơn vào bộ nhớ tạm! 🔗");
+      toast.success("Đã sao chép Link rút gọn xem hóa đơn! 🔗");
       setTimeout(() => setCopiedLink(false), 2500);
     } catch (e) {
       toast.error("Không thể sao chép link.");
@@ -122,6 +124,7 @@ export default function PublicBillViewerModal({ bill, onClose }: PublicBillViewe
   };
 
   const handleShareText = async () => {
+    const shortUrl = await generateShareableBillUrl(bill);
     let text = `🍻 HÓA ĐƠN CUỘC NHẬU: ${bill.venueName}\n`;
     text += `📅 Thời gian: ${friendlyDate} ${friendlyTime ? `lúc ${friendlyTime}` : ''}\n`;
     text += `💰 Tổng hóa đơn: ${bill.totalAmount.toLocaleString('vi-VN')} đ\n\n`;
@@ -149,7 +152,7 @@ export default function PublicBillViewerModal({ bill, onClose }: PublicBillViewe
       if (bankAccountName) text += `👤 Chủ TK: ${bankAccountName.toUpperCase()}\n`;
     }
 
-    text += `\n🔗 Link xem chi tiết trực tiếp trên web & quét QR:\n${window.location.href}`;
+    text += `\n🔗 Link xem chi tiết trực tiếp trên web & quét QR:\n${shortUrl}`;
 
     if (navigator.share) {
       try {
