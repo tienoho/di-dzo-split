@@ -1,13 +1,13 @@
 import { useEffect } from 'react';
 import { 
   auth, 
-  onAuthStateChanged,
-  fetchVenuesFromCloud,
-  fetchBillsFromCloud,
+  onAuthStateChanged, 
+  fetchVenuesFromCloud, 
+  fetchBillsFromCloud, 
   fetchContactsFromCloud,
   FirebaseUser
 } from '../lib/firebase';
-import { getStoredVenues, getStoredBills, getActiveDebts } from '../utils/storage';
+import { getStoredVenues, saveStoredVenues, getStoredBills, saveStoredBills, getActiveDebts } from '../utils/storage';
 import { Venue, Bill, Debt } from '../types';
 
 interface UseCloudSyncProps {
@@ -37,45 +37,38 @@ export function useCloudSync({
         if (user.displayName) {
           setActiveCreatorName(user.displayName);
         }
+
+        // Fast load from user-scoped local cache first
+        const cachedVenues = getStoredVenues(user.uid);
+        const cachedBills = getStoredBills(user.uid);
+        const cachedContacts = JSON.parse(localStorage.getItem(`nhau_contacts_${user.uid}`) || '{}');
+        
+        if (cachedVenues.length > 0 || cachedBills.length > 0 || Object.keys(cachedContacts).length > 0) {
+          setVenues(cachedVenues);
+          setBills(cachedBills);
+          setDebts(getActiveDebts(cachedBills));
+          setContacts(cachedContacts);
+        }
         
         try {
           const cloudVenues = await fetchVenuesFromCloud(user.uid);
           const cloudBills = await fetchBillsFromCloud(user.uid);
           const cloudContacts = await fetchContactsFromCloud(user.uid);
           
-          if (cloudVenues.length > 0 || cloudBills.length > 0 || Object.keys(cloudContacts).length > 0) {
-            setVenues(cloudVenues);
-            setBills(cloudBills);
-            setDebts(getActiveDebts(cloudBills));
-            setContacts(cloudContacts);
-            localStorage.setItem('nhau_contacts', JSON.stringify(cloudContacts));
-          } else {
-            // New user scenario: auto-sync existing offline storage to active cloud
-            const localVenues = getStoredVenues();
-            const localBills = getStoredBills();
-            const localContacts = JSON.parse(localStorage.getItem('nhau_contacts') || '{}');
-            
-            const { syncVenuesToCloud, syncBillsToCloud, syncContactsToCloud } = await import('../lib/firebase');
-            if (localVenues.length > 0) {
-              await syncVenuesToCloud(user.uid, localVenues);
-            }
-            if (localBills.length > 0) {
-              await syncBillsToCloud(user.uid, localBills);
-            }
-            if (Object.keys(localContacts).length > 0) {
-              await syncContactsToCloud(user.uid, localContacts);
-            }
-            setVenues(localVenues);
-            setBills(localBills);
-            setDebts(getActiveDebts(localBills));
-            setContacts(localContacts);
-          }
+          setVenues(cloudVenues);
+          setBills(cloudBills);
+          setDebts(getActiveDebts(cloudBills));
+          setContacts(cloudContacts);
+
+          // Save cloud data directly to user's local cache
+          saveStoredVenues(cloudVenues, user.uid);
+          saveStoredBills(cloudBills, user.uid);
+          localStorage.setItem(`nhau_contacts_${user.uid}`, JSON.stringify(cloudContacts));
         } catch (err) {
-          console.error("Error synchronizing with Firestore:", err);
-          // Fallback to local
-          const localVenues = getStoredVenues();
-          const localBills = getStoredBills();
-          const localContacts = JSON.parse(localStorage.getItem('nhau_contacts') || '{}');
+          console.error("Error synchronizing with Firestore, retaining local cache:", err);
+          const localVenues = getStoredVenues(user.uid);
+          const localBills = getStoredBills(user.uid);
+          const localContacts = JSON.parse(localStorage.getItem(`nhau_contacts_${user.uid}`) || '{}');
           setVenues(localVenues);
           setBills(localBills);
           setDebts(getActiveDebts(localBills));
@@ -83,14 +76,14 @@ export function useCloudSync({
         }
       } else {
         setCurrentUser(null);
-        // Clean session and reload offline guest records
-        const localVenues = getStoredVenues();
-        const localBills = getStoredBills();
-        const localContacts = JSON.parse(localStorage.getItem('nhau_contacts') || '{}');
-        setVenues(localVenues);
-        setBills(localBills);
-        setDebts(getActiveDebts(localBills));
-        setContacts(localContacts);
+        // Clean session and reload offline guest records safely
+        const guestVenues = getStoredVenues('guest');
+        const guestBills = getStoredBills('guest');
+        const guestContacts = JSON.parse(localStorage.getItem('nhau_contacts_guest') || localStorage.getItem('nhau_contacts') || '{}');
+        setVenues(guestVenues);
+        setBills(guestBills);
+        setDebts(getActiveDebts(guestBills));
+        setContacts(guestContacts);
       }
       setAuthChecking(false);
     });

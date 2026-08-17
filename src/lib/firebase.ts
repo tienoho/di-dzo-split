@@ -102,13 +102,35 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   throw new Error(JSON.stringify(errInfo));
 }
 
+// Recursive sanitizer to strip undefined values preventing Firestore setDoc/writeBatch errors
+export function sanitizeFirestoreData<T>(data: T): T {
+  if (data === null || data === undefined) {
+    return data;
+  }
+  if (Array.isArray(data)) {
+    return data
+      .filter((item) => item !== undefined)
+      .map((item) => sanitizeFirestoreData(item)) as unknown as T;
+  }
+  if (typeof data === 'object') {
+    const cleanObj: Record<string, any> = {};
+    for (const [key, val] of Object.entries(data)) {
+      if (val !== undefined) {
+        cleanObj[key] = sanitizeFirestoreData(val);
+      }
+    }
+    return cleanObj as T;
+  }
+  return data;
+}
+
 // Firestore utilities for sync
 export const syncVenuesToCloud = async (userId: string, venues: Venue[]) => {
   try {
     const batch = writeBatch(db);
     venues.forEach((venue) => {
       const venueRef = doc(db, 'users', userId, 'venues', venue.id);
-      batch.set(venueRef, { ...venue, userId });
+      batch.set(venueRef, sanitizeFirestoreData({ ...venue, userId }));
     });
     await batch.commit();
   } catch (error) {
@@ -121,7 +143,7 @@ export const syncBillsToCloud = async (userId: string, bills: Bill[]) => {
     const batch = writeBatch(db);
     bills.forEach((bill) => {
       const billRef = doc(db, 'users', userId, 'bills', bill.id);
-      batch.set(billRef, { ...bill, userId });
+      batch.set(billRef, sanitizeFirestoreData({ ...bill, userId }));
     });
     await batch.commit();
   } catch (error) {
@@ -171,7 +193,9 @@ export const fetchBillsFromCloud = async (userId: string): Promise<Bill[]> => {
         totalAmount: data.totalAmount || 0,
         splitType: data.splitType || 'equal',
         note: data.note || '',
-        members: data.members || []
+        members: data.members || [],
+        receiptImage: data.receiptImage || undefined,
+        isArchived: data.isArchived || false
       });
     });
     return bills;
@@ -183,7 +207,7 @@ export const fetchBillsFromCloud = async (userId: string): Promise<Bill[]> => {
 export const saveVenueToCloud = async (userId: string, venue: Venue) => {
   try {
     const venueRef = doc(db, 'users', userId, 'venues', venue.id);
-    await setDoc(venueRef, { ...venue, userId });
+    await setDoc(venueRef, sanitizeFirestoreData({ ...venue, userId }));
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, `users/${userId}/venues/${venue.id}`);
   }
@@ -192,7 +216,7 @@ export const saveVenueToCloud = async (userId: string, venue: Venue) => {
 export const saveBillToCloud = async (userId: string, bill: Bill) => {
   try {
     const billRef = doc(db, 'users', userId, 'bills', bill.id);
-    await setDoc(billRef, { ...bill, userId });
+    await setDoc(billRef, sanitizeFirestoreData({ ...bill, userId }));
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, `users/${userId}/bills/${bill.id}`);
   }
@@ -213,6 +237,24 @@ export const deleteBillFromCloud = async (userId: string, billId: string) => {
     await deleteDoc(billRef);
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, `users/${userId}/bills/${billId}`);
+  }
+};
+
+export const clearUserCloudData = async (userId: string) => {
+  try {
+    const subcollections = ['bills', 'venues', 'solo_meals', 'contacts', 'solo_settings'];
+    for (const subcol of subcollections) {
+      const q = query(collection(db, 'users', userId, subcol));
+      const snap = await getDocs(q);
+      const batch = writeBatch(db);
+      snap.forEach((d) => {
+        batch.delete(d.ref);
+      });
+      await batch.commit();
+    }
+    console.log(`[Firestore] Successfully cleared cloud data for user ${userId}`);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, `users/${userId}/[all]`);
   }
 };
 
@@ -513,7 +555,7 @@ export const fetchSoloMealsFromCloud = async (userId: string): Promise<SoloMeal[
 export const saveSoloMealToCloud = async (userId: string, meal: SoloMeal) => {
   try {
     const mealRef = doc(db, 'users', userId, 'solo_meals', meal.id);
-    await setDoc(mealRef, { ...meal, userId });
+    await setDoc(mealRef, sanitizeFirestoreData({ ...meal, userId }));
     console.log(`[Firestore] Successfully saved solo meal ${meal.id}`);
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, `users/${userId}/solo_meals/${meal.id}`);
@@ -533,7 +575,7 @@ export const deleteSoloMealFromCloud = async (userId: string, mealId: string) =>
 export const saveSoloBudgetToCloud = async (userId: string, budget: number) => {
   try {
     const budgetRef = doc(db, 'users', userId, 'solo_settings', 'settings');
-    await setDoc(budgetRef, { monthlyBudget: budget });
+    await setDoc(budgetRef, sanitizeFirestoreData({ monthlyBudget: budget }));
     console.log(`[Firestore] Successfully saved solo budget to ${budget}`);
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, `users/${userId}/solo_settings/settings`);
@@ -574,11 +616,11 @@ export const fetchContactsFromCloud = async (userId: string): Promise<Record<str
 export const saveContactToCloud = async (userId: string, name: string, phone: string, messenger: string) => {
   try {
     const contactRef = doc(db, 'users', userId, 'contacts', name);
-    await setDoc(contactRef, {
+    await setDoc(contactRef, sanitizeFirestoreData({
       phone: phone.trim(),
       messenger: messenger.trim(),
       updatedAt: new Date().toISOString()
-    });
+    }));
     console.log(`[Firestore] Successfully saved contact ${name}`);
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, `users/${userId}/contacts/${name}`);
@@ -600,11 +642,11 @@ export const syncContactsToCloud = async (userId: string, contacts: Record<strin
     const batch = writeBatch(db);
     Object.entries(contacts).forEach(([name, data]) => {
       const contactRef = doc(db, 'users', userId, 'contacts', name);
-      batch.set(contactRef, {
+      batch.set(contactRef, sanitizeFirestoreData({
         phone: (data.phone || '').trim(),
         messenger: (data.messenger || '').trim(),
         updatedAt: new Date().toISOString()
-      });
+      }));
     });
     await batch.commit();
     console.log(`[Firestore] Successfully batch synced ${Object.keys(contacts).length} contacts.`);

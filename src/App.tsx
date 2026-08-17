@@ -32,9 +32,9 @@ import {
 import AuthModal from './components/AuthModal';
 
 export default function App() {
-  const [venues, setVenues] = useState<Venue[]>([]);
-  const [bills, setBills] = useState<Bill[]>([]);
-  const [debts, setDebts] = useState<Debt[]>([]);
+  const [venues, setVenues] = useState<Venue[]>(() => getStoredVenues('guest'));
+  const [bills, setBills] = useState<Bill[]>(() => getStoredBills('guest'));
+  const [debts, setDebts] = useState<Debt[]>(() => getActiveDebts(getStoredBills('guest')));
   
   // Auth states
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
@@ -46,7 +46,7 @@ export default function App() {
 
   // Contacts State
   const [contacts, setContacts] = useState<Record<string, { phone?: string; messenger?: string }>>(() => {
-    const local = localStorage.getItem('nhau_contacts');
+    const local = localStorage.getItem('nhau_contacts_guest') || localStorage.getItem('nhau_contacts');
     if (local) {
       try { return JSON.parse(local); } catch (e) { return {}; }
     }
@@ -59,7 +59,8 @@ export default function App() {
       [name]: { phone: phone.trim(), messenger: messenger.trim() }
     };
     setContacts(updated);
-    localStorage.setItem('nhau_contacts', JSON.stringify(updated));
+    const key = currentUser ? `nhau_contacts_${currentUser.uid}` : 'nhau_contacts_guest';
+    localStorage.setItem(key, JSON.stringify(updated));
 
     if (currentUser) {
       try {
@@ -74,7 +75,8 @@ export default function App() {
     const updated = { ...contacts };
     delete updated[name];
     setContacts(updated);
-    localStorage.setItem('nhau_contacts', JSON.stringify(updated));
+    const key = currentUser ? `nhau_contacts_${currentUser.uid}` : 'nhau_contacts_guest';
+    localStorage.setItem(key, JSON.stringify(updated));
 
     if (currentUser) {
       try {
@@ -359,10 +361,9 @@ export default function App() {
     };
     const updated = [...venues, freshVenue];
     setVenues(updated);
+    saveStoredVenues(updated, currentUser?.uid);
 
-    if (!currentUser) {
-      saveStoredVenues(updated);
-    } else {
+    if (currentUser) {
       saveVenueToCloud(currentUser.uid, freshVenue).catch(console.error);
     }
     return freshVenue;
@@ -371,10 +372,9 @@ export default function App() {
   const handleDeleteVenue = (id: string) => {
     const updated = venues.filter(v => v.id !== id);
     setVenues(updated);
+    saveStoredVenues(updated, currentUser?.uid);
 
-    if (!currentUser) {
-      saveStoredVenues(updated);
-    } else {
+    if (currentUser) {
       deleteVenueFromCloud(currentUser.uid, id).catch(console.error);
     }
   };
@@ -398,16 +398,13 @@ export default function App() {
         return v;
       });
       setVenues(updatedVenues);
-      if (!currentUser) {
-        saveStoredVenues(updatedVenues);
-      }
+      saveStoredVenues(updatedVenues, currentUser?.uid);
     }
 
     const updatedBills = [freshBill, ...bills];
     setBills(updatedBills);
-    if (!currentUser) {
-      saveStoredBills(updatedBills);
-    } else {
+    saveStoredBills(updatedBills, currentUser?.uid);
+    if (currentUser) {
       saveBillToCloud(currentUser.uid, freshBill).catch(console.error);
     }
     setDebts(getActiveDebts(updatedBills));
@@ -428,16 +425,13 @@ export default function App() {
         return v;
       });
       setVenues(updatedVenues);
-      if (!currentUser) {
-        saveStoredVenues(updatedVenues);
-      }
+      saveStoredVenues(updatedVenues, currentUser?.uid);
     }
 
     const updatedBills = bills.filter(b => b.id !== id);
     setBills(updatedBills);
-    if (!currentUser) {
-      saveStoredBills(updatedBills);
-    } else {
+    saveStoredBills(updatedBills, currentUser?.uid);
+    if (currentUser) {
       deleteBillFromCloud(currentUser.uid, id).catch(console.error);
     }
     setDebts(getActiveDebts(updatedBills));
@@ -456,9 +450,7 @@ export default function App() {
     });
 
     setBills(updatedBills);
-    if (!currentUser) {
-      saveStoredBills(updatedBills);
-    }
+    saveStoredBills(updatedBills, currentUser?.uid);
     setDebts(getActiveDebts(updatedBills));
   };
 
@@ -482,9 +474,7 @@ export default function App() {
     });
 
     setBills(updatedBills);
-    if (!currentUser) {
-      saveStoredBills(updatedBills);
-    }
+    saveStoredBills(updatedBills, currentUser?.uid);
     setDebts(getActiveDebts(updatedBills));
   };
 

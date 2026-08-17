@@ -18,6 +18,7 @@ interface DebtSettingsPanelProps {
   setVapidKeyInput: (val: string) => void;
   handleTestFCMRegister: () => void;
   handleSelfTestFCMNotification: () => void;
+  currentUser?: any;
 }
 
 export default function DebtSettingsPanel({
@@ -28,16 +29,28 @@ export default function DebtSettingsPanel({
   pushEnabled, handleTogglePush,
   pushInterval, handleIntervalChange,
   vapidKeyInput, setVapidKeyInput,
-  handleTestFCMRegister, handleSelfTestFCMNotification
+  handleTestFCMRegister, handleSelfTestFCMNotification,
+  currentUser
 }: DebtSettingsPanelProps) {
   const [resetStep, setResetStep] = useState(0);
+  const [isResetting, setIsResetting] = useState(false);
 
-  const handleHardReset = () => {
+  const handleHardReset = async () => {
     if (resetStep === 0) {
       setResetStep(1);
-      setTimeout(() => setResetStep(0), 3000); // reset if they don't confirm in 3 seconds
+      setTimeout(() => setResetStep(0), 4000); // reset if they don't confirm in 4 seconds
     } else {
+      setIsResetting(true);
+      if (currentUser) {
+        try {
+          const { clearUserCloudData } = await import('../../lib/firebase');
+          await clearUserCloudData(currentUser.uid);
+        } catch (e) {
+          console.error("Failed to clear cloud data during hard reset:", e);
+        }
+      }
       localStorage.clear();
+      sessionStorage.clear();
       window.location.reload();
     }
   };
@@ -193,14 +206,19 @@ export default function DebtSettingsPanel({
       <div className="pt-4 border-t-2 border-dashed border-red-200 mt-4">
         <button
           type="button"
+          disabled={isResetting}
           onClick={handleHardReset}
           className={`w-full py-3 rounded-xl border-2 font-black text-xs transition-all flex items-center justify-center gap-2 ${
-            resetStep === 1 
-              ? 'bg-red-600 border-red-800 text-white animate-pulse' 
-              : 'bg-red-50 border-red-200 text-red-600 hover:bg-red-100 hover:border-red-300'
+            isResetting
+              ? 'bg-slate-400 border-slate-600 text-white cursor-not-allowed'
+              : resetStep === 1 
+                ? 'bg-red-600 border-red-800 text-white animate-pulse' 
+                : 'bg-red-50 border-red-200 text-red-600 hover:bg-red-100 hover:border-red-300'
           }`}
         >
-          {resetStep === 1 ? (
+          {isResetting ? (
+            '⏳ Đang xóa sạch dữ liệu...'
+          ) : resetStep === 1 ? (
             <>
               <AlertTriangle className="w-4 h-4" /> BẤM LẦN NỮA ĐỂ XÓA TẤT CẢ!
             </>
@@ -210,9 +228,9 @@ export default function DebtSettingsPanel({
             </>
           )}
         </button>
-        {resetStep === 1 && (
+        {resetStep === 1 && !isResetting && (
           <p className="text-center text-[10px] text-red-500 font-bold mt-2">
-            Hành động này sẽ xóa toàn bộ hóa đơn, địa điểm và cài đặt của bạn!
+            Hành động này sẽ xóa toàn bộ hóa đơn, địa điểm và cài đặt của bạn trên cả máy và đám mây!
           </p>
         )}
       </div>

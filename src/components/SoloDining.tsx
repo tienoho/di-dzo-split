@@ -74,31 +74,10 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
 
   // Load initial solo meals & budget settings
   useEffect(() => {
-    const loadSoloData = async () => {
-      setLoading(true);
-      if (currentUser) {
-        try {
-          const cloudMeals = await fetchSoloMealsFromCloud(currentUser.uid);
-          setSoloMeals(cloudMeals);
-          const cloudBudget = await fetchSoloBudgetFromCloud(currentUser.uid);
-          if (cloudBudget !== null) {
-            setMonthlyBudget(cloudBudget);
-            setBudgetInput(String(cloudBudget));
-          } else {
-            setBudgetInput(String(monthlyBudget));
-          }
-        } catch (e) {
-          console.error("Failed to fetch cloud solo dining data, falling back to local:", e);
-          loadLocalData();
-        }
-      } else {
-        loadLocalData();
-      }
-      setLoading(false);
-    };
+    const userKey = currentUser ? currentUser.uid : 'guest';
 
     const loadLocalData = () => {
-      const cachedMeals = localStorage.getItem('nhau_solo_meals');
+      const cachedMeals = localStorage.getItem(`nhau_solo_meals_${userKey}`) || localStorage.getItem('nhau_solo_meals');
       if (cachedMeals) {
         try {
           setSoloMeals(JSON.parse(cachedMeals));
@@ -106,7 +85,7 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
           console.error(e);
         }
       }
-      const cachedBudget = localStorage.getItem('nhau_solo_budget');
+      const cachedBudget = localStorage.getItem(`nhau_solo_budget_${userKey}`) || localStorage.getItem('nhau_solo_budget');
       if (cachedBudget) {
         setMonthlyBudget(parseInt(cachedBudget, 10));
         setBudgetInput(cachedBudget);
@@ -115,15 +94,38 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
       }
     };
 
+    const loadSoloData = async () => {
+      setLoading(true);
+      // Fast load from local storage first
+      loadLocalData();
+
+      if (currentUser) {
+        try {
+          const cloudMeals = await fetchSoloMealsFromCloud(currentUser.uid);
+          setSoloMeals(cloudMeals);
+          localStorage.setItem(`nhau_solo_meals_${currentUser.uid}`, JSON.stringify(cloudMeals));
+
+          const cloudBudget = await fetchSoloBudgetFromCloud(currentUser.uid);
+          if (cloudBudget !== null) {
+            setMonthlyBudget(cloudBudget);
+            setBudgetInput(String(cloudBudget));
+            localStorage.setItem(`nhau_solo_budget_${currentUser.uid}`, String(cloudBudget));
+          }
+        } catch (e) {
+          console.error("Failed to fetch cloud solo dining data, retaining local cache:", e);
+        }
+      }
+      setLoading(false);
+    };
+
     loadSoloData();
   }, [currentUser]);
 
-  // Sync to local storage if not logged in
+  // Sync to local storage always (Optimistic Offline-First)
   const persistMeals = async (updatedMeals: SoloMeal[]) => {
     setSoloMeals(updatedMeals);
-    if (!currentUser) {
-      localStorage.setItem('nhau_solo_meals', JSON.stringify(updatedMeals));
-    }
+    const userKey = currentUser ? currentUser.uid : 'guest';
+    localStorage.setItem(`nhau_solo_meals_${userKey}`, JSON.stringify(updatedMeals));
   };
 
   const handleSaveBudget = async () => {
@@ -133,7 +135,9 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
     setMonthlyBudget(limit);
     setShowBudgetForm(false);
     
-    localStorage.setItem('nhau_solo_budget', String(limit));
+    const userKey = currentUser ? currentUser.uid : 'guest';
+    localStorage.setItem(`nhau_solo_budget_${userKey}`, String(limit));
+
     if (currentUser) {
       try {
         await saveSoloBudgetToCloud(currentUser.uid, limit);

@@ -506,6 +506,7 @@ Xin chân thành cảm ơn!`;
           setVapidKeyInput={setVapidKeyInput}
           handleTestFCMRegister={handleTestFCMRegister}
           handleSelfTestFCMNotification={handleSelfTestFCMNotification}
+          currentUser={currentUser}
         />
 
         {/* RIGHT COLUMN: Outstanding Balances List */}
