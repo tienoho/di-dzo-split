@@ -401,7 +401,7 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
 
     const billData: Omit<Bill, 'id'> = {
       venueId: selectedVenueId || 'unknown',
-      venueName: matchedVenue ? matchedVenue.name : 'Quá nhậu vỉa hè / Không rõ',
+      venueName: matchedVenue ? matchedVenue.name : 'Quán nhậu vỉa hè / Khác',
       date: new Date().toISOString(),
       rawAmount,
       tipPercent,
@@ -411,6 +411,9 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
       totalAmount,
       splitType,
       note,
+      bankName: localStorage.getItem('nhau_bank_name') || 'mbbank',
+      bankNo: localStorage.getItem('nhau_bank_no') || undefined,
+      bankAccountName: localStorage.getItem('nhau_bank_account_name') || undefined,
       members: finalProcessedMembers.map(m => {
         // Creditors are marked paid, and debtors start as unpaid unless they paid their full debt initial share
         const isSelf = m.name === activeCreatorName;
