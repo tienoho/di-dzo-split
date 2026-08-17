@@ -392,15 +392,26 @@ export default function DebtReminders({ debts, onMarkDebtAsPaid, activeCreatorNa
     const friendlyDate = `${dObj.getDate()}/${dObj.getMonth() + 1}`;
     const amountStr = `${debt.amount.toLocaleString('vi-VN')}đ`;
     
+    const removeVietnameseTones = (str: string): string => {
+      return str
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/đ/g, 'd')
+        .replace(/Đ/g, 'D')
+        .replace(/[^a-zA-Z0-9]/g, '');
+    };
+
     const formattedAmount = Math.round(debt.amount);
-    const paymentMemo = `${debt.debtorName.replace(/\s+/g, '')} guitennhau ${debt.venueName.substring(0, 5).replace(/\s+/g, '')}`;
+    const debtorTag = removeVietnameseTones(debt.debtorName);
+    const venueTag = removeVietnameseTones(debt.venueName.substring(0, 8));
+    const paymentMemo = `${debtorTag} tra tien ${venueTag}`.trim();
     const mappedBankCode = bankCodeMap[bankName] || bankName;
     const vietQrUrl = `https://img.vietqr.io/image/${mappedBankCode}-${bankNo}-compact2.png?amount=${formattedAmount}&addInfo=${encodeURIComponent(paymentMemo)}&accountName=${encodeURIComponent(bankAccountName)}`;
 
     if (style === 'friendly') {
       return `Alo ${debt.debtorName} yêu dấu ơi! Bữa nhậu bên ${debt.venueName} (${friendlyDate}) của anh em mình chia ra phần của bạng hết ${amountStr} nha.
 
-Bạn quét mã VietQR để thanh toán cực nhanh dới:
+Bạn quét mã VietQR để thanh toán cực nhanh dưới:
 🔗 Link thanh toán VietQR: ${vietQrUrl}
 
 Hoặc ck truyền thống:

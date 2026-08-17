@@ -350,10 +350,21 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
       return;
     }
 
-    if (discrepancyPaid > 0 || discrepancyPaid < 0) {
+    let finalProcessedMembers = [...members];
+
+    // If no one specified who paid upfront, auto-assign totalAmount to creator/host
+    if (sumInitialPaid === 0 && finalProcessedMembers.length > 0) {
+      const creatorIdx = finalProcessedMembers.findIndex(m => m.name.toLowerCase() === activeCreatorName.toLowerCase());
+      const targetIdx = creatorIdx >= 0 ? creatorIdx : 0;
+      finalProcessedMembers[targetIdx] = {
+        ...finalProcessedMembers[targetIdx],
+        initialPaid: totalAmount
+      };
+    } else if (Math.abs(discrepancyPaid) > 100) {
       toast.error(`Tổng số tiền các thành viên đã thanh toán trên bàn ăn là ${sumInitialPaid.toLocaleString('vi-VN')}đ, nhưng tổng hóa đơn là ${totalAmount.toLocaleString('vi-VN')}đ.\n\nVui lòng điều chỉnh lại cho khớp!`);
       return;
     }
+
     if (splitType === 'unequal' && Math.abs(discrepancyShare) > 100) {
       toast.error(`Bạn chọn chia tùy chỉnh nhưng tổng tiền mọi người gánh (${sumFinalShare.toLocaleString('vi-VN')}đ) chưa khớp hóa đơn (${totalAmount.toLocaleString('vi-VN')}đ).\n\nChênh lệch: ${discrepancyShare.toLocaleString('vi-VN')}đ.`);
       return;
@@ -362,8 +373,6 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
       toast.error(`Tổng tỷ lệ phần trăm hiện tại là ${sumPercentages}%. Phải bằng đúng 100%!`);
       return;
     }
-
-    let finalProcessedMembers = [...members];
     if (splitType === 'percentage') {
       const calculatedSum = finalProcessedMembers.reduce((acc, m) => acc + m.finalShare, 0);
       const moneyDiff = totalAmount - calculatedSum;

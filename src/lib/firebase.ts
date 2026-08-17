@@ -330,7 +330,7 @@ export const shareVenueToCommunityCloud = async (
       createdAt: new Date().toISOString()
     };
     
-    await setDoc(docRef, pubVenue);
+    await setDoc(docRef, sanitizeFirestoreData(pubVenue));
     
     // Auto populate first rating review
     const reviewRef = doc(collection(db, 'public_venues', docRef.id, 'reviews'));
@@ -342,7 +342,7 @@ export const shareVenueToCommunityCloud = async (
       comment: venue.notes || 'Quán ngon đỉnh chóp cực kỳ sầm uất và đắc địa!',
       createdAt: new Date().toISOString()
     };
-    await setDoc(reviewRef, initialReview);
+    await setDoc(reviewRef, sanitizeFirestoreData(initialReview));
     
     return pubVenue;
   } catch (error) {
@@ -394,7 +394,7 @@ export const addPublicVenueReviewCloud = async (
       createdAt: new Date().toISOString()
     };
     
-    await setDoc(reviewDocRef, newReview);
+    await setDoc(reviewDocRef, sanitizeFirestoreData(newReview));
     
     // Calculate new averages
     const reviews = await fetchPublicVenueReviewsFromCloud(venueId);

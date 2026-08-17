@@ -120,10 +120,12 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
       .filter(b => archiveFilter === 'archived' ? !!b.isArchived : !b.isArchived)
       .map(b => {
         const d = new Date(b.date);
+        if (isNaN(d.getTime())) return null;
         const year = d.getFullYear();
         const month = String(d.getMonth() + 1).padStart(2, '0');
         return `${year}-${month}`;
       })
+      .filter((m): m is string => Boolean(m))
   )).sort((a, b) => b.localeCompare(a)), [bills, archiveFilter]); // Newest month first
 
   // Filter logic
