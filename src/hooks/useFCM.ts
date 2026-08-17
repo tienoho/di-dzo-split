@@ -10,19 +10,31 @@ export function useFCM({ activeCreatorName, currentUser }: UseFCMProps) {
   // Automatically fetch and bind FCM VAPID key from backend server
   useEffect(() => {
     const fetchVapidKey = async () => {
-      const existingKey = localStorage.getItem('nhau_fcm_vapid_key');
-      if (!existingKey) {
-        try {
-          const response = await fetch('/api/fcm-vapid');
-          const data = await response.json();
-          if (data.success && data.key) {
-            localStorage.setItem('nhau_fcm_vapid_key', data.key);
-            console.log('[FCM client] Automatically bound FCM VAPID Key from server environment.');
-            window.dispatchEvent(new Event('storage')); // Notify all components
-          }
-        } catch (err) {
-          console.error('[FCM client] Error auto-fetching VAPID Key:', err);
+      // First check local storage or Vite environment variable
+      const envKey = ((import.meta as any).env?.VITE_FCM_VAPID_KEY as string | undefined);
+      const existingKey = localStorage.getItem('nhau_fcm_vapid_key') || envKey;
+      if (existingKey) {
+        if (!localStorage.getItem('nhau_fcm_vapid_key') && envKey) {
+          localStorage.setItem('nhau_fcm_vapid_key', envKey);
         }
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/fcm-vapid');
+        if (!response.ok) return;
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) return;
+
+        const data = await response.json();
+        if (data && data.success && data.key) {
+          localStorage.setItem('nhau_fcm_vapid_key', data.key);
+          console.log('[FCM client] Automatically bound FCM VAPID Key from server environment.');
+          window.dispatchEvent(new Event('storage')); // Notify all components
+        }
+      } catch (err) {
+        // Silently ignore serverless endpoint absences
+        console.warn('[FCM client] Auto-fetching VAPID Key skipped:', err);
       }
     };
     fetchVapidKey();
@@ -44,14 +56,16 @@ export function useFCM({ activeCreatorName, currentUser }: UseFCMProps) {
         if (!vapidKey) {
           try {
             const res = await fetch('/api/fcm-vapid');
-            const data = await res.json();
-            if (data.success && data.key) {
-              vapidKey = data.key;
-              localStorage.setItem('nhau_fcm_vapid_key', data.key);
-              window.dispatchEvent(new Event('storage')); // Notify all listening components
+            if (res.ok && res.headers.get('content-type')?.includes('application/json')) {
+              const data = await res.json();
+              if (data && data.success && data.key) {
+                vapidKey = data.key;
+                localStorage.setItem('nhau_fcm_vapid_key', data.key);
+                window.dispatchEvent(new Event('storage')); // Notify all listening components
+              }
             }
           } catch (fetchErr) {
-            console.warn('[FCM client] Direct VAPID fetch fallback failed:', fetchErr);
+            console.warn('[FCM client] Direct VAPID fetch fallback skipped:', fetchErr);
           }
         }
         

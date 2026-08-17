@@ -89,6 +89,10 @@ export default function AIRecommendations({ savedVenues, onAddVenue }: AIRecomme
         })
       });
 
+      if (!response.ok) {
+        throw new Error(`Máy chủ phản hồi mã lỗi (${response.status}). Vui lòng thử lại sau.`);
+      }
+
       const data = await response.json();
 
       if (data.success && data.recommendations) {

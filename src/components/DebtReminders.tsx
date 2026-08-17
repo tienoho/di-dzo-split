@@ -212,6 +212,9 @@ export default function DebtReminders({ debts, onMarkDebtAsPaid, activeCreatorNa
           body: "Tính năng thông báo đẩy FCM thực tế hoạt động trơn tru 100%!"
         })
       });
+      if (!response.ok) {
+        throw new Error(`Máy chủ trả về mã (${response.status})`);
+      }
       const data = await response.json();
       if (data.success) {
         if (data.isSimulated) {
@@ -362,6 +365,10 @@ export default function DebtReminders({ debts, onMarkDebtAsPaid, activeCreatorNa
             }
           })
         });
+
+        if (!response.ok) {
+          throw new Error(`Máy chủ trả về mã (${response.status})`);
+        }
 
         const data = await response.json();
         if (data.success) {

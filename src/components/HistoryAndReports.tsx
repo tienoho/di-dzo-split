@@ -34,6 +34,9 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ bills, provider: predictAiProvider })
       });
+      if (!response.ok) {
+        throw new Error(`Máy chủ phản hồi mã lỗi (${response.status}).`);
+      }
       const resData = await response.json();
       if (resData.success) {
         setPredictionResult(resData.data);

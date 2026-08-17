@@ -227,6 +227,10 @@ export default function ReceiptScanner({ onScanComplete, onClose }: ReceiptScann
         body: JSON.stringify({ image: base64Image, provider: aiProvider })
       });
 
+      if (!response.ok) {
+        throw new Error(`Máy chủ xử lý ảnh trả về mã lỗi (${response.status}). Vui lòng thử lại.`);
+      }
+
       const result = await response.json();
 
       if (result.success && result.data) {
@@ -237,7 +241,7 @@ export default function ReceiptScanner({ onScanComplete, onClose }: ReceiptScann
         setScannedImageBase64(base64Image);
         setIsReviewMode(true);
       } else {
-        throw new Error(result.error || 'Gemini không trích xuất được số tiền.');
+        throw new Error(result.error || 'AI không trích xuất được số tiền.');
       }
     } catch (err: any) {
       console.error('Scan request failed:', err);
