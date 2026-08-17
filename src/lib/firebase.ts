@@ -450,7 +450,10 @@ export const fetchPublicBillFromCloud = async (billId: string): Promise<Bill | n
         splitType: data.splitType || 'equal',
         note: data.note || '',
         receiptImage: data.receiptImage || undefined,
-        isArchived: data.isArchived ?? false
+        isArchived: data.isArchived ?? false,
+        bankName: data.bankName || undefined,
+        bankNo: data.bankNo || undefined,
+        bankAccountName: data.bankAccountName || undefined
       };
     }
     return null;

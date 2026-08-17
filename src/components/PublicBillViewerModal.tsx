@@ -21,7 +21,9 @@ import {
   ReceiptText,
   CreditCard,
   Building2,
-  Smartphone
+  Smartphone,
+  Download,
+  Edit2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -42,8 +44,35 @@ const bankCodeMap: Record<string, string> = {
   tpbank: 'TPB',
   vib: 'VIB',
   hdbank: 'HDB',
-  sacombank: 'STB'
+  sacombank: 'STB',
+  ocb: 'OCB',
+  shb: 'SHB',
+  msb: 'MSB',
+  seabank: 'SEAB',
+  lpbank: 'LPB',
+  namabank: 'NAB',
+  pvcombank: 'PVCB',
+  cake: 'CAKE',
+  zalopay: 'ZALOPAY',
+  momo: 'MOMO'
 };
+
+const bankList = [
+  { id: 'mbbank', name: 'MBBank (Quân Đội)' },
+  { id: 'vcb', name: 'Vietcombank' },
+  { id: 'tcb', name: 'Techcombank' },
+  { id: 'acb', name: 'ACB' },
+  { id: 'bidv', name: 'BIDV' },
+  { id: 'vietinbank', name: 'VietinBank' },
+  { id: 'vpb', name: 'VPBank' },
+  { id: 'tpbank', name: 'TPBank' },
+  { id: 'vib', name: 'VIB' },
+  { id: 'hdbank', name: 'HDBank' },
+  { id: 'sacombank', name: 'Sacombank' },
+  { id: 'shb', name: 'SHB' },
+  { id: 'ocb', name: 'OCB' },
+  { id: 'msb', name: 'MSB' }
+];
 
 export default function PublicBillViewerModal({ bill, onClose }: PublicBillViewerModalProps) {
   const [copiedLink, setCopiedLink] = useState<boolean>(false);
@@ -51,10 +80,15 @@ export default function PublicBillViewerModal({ bill, onClose }: PublicBillViewe
   const [activeZoomImage, setActiveZoomImage] = useState<string | null>(null);
   const [selectedMemberForQR, setSelectedMemberForQR] = useState<Member | null>(null);
 
-  // Bank settings from localStorage for VietQR calculation if available
-  const bankName = localStorage.getItem('nhau_bank_name') || 'mbbank';
-  const bankNo = localStorage.getItem('nhau_bank_no') || '';
-  const bankAccountName = localStorage.getItem('nhau_bank_account_name') || '';
+  // Bank settings from bill payload or local cache
+  const [bankName, setBankName] = useState<string>(() => bill.bankName || localStorage.getItem('nhau_bank_name') || 'mbbank');
+  const [bankNo, setBankNo] = useState<string>(() => bill.bankNo || localStorage.getItem('nhau_bank_no') || '');
+  const [bankAccountName, setBankAccountName] = useState<string>(() => bill.bankAccountName || localStorage.getItem('nhau_bank_account_name') || '');
+  const [showBankEdit, setShowBankEdit] = useState<boolean>(false);
+  
+  // Selected debtor for main VietQR panel
+  const debtors = bill.members.filter(m => m.finalShare > m.initialPaid);
+  const [activeDebtorForPanel, setActiveDebtorForPanel] = useState<Member | null>(() => debtors[0] || null);
 
   const dateObj = new Date(bill.date);
   const friendlyDate = !isNaN(dateObj.getTime()) 
@@ -108,7 +142,14 @@ export default function PublicBillViewerModal({ bill, onClose }: PublicBillViewe
       }
     });
 
-    text += `\n🔗 Link xem chi tiết trực tiếp trên web:\n${window.location.href}`;
+    if (bankNo) {
+      text += `\n💳 THÔNG TIN CHUYỂN KHOẢN:\n`;
+      text += `🏦 Ngân hàng: ${bankCodeMap[bankName.toLowerCase()] || bankName.toUpperCase()}\n`;
+      text += `🔢 Số TK: ${bankNo}\n`;
+      if (bankAccountName) text += `👤 Chủ TK: ${bankAccountName.toUpperCase()}\n`;
+    }
+
+    text += `\n🔗 Link xem chi tiết trực tiếp trên web & quét QR:\n${window.location.href}`;
 
     if (navigator.share) {
       try {
@@ -134,13 +175,26 @@ export default function PublicBillViewerModal({ bill, onClose }: PublicBillViewe
   // Generate VietQR URL for a specific member
   const getMemberVietQRUrl = (member: Member) => {
     const diff = member.finalShare - member.initialPaid;
-    if (diff <= 0) return '';
+    if (diff <= 0 || !bankNo) return '';
     const formattedAmount = Math.round(diff);
     const debtorTag = removeVietnameseTones(member.name);
     const venueTag = removeVietnameseTones(bill.venueName.substring(0, 8));
     const memo = `${debtorTag} tra tien ${venueTag}`.trim();
     const mappedBankCode = bankCodeMap[bankName.toLowerCase()] || bankName;
-    return `https://img.vietqr.io/image/${mappedBankCode}-${bankNo}-compact2.png?amount=${formattedAmount}&addInfo=${encodeURIComponent(memo)}&accountName=${encodeURIComponent(bankAccountName)}`;
+    return `https://img.vietqr.io/image/${mappedBankCode}-${bankNo.trim()}-compact2.png?amount=${formattedAmount}&addInfo=${encodeURIComponent(memo)}&accountName=${encodeURIComponent(bankAccountName.trim())}`;
+  };
+
+  const handleSaveBankInfo = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bankNo.trim()) {
+      toast.error("Vui lòng nhập số tài khoản nhận tiền!");
+      return;
+    }
+    localStorage.setItem('nhau_bank_name', bankName);
+    localStorage.setItem('nhau_bank_no', bankNo.trim());
+    localStorage.setItem('nhau_bank_account_name', bankAccountName.trim());
+    setShowBankEdit(false);
+    toast.success("Đã lưu thông tin tài khoản ngân hàng & cập nhật mã VietQR! 🎉");
   };
 
   return (
@@ -227,6 +281,189 @@ export default function PublicBillViewerModal({ bill, onClose }: PublicBillViewe
             </div>
           )}
 
+          {/* HIGHLIGHTED VIETQR SECTION */}
+          <div className="bg-gradient-to-br from-indigo-50 via-blue-50 to-amber-50 dark:from-slate-800 dark:via-indigo-950/30 dark:to-slate-800 border-3 border-indigo-500/40 rounded-3xl p-4 sm:p-5 shadow-sm space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-indigo-200 dark:border-slate-700 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-indigo-600 text-white rounded-xl flex items-center justify-center font-black shadow-xs">
+                  <QrCode className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                    Thanh toán VietQR Chuyển Khoản 24/7
+                  </h3>
+                  <p className="text-[10px] font-bold text-indigo-700 dark:text-indigo-300">
+                    Quét mã là tự động điền đúng số tiền & nội dung chuyển khoản
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowBankEdit(!showBankEdit)}
+                className="text-[11px] font-black text-indigo-700 dark:text-indigo-300 bg-white dark:bg-slate-700 hover:bg-indigo-50 px-2.5 py-1 rounded-xl border border-indigo-300 dark:border-slate-600 flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
+              >
+                <Edit2 className="w-3 h-3" />
+                {bankNo ? 'Sửa thông tin STK' : '+ Nhập STK nhận tiền'}
+              </button>
+            </div>
+
+            {/* Quick Bank Configuration Form (if expanded or missing) */}
+            <AnimatePresence>
+              {(showBankEdit || !bankNo) && (
+                <motion.form 
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  onSubmit={handleSaveBankInfo}
+                  className="bg-white dark:bg-slate-900 border-2 border-indigo-300 dark:border-indigo-800 p-4 rounded-2xl space-y-3"
+                >
+                  <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    💡 Nhập thông tin tài khoản ngân hàng để hệ thống tự động sinh mã VietQR cho từng thành viên:
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    <div>
+                      <label className="text-[10px] font-black uppercase text-slate-500 block mb-1">Ngân Hàng</label>
+                      <select 
+                        value={bankName}
+                        onChange={(e) => setBankName(e.target.value)}
+                        className="w-full text-xs font-bold p-2 bg-slate-50 dark:bg-slate-800 border-2 border-slate-300 rounded-xl"
+                      >
+                        {bankList.map(b => (
+                          <option key={b.id} value={b.id}>{b.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-black uppercase text-slate-500 block mb-1">Số Tài Khoản</label>
+                      <input 
+                        type="text"
+                        placeholder="VD: 0987654321"
+                        value={bankNo}
+                        onChange={(e) => setBankNo(e.target.value)}
+                        className="w-full text-xs font-bold p-2 bg-slate-50 dark:bg-slate-800 border-2 border-slate-300 rounded-xl"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-black uppercase text-slate-500 block mb-1">Tên Chủ Tài Khoản</label>
+                      <input 
+                        type="text"
+                        placeholder="VD: NGUYEN VAN A"
+                        value={bankAccountName}
+                        onChange={(e) => setBankAccountName(e.target.value)}
+                        className="w-full text-xs font-bold p-2 bg-slate-50 dark:bg-slate-800 border-2 border-slate-300 rounded-xl uppercase"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2 pt-1">
+                    {bankNo && (
+                      <button 
+                        type="button" 
+                        onClick={() => setShowBankEdit(false)}
+                        className="text-xs font-bold px-3 py-1.5 rounded-xl border border-slate-300 text-slate-600"
+                      >
+                        Hủy
+                      </button>
+                    )}
+                    <button 
+                      type="submit" 
+                      className="text-xs font-black px-4 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xs cursor-pointer"
+                    >
+                      Lưu & Sinh Mã QR
+                    </button>
+                  </div>
+                </motion.form>
+              )}
+            </AnimatePresence>
+
+            {/* Display Active QR Code if bankNo is ready */}
+            {bankNo ? (
+              <div className="flex flex-col sm:flex-row items-center gap-4 bg-white dark:bg-slate-900 p-4 rounded-2xl border-2 border-indigo-200 dark:border-slate-700">
+                {activeDebtorForPanel ? (
+                  <>
+                    <div 
+                      onClick={() => setSelectedMemberForQR(activeDebtorForPanel)}
+                      className="bg-white p-2.5 rounded-2xl border-2 border-slate-900 shadow-md cursor-pointer group hover:scale-105 transition-transform shrink-0"
+                      title="Bấm để phóng to mã QR"
+                    >
+                      <img 
+                        src={getMemberVietQRUrl(activeDebtorForPanel)} 
+                        alt="Mã QR VietQR" 
+                        className="w-36 h-36 sm:w-40 sm:h-40 object-contain mx-auto"
+                      />
+                      <span className="text-[9px] font-black text-indigo-600 block text-center mt-1 group-hover:underline">
+                        🔍 Chạm để phóng to
+                      </span>
+                    </div>
+
+                    <div className="flex-1 min-w-0 space-y-2.5 text-left w-full">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-orange-600 dark:text-orange-400">
+                          MÃ QR CHO: {activeDebtorForPanel.name}
+                        </span>
+                        <span className="text-sm font-black text-red-600 dark:text-red-400">
+                          {(activeDebtorForPanel.finalShare - activeDebtorForPanel.initialPaid).toLocaleString('vi-VN')} đ
+                        </span>
+                      </div>
+
+                      {debtors.length > 1 && (
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-[10px] font-bold text-slate-500">Xem người khác:</span>
+                          {debtors.map((d, i) => (
+                            <button
+                              key={i}
+                              type="button"
+                              onClick={() => setActiveDebtorForPanel(d)}
+                              className={`text-[10px] font-black px-2 py-0.5 rounded-lg border transition-all cursor-pointer ${
+                                activeDebtorForPanel.name === d.name 
+                                  ? 'bg-indigo-600 text-white border-indigo-800 shadow-2xs'
+                                  : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300'
+                              }`}
+                            >
+                              {d.name}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="bg-slate-50 dark:bg-slate-800/80 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold space-y-1">
+                        <p className="text-slate-700 dark:text-slate-300">🏦 Ngân hàng: <strong>{bankCodeMap[bankName.toLowerCase()] || bankName.toUpperCase()}</strong></p>
+                        <p className="text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                          <span>💳 Số TK: <strong>{bankNo}</strong></span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(bankNo);
+                              toast.success("Đã copy Số tài khoản!");
+                            }}
+                            className="text-[10px] text-indigo-600 dark:text-indigo-400 underline font-black cursor-pointer"
+                          >
+                            Copy STK
+                          </button>
+                        </p>
+                        {bankAccountName && (
+                          <p className="text-slate-700 dark:text-slate-300">👤 Chủ TK: <strong>{bankAccountName.toUpperCase()}</strong></p>
+                        )}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setSelectedMemberForQR(activeDebtorForPanel)}
+                        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs py-2 rounded-xl border-2 border-slate-900 shadow-2xs cursor-pointer flex items-center justify-center gap-1.5 transition-transform active:scale-95"
+                      >
+                        <QrCode className="w-3.5 h-3.5" /> Mở QR toàn màn hình & Tải về
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="p-4 text-center w-full text-xs font-bold text-emerald-600">
+                    🎉 Tất cả thành viên trong cuộc nhậu đã thanh toán đủ!
+                  </div>
+                )}
+              </div>
+            ) : null}
+          </div>
+
           {/* DETAILED MEMBERS BREAKDOWN */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
@@ -284,16 +521,21 @@ export default function PublicBillViewerModal({ bill, onClose }: PublicBillViewe
                               <span className="inline-flex items-center gap-1 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 px-2.5 py-1 rounded-xl text-xs font-black">
                                 <TrendingDown className="w-3 h-3" /> Cần ck {diff.toLocaleString('vi-VN')}đ
                               </span>
-                              {bankNo && (
-                                <button
-                                  type="button"
-                                  onClick={() => setSelectedMemberForQR(member)}
-                                  className="text-[11px] font-black bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-1 rounded-lg flex items-center gap-1 cursor-pointer transition-transform active:scale-95 shadow-2xs"
-                                  title="Mở mã VietQR chuyển khoản nhanh"
-                                >
-                                  <QrCode className="w-3.5 h-3.5" /> Quét QR
-                                </button>
-                              )}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (bankNo) {
+                                    setSelectedMemberForQR(member);
+                                  } else {
+                                    setShowBankEdit(true);
+                                    toast("Vui lòng điền số tài khoản ngân hàng để tạo QR!");
+                                  }
+                                }}
+                                className="text-[11px] font-black bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 py-1 rounded-lg flex items-center gap-1 cursor-pointer transition-transform active:scale-95 shadow-2xs"
+                                title="Mở mã VietQR chuyển khoản nhanh"
+                              >
+                                <QrCode className="w-3.5 h-3.5" /> Quét QR
+                              </button>
                             </div>
                           ) : isCreditor ? (
                             <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 px-2.5 py-1 rounded-xl text-xs font-black">
@@ -359,10 +601,17 @@ export default function PublicBillViewerModal({ bill, onClose }: PublicBillViewe
                       <span>Đã chi: <strong className="text-slate-800 dark:text-slate-200">{member.initialPaid.toLocaleString('vi-VN')}đ</strong></span>
                     </div>
 
-                    {isDebtor && bankNo && (
+                    {isDebtor && (
                       <button
                         type="button"
-                        onClick={() => setSelectedMemberForQR(member)}
+                        onClick={() => {
+                          if (bankNo) {
+                            setSelectedMemberForQR(member);
+                          } else {
+                            setShowBankEdit(true);
+                            toast("Vui lòng điền số tài khoản ngân hàng để tạo QR!");
+                          }
+                        }}
                         className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs py-2 rounded-xl flex items-center justify-center gap-1.5 transition-transform active:scale-95 shadow-2xs cursor-pointer mt-1"
                       >
                         <QrCode className="w-3.5 h-3.5" /> Quét mã VietQR chuyển khoản
@@ -468,22 +717,22 @@ export default function PublicBillViewerModal({ bill, onClose }: PublicBillViewe
             >
               <button 
                 onClick={() => setSelectedMemberForQR(null)}
-                className="absolute top-4 right-4 w-8 h-8 bg-slate-100 dark:bg-slate-800 rounded-full border border-slate-900 flex items-center justify-center font-black"
+                className="absolute top-4 right-4 w-8 h-8 bg-slate-100 dark:bg-slate-800 rounded-full border border-slate-900 flex items-center justify-center font-black cursor-pointer hover:scale-110 active:scale-95"
               >
                 <X className="w-4 h-4" />
               </button>
 
               <div>
                 <span className="text-[10px] font-black uppercase tracking-wider text-orange-500 block">THANH TOÁN SÒNG PHẲNG 💸</span>
-                <h3 className="text-lg font-black text-slate-900 dark:text-white">
+                <h3 className="text-xl font-black text-slate-900 dark:text-white">
                   {selectedMemberForQR.name}
                 </h3>
                 <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mt-0.5">
-                  Số tiền cần chuyển: <strong className="text-red-500 font-black text-sm">{(selectedMemberForQR.finalShare - selectedMemberForQR.initialPaid).toLocaleString('vi-VN')} đ</strong>
+                  Số tiền cần chuyển: <strong className="text-red-500 font-black text-base">{(selectedMemberForQR.finalShare - selectedMemberForQR.initialPaid).toLocaleString('vi-VN')} đ</strong>
                 </p>
               </div>
 
-              {bankNo && (
+              {bankNo ? (
                 <div className="space-y-3">
                   <div className="bg-white p-3 rounded-2xl border-2 border-slate-900 inline-block shadow-inner">
                     <img 
@@ -497,18 +746,33 @@ export default function PublicBillViewerModal({ bill, onClose }: PublicBillViewe
                     <p className="text-slate-700 dark:text-slate-300">🏦 Ngân hàng: <strong>{bankCodeMap[bankName.toLowerCase()] || bankName.toUpperCase()}</strong></p>
                     <p className="text-slate-700 dark:text-slate-300">💳 Số TK: <strong>{bankNo}</strong></p>
                     {bankAccountName && <p className="text-slate-700 dark:text-slate-300">👤 Chủ TK: <strong>{bankAccountName.toUpperCase()}</strong></p>}
+                    <p className="text-slate-700 dark:text-slate-300 text-[11px]">📝 Nội dung: <strong className="font-mono text-indigo-600 dark:text-indigo-400">{removeVietnameseTones(selectedMemberForQR.name)} tra tien {removeVietnameseTones(bill.venueName.substring(0, 8))}</strong></p>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      navigator.clipboard.writeText(bankNo);
-                      toast.success("Đã copy Số tài khoản!");
-                    }}
-                    className="w-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black text-xs py-2.5 rounded-xl border-2 border-slate-900 cursor-pointer"
-                  >
-                    📋 Sao chép Số Tài Khoản
-                  </button>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(bankNo);
+                        toast.success("Đã copy Số tài khoản!");
+                      }}
+                      className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black text-xs py-2.5 rounded-xl border-2 border-slate-900 cursor-pointer shadow-2xs"
+                    >
+                      📋 Copy STK
+                    </button>
+                    <a
+                      href={getMemberVietQRUrl(selectedMemberForQR)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs py-2.5 rounded-xl border-2 border-slate-900 cursor-pointer flex items-center justify-center gap-1 shadow-2xs"
+                    >
+                      <Download className="w-3.5 h-3.5" /> Tải ảnh QR
+                    </a>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-4 bg-amber-50 dark:bg-amber-950/30 rounded-2xl border border-amber-300 text-xs font-bold text-amber-900 dark:text-amber-200">
+                  ⚠️ Chưa có thông tin tài khoản ngân hàng của chủ xị. Vui lòng đóng bảng này và bấm "Nhập STK nhận tiền" ở trên.
                 </div>
               )}
             </motion.div>

@@ -33,6 +33,9 @@ export interface Bill {
   note?: string;
   receiptImage?: string; // Base64 compressed invoice proof
   isArchived?: boolean; // True if the bill has been archived to tidy up history
+  bankName?: string; // e.g. 'mbbank', 'vcb'
+  bankNo?: string; // Bank account number of the host
+  bankAccountName?: string; // Account holder full name
 }
 
 export interface Debt {

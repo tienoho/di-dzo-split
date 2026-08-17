@@ -16,6 +16,9 @@ export function compressBillForUrl(bill: Bill): string {
       d: bill.discountAmount,
       dt: bill.date,
       n: bill.note || '',
+      bn: bill.bankName || localStorage.getItem('nhau_bank_name') || 'mbbank',
+      bno: bill.bankNo || localStorage.getItem('nhau_bank_no') || '',
+      ba: bill.bankAccountName || localStorage.getItem('nhau_bank_account_name') || '',
       m: bill.members.map(m => ({
         n: m.name,
         p: m.initialPaid,
@@ -69,6 +72,9 @@ export function decompressBillFromUrl(encoded: string): Bill | null {
       date: data.dt || new Date().toISOString(),
       splitType: data.st || 'equal',
       note: data.n || '',
+      bankName: data.bn || undefined,
+      bankNo: data.bno || undefined,
+      bankAccountName: data.ba || undefined,
       members: (data.m || []).map((m: any) => ({
         name: m.n || 'Thành viên',
         initialPaid: m.p || 0,
@@ -90,10 +96,18 @@ export function decompressBillFromUrl(encoded: string): Bill | null {
 export async function generateShareableBillUrl(bill: Bill): Promise<string> {
   const origin = window.location.origin + window.location.pathname;
   
-  // Save to public collection on Firebase
-  savePublicBillToCloud(bill).catch(console.warn);
+  // Enrich with current host bank details if not already present
+  const enrichedBill: Bill = {
+    ...bill,
+    bankName: bill.bankName || localStorage.getItem('nhau_bank_name') || 'mbbank',
+    bankNo: bill.bankNo || localStorage.getItem('nhau_bank_no') || '',
+    bankAccountName: bill.bankAccountName || localStorage.getItem('nhau_bank_account_name') || ''
+  };
 
-  const encodedPayload = compressBillForUrl(bill);
+  // Save to public collection on Firebase
+  savePublicBillToCloud(enrichedBill).catch(console.warn);
+
+  const encodedPayload = compressBillForUrl(enrichedBill);
   if (encodedPayload) {
     return `${origin}?b=${encodedPayload}`;
   }
