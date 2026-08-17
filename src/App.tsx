@@ -399,23 +399,34 @@ export default function App() {
       id: `venue-${Date.now()}`,
       visitsCount: 0
     };
-    const updated = [...venues, freshVenue];
-    setVenues(updated);
-    saveStoredVenues(updated, currentUser?.uid);
 
-    if (currentUser) {
-      saveVenueToCloud(currentUser.uid, freshVenue).catch(console.error);
+    const activeUser = currentUser || auth.currentUser;
+    const userKey = activeUser ? activeUser.uid : 'guest';
+
+    setVenues(prev => {
+      const updated = [...prev, freshVenue];
+      saveStoredVenues(updated, userKey);
+      return updated;
+    });
+
+    if (activeUser) {
+      saveVenueToCloud(activeUser.uid, freshVenue).catch(console.error);
     }
     return freshVenue;
   };
 
   const handleDeleteVenue = (id: string) => {
-    const updated = venues.filter(v => v.id !== id);
-    setVenues(updated);
-    saveStoredVenues(updated, currentUser?.uid);
+    const activeUser = currentUser || auth.currentUser;
+    const userKey = activeUser ? activeUser.uid : 'guest';
 
-    if (currentUser) {
-      deleteVenueFromCloud(currentUser.uid, id).catch(console.error);
+    setVenues(prev => {
+      const updated = prev.filter(v => v.id !== id);
+      saveStoredVenues(updated, userKey);
+      return updated;
+    });
+
+    if (activeUser) {
+      deleteVenueFromCloud(activeUser.uid, id).catch(console.error);
     }
   };
 
@@ -424,98 +435,123 @@ export default function App() {
       ...newBill,
       id: `bill-${Date.now()}`
     };
-    
+
+    const activeUser = currentUser || auth.currentUser;
+    const userKey = activeUser ? activeUser.uid : 'guest';
+
     // Update venue counter visits dynamically if assigned
-    if (freshBill.venueId !== 'unknown') {
-      const updatedVenues = venues.map(v => {
-        if (v.id === freshBill.venueId) {
-          const updatedVisits = { ...v, visitsCount: v.visitsCount + 1 };
-          if (currentUser) {
-            saveVenueToCloud(currentUser.uid, updatedVisits).catch(console.error);
+    if (freshBill.venueId && freshBill.venueId !== 'unknown') {
+      setVenues(prevVenues => {
+        const updatedVenues = prevVenues.map(v => {
+          if (v.id === freshBill.venueId) {
+            const updatedVisits = { ...v, visitsCount: v.visitsCount + 1 };
+            if (activeUser) {
+              saveVenueToCloud(activeUser.uid, updatedVisits).catch(console.error);
+            }
+            return updatedVisits;
           }
-          return updatedVisits;
-        }
-        return v;
+          return v;
+        });
+        saveStoredVenues(updatedVenues, userKey);
+        return updatedVenues;
       });
-      setVenues(updatedVenues);
-      saveStoredVenues(updatedVenues, currentUser?.uid);
     }
 
-    const updatedBills = [freshBill, ...bills];
-    setBills(updatedBills);
-    saveStoredBills(updatedBills, currentUser?.uid);
-    if (currentUser) {
-      saveBillToCloud(currentUser.uid, freshBill).catch(console.error);
+    setBills(prevBills => {
+      const updatedBills = [freshBill, ...prevBills.filter(b => b.id !== freshBill.id)];
+      saveStoredBills(updatedBills, userKey);
+      setDebts(getActiveDebts(updatedBills));
+      return updatedBills;
+    });
+
+    if (activeUser) {
+      saveBillToCloud(activeUser.uid, freshBill).catch(console.error);
     }
-    setDebts(getActiveDebts(updatedBills));
   };
 
   const handleDeleteBill = (id: string) => {
-    // Subtract venue visits counter first
-    const targetBill = bills.find(b => b.id === id);
-    if (targetBill && targetBill.venueId !== 'unknown') {
-      const updatedVenues = venues.map(v => {
-        if (v.id === targetBill.venueId) {
-          const updatedVisits = { ...v, visitsCount: Math.max(0, v.visitsCount - 1) };
-          if (currentUser) {
-            saveVenueToCloud(currentUser.uid, updatedVisits).catch(console.error);
-          }
-          return updatedVisits;
-        }
-        return v;
-      });
-      setVenues(updatedVenues);
-      saveStoredVenues(updatedVenues, currentUser?.uid);
-    }
+    const activeUser = currentUser || auth.currentUser;
+    const userKey = activeUser ? activeUser.uid : 'guest';
 
-    const updatedBills = bills.filter(b => b.id !== id);
-    setBills(updatedBills);
-    saveStoredBills(updatedBills, currentUser?.uid);
-    if (currentUser) {
-      deleteBillFromCloud(currentUser.uid, id).catch(console.error);
+    // Subtract venue visits counter first
+    setBills(prevBills => {
+      const targetBill = prevBills.find(b => b.id === id);
+      if (targetBill && targetBill.venueId && targetBill.venueId !== 'unknown') {
+        setVenues(prevVenues => {
+          const updatedVenues = prevVenues.map(v => {
+            if (v.id === targetBill.venueId) {
+              const updatedVisits = { ...v, visitsCount: Math.max(0, v.visitsCount - 1) };
+              if (activeUser) {
+                saveVenueToCloud(activeUser.uid, updatedVisits).catch(console.error);
+              }
+              return updatedVisits;
+            }
+            return v;
+          });
+          saveStoredVenues(updatedVenues, userKey);
+          return updatedVenues;
+        });
+      }
+
+      const updatedBills = prevBills.filter(b => b.id !== id);
+      saveStoredBills(updatedBills, userKey);
+      setDebts(getActiveDebts(updatedBills));
+      return updatedBills;
+    });
+
+    if (activeUser) {
+      deleteBillFromCloud(activeUser.uid, id).catch(console.error);
     }
-    setDebts(getActiveDebts(updatedBills));
   };
 
   const handleArchiveBill = (id: string, isArchived: boolean = true) => {
-    const updatedBills = bills.map(b => {
-      if (b.id === id) {
-        const updatedBill = { ...b, isArchived };
-        if (currentUser) {
-          saveBillToCloud(currentUser.uid, updatedBill).catch(console.error);
-        }
-        return updatedBill;
-      }
-      return b;
-    });
+    const activeUser = currentUser || auth.currentUser;
+    const userKey = activeUser ? activeUser.uid : 'guest';
 
-    setBills(updatedBills);
-    saveStoredBills(updatedBills, currentUser?.uid);
-    setDebts(getActiveDebts(updatedBills));
+    setBills(prevBills => {
+      const updatedBills = prevBills.map(b => {
+        if (b.id === id) {
+          const updatedBill = { ...b, isArchived };
+          if (activeUser) {
+            saveBillToCloud(activeUser.uid, updatedBill).catch(console.error);
+          }
+          return updatedBill;
+        }
+        return b;
+      });
+
+      saveStoredBills(updatedBills, userKey);
+      setDebts(getActiveDebts(updatedBills));
+      return updatedBills;
+    });
   };
 
   const handleMarkDebtAsPaid = (billId: string, debtorName: string) => {
-    // We locate the bill, toggle the specific member owes status hasPaidDebt
-    const updatedBills = bills.map(bill => {
-      if (bill.id === billId) {
-        const updatedBill = {
-          ...bill,
-          members: bill.members.map(member => 
-            member.name === debtorName ? { ...member, hasPaidDebt: !member.hasPaidDebt } : member
-          )
-        };
-        
-        if (currentUser) {
-          saveBillToCloud(currentUser.uid, updatedBill).catch(console.error);
-        }
-        return updatedBill;
-      }
-      return bill;
-    });
+    const activeUser = currentUser || auth.currentUser;
+    const userKey = activeUser ? activeUser.uid : 'guest';
 
-    setBills(updatedBills);
-    saveStoredBills(updatedBills, currentUser?.uid);
-    setDebts(getActiveDebts(updatedBills));
+    setBills(prevBills => {
+      const updatedBills = prevBills.map(bill => {
+        if (bill.id === billId) {
+          const updatedBill = {
+            ...bill,
+            members: bill.members.map(member => 
+              member.name === debtorName ? { ...member, hasPaidDebt: !member.hasPaidDebt } : member
+            )
+          };
+          
+          if (activeUser) {
+            saveBillToCloud(activeUser.uid, updatedBill).catch(console.error);
+          }
+          return updatedBill;
+        }
+        return bill;
+      });
+
+      saveStoredBills(updatedBills, userKey);
+      setDebts(getActiveDebts(updatedBills));
+      return updatedBills;
+    });
   };
 
   // Quick stats panel

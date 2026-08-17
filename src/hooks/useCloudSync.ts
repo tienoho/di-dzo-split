@@ -7,6 +7,8 @@ import {
   fetchContactsFromCloud,
   syncVenuesToCloud,
   syncBillsToCloud,
+  saveBillToCloud,
+  saveVenueToCloud,
   FirebaseUser
 } from '../lib/firebase';
 import { getStoredVenues, saveStoredVenues, getStoredBills, saveStoredBills, getActiveDebts } from '../utils/storage';
@@ -61,23 +63,54 @@ export function useCloudSync({
           const cloudBills = await fetchBillsFromCloud(user.uid);
           const cloudContacts = await fetchContactsFromCloud(user.uid);
           
-          let finalVenues = cloudVenues;
-          let finalBills = cloudBills;
-          let finalContacts = cloudContacts;
+          // 1. Merge Bills: Cloud + Local to prevent losing in-flight/newly created bills
+          const currentLocalBills = getStoredBills(user.uid);
+          const billMap = new Map<string, Bill>();
+
+          // Add all cloud bills
+          cloudBills.forEach(b => billMap.set(b.id, b));
+
+          // Merge local bills (if local has newer or un-synced bills, keep them and push to cloud)
+          currentLocalBills.forEach(b => {
+            if (!billMap.has(b.id)) {
+              billMap.set(b.id, b);
+              saveBillToCloud(user.uid, b).catch(console.error);
+            }
+          });
+
+          let finalBills = Array.from(billMap.values()).sort(
+            (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+          );
+
+          // 2. Merge Venues: Cloud + Local
+          const currentLocalVenues = getStoredVenues(user.uid);
+          const venueMap = new Map<string, Venue>();
+          cloudVenues.forEach(v => venueMap.set(v.id, v));
+          currentLocalVenues.forEach(v => {
+            if (!venueMap.has(v.id)) {
+              venueMap.set(v.id, v);
+              saveVenueToCloud(user.uid, v).catch(console.error);
+            }
+          });
+          let finalVenues = Array.from(venueMap.values());
+
+          // 3. Merge Contacts
+          const currentLocalContacts = JSON.parse(localStorage.getItem(`nhau_contacts_${user.uid}`) || '{}');
+          let finalContacts = { ...currentLocalContacts, ...cloudContacts };
 
           // If brand-new or empty cloud account, automatically migrate offline guest bills & venues
-          if (cloudBills.length === 0 && cachedBills.length === 0) {
+          if (finalBills.length === 0) {
             const guestBills = getStoredBills('guest');
+            if (guestBills.length > 0) {
+              await syncBillsToCloud(user.uid, guestBills);
+              finalBills = guestBills;
+            }
+          }
+          if (finalVenues.length === 0) {
             const guestVenues = getStoredVenues('guest');
-            if (guestBills.length > 0 || guestVenues.length > 0) {
-              if (guestBills.length > 0) {
-                await syncBillsToCloud(user.uid, guestBills);
-                finalBills = guestBills;
-              }
-              if (guestVenues.length > 0) {
-                await syncVenuesToCloud(user.uid, guestVenues);
-                finalVenues = guestVenues;
-              }
+            if (guestVenues.length > 0) {
+              await syncVenuesToCloud(user.uid, guestVenues);
+              finalVenues = guestVenues;
             }
           }
 
