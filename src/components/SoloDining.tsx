@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Venue, Bill, SoloMeal } from '../types';
 import toast from 'react-hot-toast';
+import MoneyInput from './common/MoneyInput';
 import { 
   PiggyBank, 
   TrendingUp, 
@@ -412,14 +413,13 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
                 Ngân sách ăn một mình tối đa trong tháng (VND)
               </label>
               <div className="flex items-center gap-2">
-                <div className="relative flex-1">
-                  <span className="absolute left-3.5 top-1/2 -current-y -translate-y-1/2 text-xs font-black text-slate-400">₫</span>
-                  <input
-                    type="number"
-                    value={budgetInput}
-                    onChange={(e) => setBudgetInput(e.target.value)}
-                    placeholder="Ví dụ: 3000000"
-                    className="w-full bg-white dark:bg-slate-950 border-2 border-slate-900 dark:border-slate-700 rounded-xl pl-8 pr-4 py-2.5 text-sm font-black outline-none focus:border-amber-500"
+                <div className="flex-1">
+                  <MoneyInput
+                    value={parseInt(budgetInput, 10) || 0}
+                    onChange={(val) => setBudgetInput(String(val))}
+                    placeholder="Ví dụ: 3.000.000"
+                    suffix="đ"
+                    className="w-full bg-white dark:bg-slate-950 border-2 border-slate-900 dark:border-slate-700 rounded-xl pl-4 pr-8 py-2.5 text-sm font-black outline-none focus:border-amber-500"
                   />
                 </div>
                 <button
@@ -870,13 +870,12 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
                 <label className="text-[9.5px] font-black text-slate-500 dark:text-slate-400 uppercase block leading-none">
                   Đồ Ăn / Mồi (đ)
                 </label>
-                <input
-                  type="number"
-                  min="0"
-                  value={rawAmount === 0 ? '' : rawAmount}
-                  onChange={(e) => setRawAmount(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                <MoneyInput
+                  value={rawAmount}
+                  onChange={setRawAmount}
                   placeholder="0 đ"
-                  className="w-full bg-slate-50 dark:bg-slate-955 border-2 border-slate-900 dark:border-slate-700 rounded-lg px-2 py-1.5 text-xs font-black outline-none focus:border-amber-500 text-right"
+                  suffix="đ"
+                  className="w-full bg-slate-50 dark:bg-slate-955 border-2 border-slate-900 dark:border-slate-700 rounded-lg px-2 py-1.5 text-xs font-black outline-none focus:border-amber-500 text-left pr-6"
                 />
               </div>
 
@@ -884,13 +883,12 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
                 <label className="text-[9.5px] font-black text-slate-500 dark:text-slate-400 uppercase block leading-none">
                   Nước / Bia / Trà (đ)
                 </label>
-                <input
-                  type="number"
-                  min="0"
-                  value={drinkAmount === 0 ? '' : drinkAmount}
-                  onChange={(e) => setDrinkAmount(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                <MoneyInput
+                  value={drinkAmount}
+                  onChange={setDrinkAmount}
                   placeholder="0 đ"
-                  className="w-full bg-slate-50 dark:bg-slate-955 border-2 border-slate-900 dark:border-slate-700 rounded-lg px-2 py-1.5 text-xs font-black outline-none focus:border-amber-500 text-right"
+                  suffix="đ"
+                  className="w-full bg-slate-50 dark:bg-slate-955 border-2 border-slate-900 dark:border-slate-700 rounded-lg px-2 py-1.5 text-xs font-black outline-none focus:border-amber-500 text-left pr-6"
                 />
               </div>
 
@@ -898,13 +896,12 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
                 <label className="text-[9.5px] font-black text-slate-500 dark:text-slate-400 uppercase block leading-none">
                   Ship / Gửi Xe (đ)
                 </label>
-                <input
-                  type="number"
-                  min="0"
-                  value={otherAmount === 0 ? '' : otherAmount}
-                  onChange={(e) => setOtherAmount(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                <MoneyInput
+                  value={otherAmount}
+                  onChange={setOtherAmount}
                   placeholder="0 đ"
-                  className="w-full bg-slate-50 dark:bg-slate-955 border-2 border-slate-900 dark:border-slate-700 rounded-lg px-2 py-1.5 text-xs font-black outline-none focus:border-amber-500 text-right"
+                  suffix="đ"
+                  className="w-full bg-slate-50 dark:bg-slate-955 border-2 border-slate-900 dark:border-slate-700 rounded-lg px-2 py-1.5 text-xs font-black outline-none focus:border-amber-500 text-left pr-6"
                 />
               </div>
             </div>

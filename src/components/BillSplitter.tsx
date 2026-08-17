@@ -5,6 +5,8 @@ import { Bill, Member, Venue } from '../types';
 import { Plus, Trash, Users, Calculator, Gift, Sparkles, Store, CreditCard, ChevronRight, Camera } from 'lucide-react';
 import ReceiptScanner from './ReceiptScanner';
 import Confetti from 'react-confetti';
+import MoneyInput from './common/MoneyInput';
+import { parseCurrencyInput } from '../utils/currency';
 interface BillSplitterProps {
   venues: Venue[];
   onAddVenue: (venue: Omit<Venue, 'id' | 'visitsCount'>) => Venue;
@@ -521,16 +523,13 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
               <label className="text-xs font-black text-slate-700 uppercase tracking-wider block">
                 Số tiền mồi nước tại bàn (VND) <span className="text-orange-600">*</span>
               </label>
-              <div className="relative">
-                <input
-                  type="number"
-                  placeholder="0"
-                  value={rawAmount || ''}
-                  onChange={(e) => setRawAmount(Number(e.target.value))}
-                  className="w-full text-2xl font-black bg-yellow-50 dark:bg-slate-900/50 dark:bg-slate-800 border-3 border-slate-900 dark:border-slate-700 focus:border-orange-500 focus:bg-white dark:bg-slate-900 rounded-2xl py-4 pl-5 pr-12 text-slate-900 dark:text-slate-100 tracking-wide transition-all focus:outline-hidden"
-                />
-                <span className="absolute right-5 top-1/2 -translate-y-1/2 text-lg font-black text-slate-400">đ</span>
-              </div>
+              <MoneyInput
+                placeholder="0"
+                value={rawAmount}
+                onChange={setRawAmount}
+                suffix="đ"
+                className="w-full text-2xl font-black bg-yellow-50 dark:bg-slate-900/50 dark:bg-slate-800 border-3 border-slate-900 dark:border-slate-700 focus:border-orange-500 focus:bg-white dark:bg-slate-900 rounded-2xl py-4 pl-5 pr-12 text-slate-900 dark:text-slate-100 tracking-wide transition-all focus:outline-hidden"
+              />
               
               {/* Preset quick values */}
               <div className="flex flex-wrap gap-2 pt-1">
@@ -656,38 +655,32 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
                     <p className="text-xs font-bold text-slate-500 dark:text-slate-400">Quy đổi: +{tipAmount.toLocaleString('vi-VN')} đ</p>
                   </div>
                 ) : (
-                  <div className="relative">
-                    <input
-                      type="number"
-                      placeholder="Nhập mốc tiền bo..."
-                      value={tipAmount || ''}
-                      onChange={(e) => setTipAmount(Number(e.target.value))}
-                      className="w-full text-xs font-bold bg-white dark:bg-slate-900 border-2 border-slate-900 dark:border-slate-700 focus:border-orange-500 rounded-xl p-2.5 pr-6"
-                    />
-                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-black text-slate-400">đ</span>
-                  </div>
+                  <MoneyInput
+                    placeholder="Nhập mốc tiền bo..."
+                    value={tipAmount}
+                    onChange={setTipAmount}
+                    suffix="đ"
+                    className="w-full text-xs font-bold bg-white dark:bg-slate-900 border-2 border-slate-900 dark:border-slate-700 focus:border-orange-500 rounded-xl p-2.5 pr-6"
+                  />
                 )}
               </div>
 
               {/* VAT & Fees */}
               <div className="border-3 border-slate-900 dark:border-slate-700 rounded-[20px] p-4 bg-teal-50/50 space-y-3">
                 <span className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wide block">VAT / Phụ Thu (Khăn, Đá)</span>
-                <div className="relative">
-                  <input
-                    type="number"
-                    placeholder="0"
-                    value={additionalFee || ''}
-                    onChange={(e) => setAdditionalFee(Number(e.target.value))}
-                    className="w-full text-xs font-bold bg-white dark:bg-slate-900 border-2 border-slate-900 dark:border-slate-700 focus:border-teal-500 rounded-xl p-2.5 pr-6"
-                  />
-                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-black text-slate-400">đ</span>
-                </div>
+                <MoneyInput
+                  placeholder="0"
+                  value={additionalFee}
+                  onChange={setAdditionalFee}
+                  suffix="đ"
+                  className="w-full text-xs font-bold bg-white dark:bg-slate-900 border-2 border-slate-900 dark:border-slate-700 focus:border-teal-500 rounded-xl p-2.5 pr-6"
+                />
                 
                 {/* 10% auto button */}
                 <button
                   type="button"
                   onClick={() => setAdditionalFee(Math.round(rawAmount * 0.1))}
-                  className="w-full text-xs text-center bg-white dark:bg-slate-900 hover:bg-teal-400 hover:text-white border-2 border-slate-900 dark:border-slate-700 py-1.5 rounded-xl text-slate-800 dark:text-slate-200 font-extrabold transition-all"
+                  className="w-full text-xs text-center bg-white dark:bg-slate-900 hover:bg-teal-400 hover:text-white border-2 border-slate-900 dark:border-slate-700 py-1.5 rounded-xl text-slate-800 dark:text-slate-200 font-extrabold transition-all cursor-pointer"
                 >
                   Tự động tính thêm 10% VAT
                 </button>
@@ -702,16 +695,13 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
                   <Gift className="w-4 h-4 text-orange-500 animate-bounce" />
                   Mã Giảm Giá / Voucher (VND)
                 </span>
-                <div className="relative">
-                  <input
-                    type="number"
-                    placeholder="Nhập tiền được giảm..."
-                    value={discountAmount || ''}
-                    onChange={(e) => setDiscountAmount(Number(e.target.value))}
-                    className="w-full text-xs bg-white dark:bg-slate-900 border-2 border-slate-900 dark:border-slate-700 focus:border-orange-500 rounded-xl p-2.5 pr-6 font-bold"
-                  />
-                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-black text-slate-400">đ</span>
-                </div>
+                <MoneyInput
+                  placeholder="Nhập tiền được giảm..."
+                  value={discountAmount}
+                  onChange={setDiscountAmount}
+                  suffix="đ"
+                  className="w-full text-xs bg-white dark:bg-slate-900 border-2 border-slate-900 dark:border-slate-700 focus:border-orange-500 rounded-xl p-2.5 pr-6 font-bold"
+                />
               </div>
 
               <div className="border-3 border-slate-900 dark:border-slate-700 rounded-[20px] p-4 bg-slate-50 space-y-2">
@@ -948,13 +938,14 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
                             <button onClick={() => { handleAddPenalty(index, 100000); }} className="w-full text-left text-xs font-bold p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-700 dark:text-slate-200 cursor-pointer">🏃 Về sớm (+100k)</button>
                             <div className="flex mt-1 pt-2 border-t border-slate-100 dark:border-slate-700 items-center gap-1">
                               <input 
-                                type="number" 
-                                placeholder="Khác (Vd: 30000)" 
+                                type="text"
+                                inputMode="numeric"
+                                placeholder="Khác (Vd: 30k, 50.000)" 
                                 className="w-full text-[10px] bg-slate-50 dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-md p-1 outline-hidden focus:border-orange-500 font-bold" 
                                 onKeyDown={(e) => {
                                   if (e.key === 'Enter') {
                                     e.preventDefault();
-                                    const val = Number(e.currentTarget.value);
+                                    const val = parseCurrencyInput(e.currentTarget.value);
                                     if (val > 0) handleAddPenalty(index, val);
                                     e.currentTarget.value = '';
                                   }
@@ -984,11 +975,11 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
                       {/* Initial Paid Amount */}
                       <div>
                         <label className="text-xs text-slate-500 dark:text-slate-400 font-black block mb-1 uppercase">Đã trả trước tại bàn (đ)</label>
-                        <input
-                          type="number"
+                        <MoneyInput
                           placeholder="0"
-                          value={member.initialPaid || ''}
-                          onChange={(e) => handleInitialPaidChange(index, Number(e.target.value))}
+                          value={member.initialPaid}
+                          onChange={(val) => handleInitialPaidChange(index, val)}
+                          suffix="đ"
                           className="w-full text-xs bg-white dark:bg-slate-900 border-2 border-slate-900 dark:border-slate-700 outline-hidden focus:border-orange-500 p-2 rounded-xl text-slate-900 dark:text-slate-100 font-black"
                         />
                       </div>
@@ -1028,11 +1019,12 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
                           <label className="text-xs text-slate-500 dark:text-slate-400 font-black block mb-1 uppercase">
                             {splitType === 'equal' ? 'Trách nhiệm gánh (đ)' : 'Nhập tay số cần gánh'}
                           </label>
-                          <input
-                            type="number"
+                          <MoneyInput
                             readOnly={splitType === 'equal'}
-                            value={member.finalShare || ''}
-                            onChange={(e) => handleCustomShareChange(index, Number(e.target.value))}
+                            placeholder="0"
+                            value={member.finalShare}
+                            onChange={(val) => handleCustomShareChange(index, val)}
+                            suffix="đ"
                             className={`w-full text-xs p-2 rounded-xl text-slate-900 dark:text-slate-100 font-black ${
                               splitType === 'equal' 
                                 ? 'bg-slate-150 text-slate-450 border-2 border-slate-200 dark:border-slate-700 cursor-not-allowed text-center'

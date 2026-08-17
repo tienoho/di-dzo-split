@@ -11,6 +11,7 @@ import {
   FileImage, 
   Tv 
 } from 'lucide-react';
+import MoneyInput from './common/MoneyInput';
 
 interface ReceiptScannerProps {
   onScanComplete: (data: { venueName: string; totalAmount: number; note: string; imageBase64?: string }) => void;
@@ -357,17 +358,12 @@ export default function ReceiptScanner({ onScanComplete, onClose }: ReceiptScann
 
                   {/* Total Amount Input with high visibility */}
                   <div className="space-y-1">
-                    <div className="flex justify-between items-center">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">Tổng số tiền cần chia (VND):</label>
-                      <span className="text-xs text-orange-600 font-extrabold px-1.5 py-0.5 bg-orange-50 rounded-lg border border-orange-200">
-                        {(Number(scannedTotalAmount) || 0).toLocaleString('vi-VN')} đ
-                      </span>
-                    </div>
-                    <input 
-                      type="number" 
-                      value={scannedTotalAmount || ''}
-                      onChange={(e) => setScannedTotalAmount(Number(e.target.value))}
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">Tổng số tiền cần chia (VND):</label>
+                    <MoneyInput 
+                      value={scannedTotalAmount}
+                      onChange={setScannedTotalAmount}
                       placeholder="Nhập số tiền thực tế trên hóa đơn"
+                      suffix="đ"
                       className="w-full bg-white dark:bg-slate-900 border-2 border-slate-900 rounded-xl px-3 py-2 text-xs font-black text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-orange-500 shadow-[1px_1px_0px_0px_rgba(15,23,42,1)]" 
                     />
                   </div>
