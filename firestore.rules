@@ -49,5 +49,11 @@ service cloud.firestore {
       allow create, update: if request.resource.data.tokens is list 
                             && request.resource.data.tokens.size() <= 20;
     }
+
+    // Public Bills shared via Web links (direct bill link sharing)
+    match /public_bills/{billId} {
+      allow read: if true;
+      allow create, update: if true;
+    }
   }
 }

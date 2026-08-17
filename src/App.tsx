@@ -56,17 +56,23 @@ export default function App() {
   });
 
   const handleSaveContact = async (name: string, phone: string, messenger: string) => {
-    const updated = {
-      ...contacts,
-      [name]: { phone: phone.trim(), messenger: messenger.trim() }
-    };
-    setContacts(updated);
-    const key = currentUser ? `nhau_contacts_${currentUser.uid}` : 'nhau_contacts_guest';
-    localStorage.setItem(key, JSON.stringify(updated));
+    const activeUser = currentUser || auth.currentUser;
+    const key = activeUser ? `nhau_contacts_${activeUser.uid}` : 'nhau_contacts_guest';
 
-    if (currentUser) {
+    setContacts(prev => {
+      const updated = {
+        ...prev,
+        [name]: { phone: phone.trim(), messenger: messenger.trim() }
+      };
       try {
-        await saveContactToCloud(currentUser.uid, name, phone, messenger);
+        localStorage.setItem(key, JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+
+    if (activeUser) {
+      try {
+        await saveContactToCloud(activeUser.uid, name, phone, messenger);
       } catch (e) {
         console.error("Failed to sync contact to cloud:", e);
       }
@@ -74,15 +80,21 @@ export default function App() {
   };
 
   const handleDeleteContact = async (name: string) => {
-    const updated = { ...contacts };
-    delete updated[name];
-    setContacts(updated);
-    const key = currentUser ? `nhau_contacts_${currentUser.uid}` : 'nhau_contacts_guest';
-    localStorage.setItem(key, JSON.stringify(updated));
+    const activeUser = currentUser || auth.currentUser;
+    const key = activeUser ? `nhau_contacts_${activeUser.uid}` : 'nhau_contacts_guest';
 
-    if (currentUser) {
+    setContacts(prev => {
+      const updated = { ...prev };
+      delete updated[name];
       try {
-        await deleteContactFromCloud(currentUser.uid, name);
+        localStorage.setItem(key, JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+
+    if (activeUser) {
+      try {
+        await deleteContactFromCloud(activeUser.uid, name);
       } catch (e) {
         console.error("Failed to delete contact from cloud:", e);
       }

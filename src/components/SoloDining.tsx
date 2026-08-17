@@ -104,8 +104,40 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
       if (currentUser) {
         try {
           const cloudMeals = await fetchSoloMealsFromCloud(currentUser.uid);
-          setSoloMeals(cloudMeals);
-          localStorage.setItem(`nhau_solo_meals_${currentUser.uid}`, JSON.stringify(cloudMeals));
+          
+          // Intelligent Merge: keep local & cloud meals
+          const cachedMealsRaw = localStorage.getItem(`nhau_solo_meals_${currentUser.uid}`);
+          const localMeals: SoloMeal[] = cachedMealsRaw ? JSON.parse(cachedMealsRaw) : [];
+          const mealMap = new Map<string, SoloMeal>();
+          
+          cloudMeals.forEach(m => mealMap.set(m.id, m));
+          localMeals.forEach(m => {
+            if (!mealMap.has(m.id)) {
+              mealMap.set(m.id, m);
+              saveSoloMealToCloud(currentUser.uid, m).catch(console.error);
+            }
+          });
+
+          let mergedMeals = Array.from(mealMap.values()).sort(
+            (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+          );
+
+          // If new cloud account has no solo meals, migrate guest meals
+          if (mergedMeals.length === 0) {
+            const guestMealsRaw = localStorage.getItem('nhau_solo_meals_guest') || localStorage.getItem('nhau_solo_meals');
+            if (guestMealsRaw) {
+              try {
+                const guestMeals: SoloMeal[] = JSON.parse(guestMealsRaw);
+                if (guestMeals.length > 0) {
+                  guestMeals.forEach(m => saveSoloMealToCloud(currentUser.uid, m).catch(console.error));
+                  mergedMeals = guestMeals;
+                }
+              } catch (e) {}
+            }
+          }
+
+          setSoloMeals(mergedMeals);
+          localStorage.setItem(`nhau_solo_meals_${currentUser.uid}`, JSON.stringify(mergedMeals));
 
           const cloudBudget = await fetchSoloBudgetFromCloud(currentUser.uid);
           if (cloudBudget !== null) {
