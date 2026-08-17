@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Venue } from '../types';
+import toast from 'react-hot-toast';
 import { 
   Store, 
   MapPin, 
@@ -119,7 +120,7 @@ export default function VenueManager({
   // Share a personal venue to the public "Dzô Quán tủ" community
   const handleShareToCommunity = async (v: Venue) => {
     if (!currentUser) {
-      alert('Vui lòng Đăng nhập mây ☁️ ở góc trên bên phải để có thể chia sẻ quán lên cộng đồng!');
+      toast.error('Vui lòng Đăng nhập mây ☁️ ở góc trên bên phải để có thể chia sẻ quán lên cộng đồng!');
       return;
     }
     
@@ -136,11 +137,10 @@ export default function VenueManager({
         activeCreatorName || currentUser.displayName || currentUser.email || 'Bợm nhậu ẩn danh'
       );
       
-      setSuccessMessage(`Đã chia sẻ thành công quán "${v.name}" lên cộng đồng Dzô Quán tủ! 🍻`);
-      setTimeout(() => setSuccessMessage(null), 5000);
+      toast.success(`Đã chia sẻ quán "${v.name}" lên cộng đồng Dzô Quán tủ! 🍻`);
     } catch (e) {
       console.error('Failed to share venue:', e);
-      alert('Có lỗi xảy ra khi chia sẻ lên cộng đồng. Vui lòng thử lại!');
+      toast.error('Có lỗi xảy ra khi chia sẻ lên cộng đồng. Vui lòng thử lại!');
     } finally {
       setSharingLoadingId(null);
     }
@@ -174,11 +174,11 @@ export default function VenueManager({
   // Submit new review & comment
   const handleSubmitReview = async (venueId: string) => {
     if (!currentUser) {
-      alert('Vui lòng Đăng nhập mây ☁️ ở góc trên bên phải để có thể đánh giá và bình luận!');
+      toast.error('Vui lòng Đăng nhập mây ☁️ ở góc trên bên phải để có thể đánh giá và bình luận!');
       return;
     }
     if (!newReviewComment.trim()) {
-      alert('Vui lòng nhập lời nhận xét của bạn về quán ăn này!');
+      toast.error('Vui lòng nhập lời nhận xét của bạn về quán ăn này!');
       return;
     }
 
@@ -205,11 +205,10 @@ export default function VenueManager({
 
       // Reload public venues info to reflect updated rates
       await loadPublicVenues();
-      setSuccessMessage('Cảm ơn bạn đã đóng góp đánh giá cho cộng đồng! ⭐');
-      setTimeout(() => setSuccessMessage(null), 3000);
+      toast.success('Cảm ơn bạn đã đóng góp đánh giá cho cộng đồng! ⭐');
     } catch (err) {
       console.error('Error posting review:', err);
-      alert('Có lỗi xảy ra khi lưu đánh giá. Vui lòng kiểm tra lại!');
+      toast.error('Có lỗi xảy ra khi lưu đánh giá. Vui lòng kiểm tra lại!');
     } finally {
       setSubmittingReviewId(null);
     }

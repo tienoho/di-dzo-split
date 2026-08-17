@@ -14,7 +14,7 @@ import {
   Sparkles,
   HelpCircle
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface ContactManagerProps {
   contacts: Record<string, { phone?: string; messenger?: string }>;

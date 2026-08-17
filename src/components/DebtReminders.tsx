@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Debt, Bill } from '../types';
+import toast from 'react-hot-toast';
 import { Bell, Check, MessageSquare, AlertCircle, Share2, Copy, CheckCheck, QrCode, Smile } from 'lucide-react';
 import DebtSettingsPanel from './DebtReminders/DebtSettingsPanel';
 import DebtActionModal from './DebtReminders/DebtActionModal';
@@ -137,24 +138,24 @@ export default function DebtReminders({ debts, onMarkDebtAsPaid, activeCreatorNa
     if ('Notification' in window) {
       Notification.requestPermission().then((permission) => {
         if (permission === 'granted') {
-          alert("🎉 Cấp quyền thành công! Thông báo nhắc nợ sòng phẳng đã sẵn sàng phục vụ bạn khi cuộc vui trễ hạn quá 24h.");
+          toast.success("🎉 Cấp quyền thành công! Thông báo nhắc nợ sòng phẳng đã sẵn sàng phục vụ bạn khi cuộc vui trễ hạn quá 24h.");
         } else {
-          alert("⚠️ Quyền thông báo bị thiết bị từ chối. Vui lòng kiểm tra và bật thủ công trong cài đặt trang web của trình duyệt.");
+          toast.error("⚠️ Quyền thông báo bị thiết bị từ chối. Vui lòng kiểm tra và bật thủ công trong cài đặt trang web của trình duyệt.");
         }
       });
     } else {
-      alert("❌ Trình duyệt hiện tại của bạn không hỗ trợ cơ chế Notification API.");
+      toast.error("❌ Trình duyệt hiện tại của bạn không hỗ trợ cơ chế Notification API.");
     }
   };
 
   const handleTestFCMRegister = async () => {
     if (!('Notification' in window)) {
-      alert("Trình duyệt không hỗ trợ push notifications.");
+      toast.error("Trình duyệt không hỗ trợ push notifications.");
       return;
     }
     const permission = await Notification.requestPermission();
     if (permission !== 'granted') {
-      alert("⚠️ Thiết bị chưa được cấp quyền thông báo. Vui lòng nhấp nút 'Cấp quyền thông báo đẩy' ở trên trước!");
+      toast.error("⚠️ Thiết bị chưa được cấp quyền thông báo. Vui lòng nhấp nút 'Cấp quyền thông báo đẩy' ở trên trước!");
       return;
     }
 
@@ -162,7 +163,7 @@ export default function DebtReminders({ debts, onMarkDebtAsPaid, activeCreatorNa
       const { getFirebaseMessaging, saveFCMTokenToCloud } = await import('../lib/firebase');
       const messaging = await getFirebaseMessaging();
       if (!messaging) {
-        alert("⚠️ Trình duyệt/ngữ cảnh này không hỗ trợ Firebase Messaging (FCM). Hãy đảm bảo bạn đang mở rộng ứng dụng trên tab riêng và kết nối HTTPS.");
+        toast.error("⚠️ Trình duyệt/ngữ cảnh này không hỗ trợ Firebase Messaging (FCM). Hãy đảm bảo bạn đang mở rộng ứng dụng trên tab riêng và kết nối HTTPS.");
         return;
       }
 
@@ -177,7 +178,7 @@ export default function DebtReminders({ debts, onMarkDebtAsPaid, activeCreatorNa
           token = await getToken(messaging);
         }
       } catch (err: any) {
-        alert(`⚠️ Không tạo được Token FCM: ${err.message || err}\n\nLƯU Ý: Web Push yêu cầu VAPID Key của riêng dự án Firebase. Hãy tạo và dán khóa Public Key từ mục Cloud Messaging trong console của bạn.`);
+        toast.error(`⚠️ Không tạo được Token FCM: ${err.message || err}`);
         return;
       }
 
@@ -186,19 +187,19 @@ export default function DebtReminders({ debts, onMarkDebtAsPaid, activeCreatorNa
         localStorage.setItem('nhau_my_fcm_token', token);
         if (activeCreatorName) {
           await saveFCMTokenToCloud(activeCreatorName, token);
-          alert(`🎉 ĐĂNG KÝ FCM THÀNH CÔNG!\n\nThiết bị đã được liên kết với tên "${activeCreatorName}". Bất kỳ ai click Nhắc Đẩy sẽ gửi tin nhắn PUSH trực tiếp về máy bạn!`);
+          toast.success(`🎉 ĐĂNG KÝ FCM THÀNH CÔNG! Thiết bị đã được liên kết với tên "${activeCreatorName}".`);
         } else {
-          alert(`🎉 Đã tạo token thành công! Bạn hãy đặt tên ở thanh trên để lưu liên kết đám mây.`);
+          toast.success(`🎉 Đã tạo token thành công! Bạn hãy đặt tên ở thanh trên để lưu liên kết đám mây.`);
         }
       }
     } catch (e: any) {
-      alert(`Lỗi đăng ký FCM: ${e.message || e}`);
+      toast.error(`Lỗi đăng ký FCM: ${e.message || e}`);
     }
   };
 
   const handleSelfTestFCMNotification = async () => {
     if (!localFcmToken) {
-      alert("Chưa có Token đăng ký.");
+      toast.error("Chưa có Token đăng ký.");
       return;
     }
     try {
@@ -214,15 +215,15 @@ export default function DebtReminders({ debts, onMarkDebtAsPaid, activeCreatorNa
       const data = await response.json();
       if (data.success) {
         if (data.isSimulated) {
-          alert("🎉 ĐÃ MÔ PHỎNG: Ứng dụng chạy trên môi trường Sandbox cục bộ. Tin nhắn được máy chủ Firebase mô phỏng ghi nhận thành công!");
+          toast.success("🎉 ĐÃ MÔ PHỎNG: Ứng dụng chạy trên môi trường Sandbox. Tin nhắn được máy chủ Firebase mô phỏng ghi nhận thành công!");
         } else {
-          alert("🚀 THÀNH CÔNG: Thông báo đẩy FCM Real-Time đã được bắn trực tiếp về thiết bị của bạn!");
+          toast.success("🚀 THÀNH CÔNG: Thông báo đẩy FCM Real-Time đã được bắn trực tiếp về thiết bị của bạn!");
         }
       } else {
-        alert(`Lỗi khi yêu cầu server gửi: ${data.error}`);
+        toast.error(`Lỗi khi yêu cầu server gửi: ${data.error}`);
       }
     } catch (err: any) {
-      alert(`Lỗi kết nối API gửi push: ${err.message || err}`);
+      toast.error(`Lỗi kết nối API gửi push: ${err.message || err}`);
     }
   };
 
@@ -272,7 +273,7 @@ export default function DebtReminders({ debts, onMarkDebtAsPaid, activeCreatorNa
 
   const handleOpenZalo = (text: string, debt: Debt) => {
     if (!bankNo || !bankAccountName) {
-      alert("⚠️ Vui lòng cấu hình Số tài khoản & Tên thụ hưởng của bạn trước khi gửi đòi nợ!");
+      toast.error("⚠️ Vui lòng cấu hình Số tài khoản & Tên thụ hưởng của bạn trước khi gửi đòi nợ!");
       return;
     }
     // Copy text first so it's ready in clipboard
@@ -294,7 +295,7 @@ export default function DebtReminders({ debts, onMarkDebtAsPaid, activeCreatorNa
 
   const handleOpenMessenger = (text: string, debt: Debt) => {
     if (!bankNo || !bankAccountName) {
-      alert("⚠️ Vui lòng cấu hình Số tài khoản & Tên thụ hưởng của bạn trước khi gửi đòi nợ!");
+      toast.error("⚠️ Vui lòng cấu hình Số tài khoản & Tên thụ hưởng của bạn trước khi gửi đòi nợ!");
       return;
     }
     navigator.clipboard.writeText(text);
@@ -451,7 +452,7 @@ Xin chân thành cảm ơn!`;
 
   const shareViaWeb = (text: string, debt: Debt) => {
     if (!bankNo || !bankAccountName) {
-      alert("⚠️ Vui lòng cấu hình Số tài khoản & Tên thụ hưởng của bạn trước khi chia sẻ!");
+      toast.error("⚠️ Vui lòng cấu hình Số tài khoản & Tên thụ hưởng của bạn trước khi chia sẻ!");
       return;
     }
     if (navigator.share) {
@@ -460,9 +461,9 @@ Xin chân thành cảm ơn!`;
         text: text,
       }).catch(err => console.log(err));
     } else {
-      // Fallback: Copy to clipboard and alert
+      // Fallback: Copy to clipboard and toast
       copyToClipboard(text, 'share');
-      alert("Thiết bị của bạn không hỗ trợ Web Share API. Tin nhắn nhắc nợ đã được SAO CHÉP tự động vào bộ nhớ tạm để bạn tự dán gửi Zalo/Messenger!");
+      toast.success("Đã copy tin nhắn nhắc nợ vào bộ nhớ tạm để bạn dán gửi Zalo/Messenger!");
     }
   };
 
@@ -685,7 +686,7 @@ Xin chân thành cảm ơn!`;
                                   <button
                                     onClick={() => {
                                       if (!bankNo || !bankAccountName) {
-                                        alert("⚠️ Vui lòng cấu hình Số tài khoản & Tên thụ hưởng của bạn trước khi sao chép!");
+                                        toast.error("⚠️ Vui lòng cấu hình Số tài khoản & Tên thụ hưởng của bạn trước khi sao chép!");
                                         return;
                                       }
                                       const text = getReminderMessage(debt, 'friendly');
@@ -908,7 +909,7 @@ Xin chân thành cảm ơn!`;
                                        type="button"
                                        onClick={() => {
                                          if (!bankNo || !bankAccountName) {
-                                           alert("⚠️ Vui lòng cấu hình Số tài khoản & Tên thụ hưởng của bạn trước khi sao chép!");
+                                           toast.error("⚠️ Vui lòng cấu hình Số tài khoản & Tên thụ hưởng của bạn trước khi sao chép!");
                                            return;
                                          }
                                          copyToClipboard(customMessage, `custom-copy-${debt.id}`);

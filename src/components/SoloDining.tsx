@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Venue, Bill, SoloMeal } from '../types';
+import toast from 'react-hot-toast';
 import { 
   PiggyBank, 
   TrendingUp, 
@@ -153,7 +154,7 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
   const handleAddMeal = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!mealName.trim()) {
-      alert("Hãy nhập tên bữa ăn (ví dụ: Ăn trưa văn phòng, Đi ăn phở sáng...)!");
+      toast.error("Hãy nhập tên bữa ăn (ví dụ: Ăn trưa văn phòng, Đi ăn phở sáng...)!");
       return;
     }
 
@@ -164,7 +165,7 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
     const total = rawAmount + drinkAmount + otherAmount;
 
     if (total <= 0) {
-      alert("Tổng chi phí bữa ăn phải lớn hơn 0đ!");
+      toast.error("Tổng chi phí bữa ăn phải lớn hơn 0đ!");
       return;
     }
 

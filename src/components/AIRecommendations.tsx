@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Venue } from '../types';
+import toast from 'react-hot-toast';
 import { 
   Sparkles, 
   MapPin, 
@@ -129,7 +130,7 @@ export default function AIRecommendations({ savedVenues, onAddVenue }: AIRecomme
   // Attempt to fetch approximate HTML5 geolocation coordinates
   const handleGPSLocationLookup = () => {
     if (!navigator.geolocation) {
-      alert('Trình duyệt không hỗ trợ Geolocation tự động.');
+      toast.error('Trình duyệt không hỗ trợ Geolocation tự động.');
       return;
     }
 
@@ -148,7 +149,7 @@ export default function AIRecommendations({ savedVenues, onAddVenue }: AIRecomme
       },
       (error) => {
         console.warn('Geolocation lookup denied/failed:', error);
-        alert('Không chiếm quyền hoặc lấy tọa độ GPS thành công. Bạn vui lòng cấp quyền vị trí của trình duyệt hoặc gõ địa lý thủ công.');
+        toast.error('Không lấy được tọa độ GPS. Vui lòng cấp quyền vị trí hoặc nhập địa chỉ thủ công.');
         setLoading(false);
       },
       { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
