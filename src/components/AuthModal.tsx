@@ -187,7 +187,7 @@ export default function AuthModal({ currentUser, onClose, onSuccess }: AuthModal
                 <input
                   type="text"
                   required
-                  placeholder="Ví dụ: Tuấn Anh (Bạn)"
+                  placeholder="Ví dụ: Tiến Lộc, Bảo Nam..."
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
                   className="w-full pl-10 pr-4 py-2.5 text-xs font-black rounded-xl border-2 border-slate-900 dark:border-slate-700 bg-white dark:bg-slate-950 focus:border-orange-500 outline-hidden transition-colors text-slate-950 dark:text-white"

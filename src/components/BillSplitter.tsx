@@ -14,7 +14,6 @@ interface BillSplitterProps {
 }
 
 const COMMON_MEMBERS_PRESETS = [
-  'Tuấn Anh (Bạn)',
   'Minh Quân',
   'Thanh Trúc',
   'Hồng Vân',
@@ -48,6 +47,17 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
   const [members, setMembers] = useState<Member[]>([
     { name: activeCreatorName, initialPaid: 0, finalShare: 0, hasPaidDebt: true, percentage: 100 }
   ]);
+  const prevCreatorRef = React.useRef(activeCreatorName);
+
+  // Sync creator name reactively when user logs in or edits name
+  useEffect(() => {
+    if (prevCreatorRef.current !== activeCreatorName) {
+      const oldName = prevCreatorRef.current;
+      setMembers(prev => prev.map(m => m.name === oldName ? { ...m, name: activeCreatorName } : m));
+      prevCreatorRef.current = activeCreatorName;
+    }
+  }, [activeCreatorName]);
+
   const [newMemberName, setNewMemberName] = useState<string>('');
   const [splitType, setSplitType] = useState<'equal' | 'percentage' | 'unequal' | 'roulette'>('equal');
 

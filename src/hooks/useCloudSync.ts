@@ -34,9 +34,13 @@ export function useCloudSync({
       setAuthChecking(true);
       if (user) {
         setCurrentUser(user);
-        if (user.displayName) {
-          setActiveCreatorName(user.displayName);
-        }
+        
+        // Resolve dynamic user display name
+        const cachedCreatorName = localStorage.getItem(`nhau_creator_name_${user.uid}`);
+        const resolvedName = user.displayName || cachedCreatorName || (user.email ? user.email.split('@')[0] : 'Bạn (Chủ phòng)');
+        setActiveCreatorName(resolvedName);
+        localStorage.setItem(`nhau_creator_name_${user.uid}`, resolvedName);
+        localStorage.setItem('nhau_creator_name', resolvedName);
 
         // Fast load from user-scoped local cache first
         const cachedVenues = getStoredVenues(user.uid);
@@ -76,6 +80,8 @@ export function useCloudSync({
         }
       } else {
         setCurrentUser(null);
+        const guestName = localStorage.getItem('nhau_creator_name_guest') || localStorage.getItem('nhau_creator_name') || 'Bạn (Chủ phòng)';
+        setActiveCreatorName(guestName);
         // Clean session and reload offline guest records safely
         const guestVenues = getStoredVenues('guest');
         const guestBills = getStoredBills('guest');

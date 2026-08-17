@@ -88,8 +88,22 @@ export default function App() {
   };
   
   // Current user configuration settings
-  const [activeCreatorName, setActiveCreatorName] = useState<string>('Tuấn Anh (Bạn)');
-  
+  const [activeCreatorName, setActiveCreatorName] = useState<string>(() => {
+    return localStorage.getItem('nhau_creator_name') || 'Tôi (Bạn)';
+  });
+
+  // Persist active creator name changes
+  useEffect(() => {
+    if (activeCreatorName) {
+      localStorage.setItem('nhau_creator_name', activeCreatorName);
+      if (currentUser?.uid) {
+        localStorage.setItem(`nhau_creator_name_${currentUser.uid}`, activeCreatorName);
+      } else {
+        localStorage.setItem('nhau_creator_name_guest', activeCreatorName);
+      }
+    }
+  }, [activeCreatorName, currentUser]);
+
   // Dark mode state
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
     return localStorage.getItem('nhau_dark_mode') === 'true';
