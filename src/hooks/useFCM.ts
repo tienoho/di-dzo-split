@@ -53,12 +53,19 @@ export function useFCM({ activeCreatorName, currentUser }: UseFCMProps) {
         // Custom or dynamic user VAPID key
         let vapidKey = localStorage.getItem('nhau_fcm_vapid_key') || ((import.meta as any).env?.VITE_FCM_VAPID_KEY as string | undefined) || undefined;
         
+        // Clean out invalid keys (e.g. Firebase API Keys starting with AIzaSy or too short)
+        if (vapidKey && (vapidKey.startsWith('AIzaSy') || vapidKey.length < 50)) {
+          console.warn('[FCM client] Invalid VAPID Key in storage, clearing:', vapidKey);
+          localStorage.removeItem('nhau_fcm_vapid_key');
+          vapidKey = undefined;
+        }
+
         if (!vapidKey) {
           try {
             const res = await fetch('/api/fcm-vapid');
             if (res.ok && res.headers.get('content-type')?.includes('application/json')) {
               const data = await res.json();
-              if (data && data.success && data.key) {
+              if (data && data.success && data.key && !data.key.startsWith('AIzaSy') && data.key.length >= 50) {
                 vapidKey = data.key;
                 localStorage.setItem('nhau_fcm_vapid_key', data.key);
                 window.dispatchEvent(new Event('storage')); // Notify all listening components
@@ -75,12 +82,23 @@ export function useFCM({ activeCreatorName, currentUser }: UseFCMProps) {
           if (vapidKey) {
             token = await getToken(messaging, { vapidKey });
           } else {
-            // Fallback: request without explicit key or catch
             token = await getToken(messaging);
           }
-        } catch (e) {
-          console.warn('[FCM client] VAPID Key required for standard FCM notifications in this context:', e);
-          return;
+        } catch (e: any) {
+          const errMsg = e?.message || String(e);
+          if (errMsg.includes('applicationServerKey') || errMsg.includes('subscribe')) {
+            console.warn('[FCM client] VAPID Key invalid, falling back to default:', e);
+            localStorage.removeItem('nhau_fcm_vapid_key');
+            try {
+              token = await getToken(messaging);
+            } catch (fallbackErr) {
+              console.warn('[FCM client] Fallback token request skipped:', fallbackErr);
+              return;
+            }
+          } else {
+            console.warn('[FCM client] Standard FCM token registration skipped:', e);
+            return;
+          }
         }
 
         if (token) {

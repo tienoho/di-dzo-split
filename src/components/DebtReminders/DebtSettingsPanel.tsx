@@ -174,26 +174,42 @@ export default function DebtSettingsPanel({
           🚀 Liên kết Firebase PUSH
         </h4>
         <p className="text-[10px] text-indigo-700 font-extrabold leading-relaxed">
-          App tự động đăng ký token khi bạn điền "Người Tổ Chức". Bạn cũng có thể thiết lập khóa riêng để thử nghiệm.
+          App tự động đăng ký token theo tên của bạn. Lưu ý: VAPID Key là <strong>Web Push Certificate Key</strong> (bắt đầu bằng <code>B...</code>, dài ~88 ký tự), không phải API Key (<code>AIza...</code>).
         </p>
         <div className="space-y-2">
-          <input 
-            type="text" 
-            placeholder="Nhập FCM VAPID Key của bạn..."
-            value={vapidKeyInput}
-            onChange={(e) => setVapidKeyInput(e.target.value)}
-            className="w-full text-[10px] p-2 rounded-lg border-2 border-indigo-300 focus:border-indigo-600 bg-white/70 font-mono text-indigo-900"
-          />
+          <div className="relative flex items-center">
+            <input 
+              type="text" 
+              placeholder="FCM VAPID Key (Web Push certificate)..."
+              value={vapidKeyInput}
+              onChange={(e) => setVapidKeyInput(e.target.value)}
+              className="w-full text-[10px] p-2 pr-12 rounded-lg border-2 border-indigo-300 focus:border-indigo-600 bg-white/70 font-mono text-indigo-900"
+            />
+            {vapidKeyInput && (
+              <button
+                type="button"
+                onClick={() => {
+                  setVapidKeyInput('');
+                  localStorage.removeItem('nhau_fcm_vapid_key');
+                  window.dispatchEvent(new Event('storage'));
+                }}
+                className="absolute right-1 text-[9px] font-bold bg-indigo-200 hover:bg-rose-200 text-indigo-800 hover:text-rose-800 px-1.5 py-0.5 rounded cursor-pointer transition-colors"
+                title="Xóa Key đã lưu"
+              >
+                Xóa
+              </button>
+            )}
+          </div>
           <div className="grid grid-cols-2 gap-2">
             <button 
               onClick={handleTestFCMRegister}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-black py-2 px-2 rounded-xl border border-indigo-800"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-black py-2 px-2 rounded-xl border border-indigo-800 cursor-pointer shadow-[2px_2px_0px_0px_rgba(30,27,75,1)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all"
             >
               🔄 Đăng ký Token
             </button>
             <button 
               onClick={handleSelfTestFCMNotification}
-              className="bg-indigo-200 hover:bg-indigo-300 text-indigo-900 text-[10px] font-black py-2 px-2 rounded-xl border border-indigo-400"
+              className="bg-indigo-200 hover:bg-indigo-300 text-indigo-900 text-[10px] font-black py-2 px-2 rounded-xl border border-indigo-400 cursor-pointer shadow-[2px_2px_0px_0px_rgba(30,27,75,1)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all"
             >
               📲 Test Bắn Nợ
             </button>

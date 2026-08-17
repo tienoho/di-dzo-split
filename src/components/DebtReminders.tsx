@@ -167,9 +167,15 @@ export default function DebtReminders({ debts, onMarkDebtAsPaid, activeCreatorNa
         return;
       }
 
-      const vapidKey = vapidKeyInput.trim() || undefined;
+      let vapidKey = vapidKeyInput.trim() || undefined;
       const { getToken } = await import('firebase/messaging');
       
+      // Validate common mistaken keys (e.g. Firebase API Key)
+      if (vapidKey && (vapidKey.startsWith('AIzaSy') || vapidKey.length < 50)) {
+        toast.error("⚠️ Khóa bạn nhập là API Key (AIza...), không phải VAPID Public Key! VAPID Key thường dài ~88 ký tự và bắt đầu bằng B... trong Firebase Console > Project Settings > Cloud Messaging > Web Push certificates.");
+        return;
+      }
+
       let token = '';
       try {
         if (vapidKey) {
@@ -178,8 +184,22 @@ export default function DebtReminders({ debts, onMarkDebtAsPaid, activeCreatorNa
           token = await getToken(messaging);
         }
       } catch (err: any) {
-        toast.error(`⚠️ Không tạo được Token FCM: ${err.message || err}`);
-        return;
+        const errMsg = err?.message || String(err);
+        if (errMsg.includes('applicationServerKey') || errMsg.includes('subscribe')) {
+          toast.error("⚠️ VAPID Key không hợp lệ! Hãy lấy Web Push Certificate Key Pair từ Firebase Console (dài ~88 ký tự, bắt đầu bằng B...). Đang thử tạo token mặc định...");
+          // Fallback try without the invalid key
+          try {
+            localStorage.removeItem('nhau_fcm_vapid_key');
+            setVapidKeyInput('');
+            token = await getToken(messaging);
+          } catch (fallbackErr: any) {
+            toast.error(`⚠️ Yêu cầu VAPID Key hợp lệ trong Firebase Console: ${fallbackErr.message || fallbackErr}`);
+            return;
+          }
+        } else {
+          toast.error(`⚠️ Không tạo được Token FCM: ${errMsg}`);
+          return;
+        }
       }
 
       if (token) {
