@@ -8,11 +8,11 @@
   "rewrites": [
     {
       "source": "/firebase-messaging-sw.js",
-      "destination": "/api/index.ts"
+      "destination": "/api/index"
     },
     {
       "source": "/api/(.*)",
-      "destination": "/api/index.ts"
+      "destination": "/api/index"
     },
     {
       "source": "/((?!api).*)",
