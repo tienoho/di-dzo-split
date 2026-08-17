@@ -36,8 +36,12 @@ export const getStoredVenues = (userId?: string): Venue[] => {
 };
 
 export const saveStoredVenues = (venues: Venue[], userId?: string) => {
-  const key = getStorageKey('nhau_venues', userId);
-  localStorage.setItem(key, JSON.stringify(venues));
+  try {
+    const key = getStorageKey('nhau_venues', userId);
+    localStorage.setItem(key, JSON.stringify(venues));
+  } catch (e) {
+    console.warn('[Storage] Failed to save venues to localStorage (possibly quota exceeded):', e);
+  }
 };
 
 // Helper to save and load bills with user scoping
@@ -68,8 +72,12 @@ export const getStoredBills = (userId?: string): Bill[] => {
 };
 
 export const saveStoredBills = (bills: Bill[], userId?: string) => {
-  const key = getStorageKey('nhau_bills', userId);
-  localStorage.setItem(key, JSON.stringify(bills));
+  try {
+    const key = getStorageKey('nhau_bills', userId);
+    localStorage.setItem(key, JSON.stringify(bills));
+  } catch (e) {
+    console.warn('[Storage] Failed to save bills to localStorage (possibly quota exceeded):', e);
+  }
 };
 
 // Compute dynamic Debts from pending bills using Multi-Payer Greedy Debt Settlement
