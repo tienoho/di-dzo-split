@@ -7,6 +7,8 @@ import {
   fetchContactsFromCloud,
   saveBillToCloud,
   saveVenueToCloud,
+  saveContactToCloud,
+  deleteContactFromCloud,
   FirebaseUser
 } from '../lib/firebase';
 import {
@@ -17,7 +19,7 @@ import {
   getActiveDebts
 } from '../utils/storage';
 import { mergeVersioned } from '../utils/syncMerge';
-import { Venue, Bill, Debt } from '../types';
+import { Venue, Bill, Debt, ContactEntry } from '../types';
 
 interface UseCloudSyncProps {
   setCurrentUser: (user: FirebaseUser | null) => void;
@@ -25,7 +27,7 @@ interface UseCloudSyncProps {
   setVenues: (venues: Venue[]) => void;
   setBills: (bills: Bill[]) => void;
   setDebts: (debts: Debt[]) => void;
-  setContacts: (contacts: Record<string, { phone?: string; messenger?: string }>) => void;
+  setContacts: (contacts: Record<string, ContactEntry>) => void;
   setAuthChecking: (checking: boolean) => void;
 }
 
@@ -87,8 +89,14 @@ export function useCloudSync({
         // Read local cache *after* remote I/O to include edits made during fetching.
         const mergedBills = mergeVersioned(cloudBills, getStoredBills(user.uid));
         const mergedVenues = mergeVersioned(cloudVenues, getStoredVenues(user.uid));
-        // Firestore is canonical for existing contacts; no guessed merging of deleted names.
-        const contacts = cloudContacts;
+        const localContacts = readContacts(`nhau_contacts_${user.uid}`) as Record<string, ContactEntry>;
+        const mergedContacts = mergeVersioned(
+          Object.entries(cloudContacts).map(([id, entry]) => ({ id, ...entry })),
+          Object.entries(localContacts).map(([id, entry]) => ({ id, ...entry }))
+        );
+        const contacts: Record<string, ContactEntry> = Object.fromEntries(
+          mergedContacts.entities.map(({ id, ...entry }) => [id, entry])
+        );
 
         setBills(mergedBills.entities);
         setDebts(getActiveDebts(mergedBills.entities));
@@ -100,7 +108,10 @@ export function useCloudSync({
 
         const operations = [
           ...mergedBills.toUpload.map(b => saveBillToCloud(user.uid, b)),
-          ...mergedVenues.toUpload.map(v => saveVenueToCloud(user.uid, v))
+          ...mergedVenues.toUpload.map(v => saveVenueToCloud(user.uid, v)),
+          ...mergedContacts.toUpload.map(entry => entry.deletedAt
+            ? deleteContactFromCloud(user.uid, entry.id, entry.deletedAt)
+            : saveContactToCloud(user.uid, entry.id, entry.phone || '', entry.messenger || '', entry.updatedAt))
         ];
         if (operations.length) {
           const results = await Promise.allSettled(operations);
