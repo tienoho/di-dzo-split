@@ -25,6 +25,7 @@
   },
   "exclude": [
     "tests/e2e",
-    "playwright.config.ts"
+    "playwright.config.ts",
+    "tests/rules"
   ]
 }
