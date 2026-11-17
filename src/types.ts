@@ -8,6 +8,21 @@ export interface Member {
   penaltyAmount?: number; // Accumulated penalty amount for this person (e.g. late arrival, phone usage)
 }
 
+export interface SettlementEvent {
+  id: string;
+  type: 'payment' | 'reset';
+  amount: number; // VND, payment only; reset uses 0
+  createdAt: string;
+  note?: string;
+}
+
+export interface ContactEntry {
+  phone?: string;
+  messenger?: string;
+  updatedAt?: string;
+  deletedAt?: string;
+}
+
 export interface Venue {
   id: string;
   name: string;
@@ -15,6 +30,8 @@ export interface Venue {
   notes?: string;
   rating?: number;
   visitsCount: number;
+  updatedAt?: string;
+  deletedAt?: string;
 }
 
 export interface Bill {
@@ -33,6 +50,10 @@ export interface Bill {
   note?: string;
   receiptImage?: string; // Base64 compressed invoice proof
   isArchived?: boolean; // True if the bill has been archived to tidy up history
+  updatedAt?: string;
+  deletedAt?: string;
+  settledTransfers?: Record<string, boolean>; // Legacy per-recipient settlement status
+  payments?: Record<string, SettlementEvent[]>; // Append-only UI history per creditor transfer
   bankName?: string; // e.g. 'mbbank', 'vcb'
   bankNo?: string; // Bank account number of the host
   bankAccountName?: string; // Account holder full name
@@ -45,12 +66,16 @@ export interface Debt {
   venueName: string;
   debtorName: string;   // The person who owes
   creditorName: string; // The person who paid and gets paid
-  amount: number;
+  amount: number; // Original principal of this transfer
+  paidAmount?: number;
+  remainingAmount?: number;
   isPaid: boolean;
 }
 
 export interface SoloMeal {
   id: string;
+  updatedAt?: string;
+  deletedAt?: string;
   name: string;
   venueName?: string;
   date: string; // YYYY-MM-DD or ISO

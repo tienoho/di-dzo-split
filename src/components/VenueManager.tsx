@@ -271,7 +271,7 @@ export default function VenueManager({
       )}
 
       {/* Primary Section Header & Sub-Tabs */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-900 border-4 border-slate-900 rounded-[32px] p-5 shadow-lg">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-900 border border-slate-200 rounded-3xl p-5 shadow-sm">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <span className="w-3 h-6 bg-pink-500 rounded-full inline-block"></span>
@@ -291,7 +291,7 @@ export default function VenueManager({
             onClick={() => setManagerTab('community')}
             className={`px-4 py-2 cursor-pointer transition-all rounded-xl text-xs font-black flex items-center gap-1.5 ${
               managerTab === 'community'
-                ? 'bg-pink-550 bg-pink-500 text-white shadow-sm'
+                ? 'bg-pink-500 bg-pink-500 text-white shadow-sm'
                 : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
@@ -303,7 +303,7 @@ export default function VenueManager({
             onClick={() => setManagerTab('local')}
             className={`px-4 py-2 cursor-pointer transition-all rounded-xl text-xs font-black flex items-center gap-1.5 ${
               managerTab === 'local'
-                ? 'bg-orange-550 bg-orange-550 bg-orange-500 text-white shadow-sm'
+                ? 'bg-orange-500 bg-orange-500 bg-orange-500 text-white shadow-sm'
                 : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
@@ -332,7 +332,7 @@ export default function VenueManager({
           )}
 
           {/* Search Community Venue bar */}
-          <div className="bg-white dark:bg-slate-900 border-4 border-slate-900 rounded-[28px] p-4 shadow-md flex items-center gap-3">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 rounded-[28px] p-4 shadow-md flex items-center gap-3">
             <Search className="w-5 h-5 text-slate-400 flex-shrink-0" />
             <input
               type="text"
@@ -354,7 +354,7 @@ export default function VenueManager({
           {/* Public venues Grid layout */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {isLoadingPublic ? (
-              <div className="col-span-full text-center py-20 bg-white dark:bg-slate-900 border-4 border-slate-900 rounded-[32px]">
+              <div className="col-span-full text-center py-20 bg-white dark:bg-slate-900 border border-slate-200 rounded-3xl">
                 <div className="w-10 h-10 border-4 border-pink-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
                 <p className="text-xs font-black text-slate-500 uppercase tracking-widest">Đang kết nối sóng mây, tải danh bạ quán tủ cộng đồng...</p>
               </div>
@@ -380,8 +380,8 @@ export default function VenueManager({
                 </div>
               </div>
             ) : filteredCommunityVenues.length === 0 ? (
-              <div className="col-span-full text-center py-24 bg-white dark:bg-slate-900 border-4 border-slate-900 rounded-[32px] border-dashed border-slate-300">
-                <Store className="w-16 h-16 text-slate-300 mx-auto mb-4 animate-pulse" />
+              <div className="col-span-full text-center py-24 bg-white dark:bg-slate-900 border border-slate-200 rounded-3xl border-dashed border-slate-300">
+                <Store className="w-16 h-16 text-slate-300 mx-auto mb-4" />
                 <h3 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-wider">Chưa tìm thấy quán tủ nào</h3>
                 <p className="text-xs font-extrabold text-slate-400 mt-1 max-w-md mx-auto">
                   Hãy là người tiên phong chia sẻ quán quen đỉnh chóp của bản thân cho cộng đồng bằng cách nhấn tab &ldquo;Tự Điểm Cá Nhân&rdquo; và click chia sẻ!
@@ -396,7 +396,7 @@ export default function VenueManager({
                 return (
                   <div 
                     key={pub.id} 
-                    className="bg-white dark:bg-slate-900 border-4 border-slate-900 rounded-[32px] p-5 shadow-md flex flex-col justify-between space-y-4 hover:shadow-xl transition-all"
+                    className="bg-white dark:bg-slate-900 border border-slate-200 rounded-3xl p-5 shadow-md flex flex-col justify-between space-y-4 hover:shadow-xl transition-all"
                   >
                     <div className="space-y-2">
                       <div className="flex items-start justify-between gap-2 border-b border-dashed border-slate-200 pb-2">
@@ -415,14 +415,14 @@ export default function VenueManager({
                         </button>
                       </div>
 
-                      <p className="text-xs font-bold text-slate-655 text-slate-600 dark:text-slate-300 flex items-start gap-1">
+                      <p className="text-xs font-bold text-slate-600 text-slate-600 dark:text-slate-300 flex items-start gap-1">
                         <MapPin className="w-3.5 h-3.5 text-pink-500 flex-shrink-0 mt-0.5" />
                         {pub.address || 'Chưa định vị cụ thể'}
                       </p>
 
                       <div className="bg-pink-50/20 dark:bg-pink-950/20 rounded-2xl p-3 border-2 border-slate-900 dark:border-slate-800">
                         <span className="text-[8px] uppercase font-black text-slate-400 dark:text-slate-500 block">Lời giới thiệu/Độc chiêu của quán:</span>
-                        <p className="text-xs font-bold text-slate-855 text-slate-800 dark:text-slate-200 italic mt-1 leading-relaxed">
+                        <p className="text-xs font-bold text-slate-800 text-slate-800 dark:text-slate-200 italic mt-1 leading-relaxed">
                           &ldquo; {pub.notes || 'Ấn tượng đầu tiên: Mồi nhướng cực hợp lý, giá cả siêu mềm!'} &rdquo;
                         </p>
                       </div>
@@ -443,10 +443,10 @@ export default function VenueManager({
                     <div className="border-t-2 border-slate-100 dark:border-slate-800 pt-3">
                       <button
                         onClick={() => handleToggleExpandVenue(pub.id)}
-                        className="w-full bg-slate-100 dark:bg-slate-850 hover:bg-slate-200 dark:hover:bg-slate-800 border-2 border-slate-900 dark:border-slate-700 p-2.5 rounded-2xl text-sm font-black text-slate-800 dark:text-slate-200 flex items-center justify-between cursor-pointer"
+                        className="w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-800 border-2 border-slate-900 dark:border-slate-700 p-2.5 rounded-2xl text-sm font-black text-slate-800 dark:text-slate-200 flex items-center justify-between cursor-pointer"
                       >
                         <span className="flex items-center gap-1">
-                          <MessageSquare className="w-4 h-4 text-pink-500 animate-pulse" />
+                          <MessageSquare className="w-4 h-4 text-pink-500" />
                           {isExpanded ? 'Đóng mục bình tán' : `Xem bình phẩm & đánh giá của đồng nhậu (${pub.ratingsCount})`}
                         </span>
                         <ChevronRight className={`w-4 h-4 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`} />
@@ -461,7 +461,7 @@ export default function VenueManager({
                             
                             <div className="flex items-center gap-2">
                               <span className="text-xs font-bold text-slate-500">Chấm sao:</span>
-                              <div className="flex items-center bg-white dark:bg-slate-900 border-2 border-slate-900 dark:border-slate-705 p-1 px-2 rounded-xl">
+                              <div className="flex items-center bg-white dark:bg-slate-900 border-2 border-slate-900 dark:border-slate-700 p-1 px-2 rounded-xl">
                                 {[1, 2, 3, 4, 5].map((s) => (
                                   <button
                                     key={s}
@@ -503,7 +503,7 @@ export default function VenueManager({
                               <p className="text-center text-xs text-slate-400 font-bold py-4">Chưa có bình luận nào. Hãy khai lộc bằng bài bình phán đầu tiên!</p>
                             ) : (
                               reviews.map((rev) => (
-                                <div key={rev.id} className="bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-850 p-3 rounded-2xl space-y-1.5 shadow-5xs">
+                                <div key={rev.id} className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 p-3 rounded-2xl space-y-1.5 shadow-5xs">
                                   <div className="flex items-center justify-between">
                                     <span className="text-xs font-black text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                                       👤 {rev.authorName}
@@ -514,7 +514,7 @@ export default function VenueManager({
                                     </div>
                                   </div>
                                   
-                                  <p className="text-xs font-bold leading-normal text-slate-755 text-slate-700 dark:text-slate-355 italic">&ldquo; {rev.comment} &rdquo;</p>
+                                  <p className="text-xs font-bold leading-normal text-slate-700 text-slate-700 dark:text-slate-355 italic">&ldquo; {rev.comment} &rdquo;</p>
                                   
                                   <div className="text-xs text-slate-400 flex items-center gap-1">
                                     <Clock className="w-3 h-3" />
@@ -540,7 +540,7 @@ export default function VenueManager({
       {managerTab === 'local' && (
         <div className="space-y-6">
           {/* PROMINENT SEARCH, QUICK FILTER & STATS BANNER */}
-          <div className="bg-white dark:bg-slate-900 border-4 border-slate-900 rounded-[32px] p-6 shadow-lg space-y-4 animate-slideIn">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 rounded-3xl p-6 shadow-sm space-y-4 animate-slideIn">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b-2 border-slate-900 dark:border-slate-800 pb-4">
               <div className="space-y-1">
                 <span className="text-xs uppercase font-black text-orange-500 tracking-wider">🎯 TRÌNH TRA CỨU & BỘ LỌC THÔNG MINH</span>
@@ -561,7 +561,7 @@ export default function VenueManager({
             {/* Input & Filters element */}
             <div className="flex flex-col lg:flex-row gap-4 items-stretch lg:items-center">
               {/* Main big Search input */}
-              <div className="flex-1 bg-slate-50 dark:bg-slate-850 border-3 border-slate-900 dark:border-slate-705 p-3.5 rounded-2xl flex items-center gap-2.5">
+              <div className="flex-1 bg-slate-50 dark:bg-slate-800 border-3 border-slate-900 dark:border-slate-700 p-3.5 rounded-2xl flex items-center gap-2.5">
                 <Search className="w-5 h-5 text-slate-400 flex-shrink-0" />
                 <input
                   type="text"
@@ -588,7 +588,7 @@ export default function VenueManager({
                   className={`px-3 py-2 text-sm font-black cursor-pointer rounded-xl transition-all border-2 ${
                     localFilter === 'all'
                       ? 'bg-slate-900 text-white border-slate-900 dark:bg-slate-700 dark:border-slate-600'
-                      : 'bg-white dark:bg-slate-850 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-400'
+                      : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-400'
                   }`}
                 >
                   Tất cả ({venues.length})
@@ -600,7 +600,7 @@ export default function VenueManager({
                   className={`px-3 py-2 text-sm font-black cursor-pointer rounded-xl transition-all border-2 flex items-center gap-1 ${
                     localFilter === 'high-rated'
                       ? 'bg-amber-500 text-slate-950 border-slate-950 dark:bg-amber-500 dark:text-slate-950'
-                      : 'bg-white dark:bg-slate-850 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-400'
+                      : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-400'
                   }`}
                 >
                   <Star className="w-3 h-3 fill-amber-400 text-amber-500" />
@@ -613,7 +613,7 @@ export default function VenueManager({
                   className={`px-3 py-2 text-sm font-black cursor-pointer rounded-xl transition-all border-2 flex items-center gap-1 ${
                     localFilter === 'most-visited'
                       ? 'bg-orange-500 text-white border-slate-950 dark:bg-orange-500'
-                      : 'bg-white dark:bg-slate-850 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-400'
+                      : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-400'
                   }`}
                 >
                   🍺 Đã nhậu ({venues.filter(v => (v.visitsCount || 0) > 0).length})
@@ -625,7 +625,7 @@ export default function VenueManager({
                   className={`px-3 py-2 text-sm font-black cursor-pointer rounded-xl transition-all border-2 flex items-center gap-1 ${
                     localFilter === 'unvisited'
                       ? 'bg-teal-500 text-slate-950 border-slate-950 dark:bg-teal-500 dark:text-slate-950'
-                      : 'bg-white dark:bg-slate-850 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-400'
+                      : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-400'
                   }`}
                 >
                   🧊 Mới ghim ({venues.filter(v => (v.visitsCount || 0) === 0).length})
@@ -636,7 +636,7 @@ export default function VenueManager({
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Add personal favorite venue form */}
-            <div className="lg:col-span-5 bg-white dark:bg-slate-900 border-4 border-slate-900 rounded-[32px] shadow-lg p-6 h-fit space-y-5">
+            <div className="lg:col-span-5 bg-white dark:bg-slate-900 border border-slate-200 rounded-3xl shadow-sm p-6 h-fit space-y-5">
               <div className="space-y-1.5 border-b-2 border-dashed border-slate-100 dark:border-slate-800 pb-4">
                 <div className="flex items-center gap-2">
                   <span className="w-3.5 h-7 bg-orange-500 rounded-full inline-block"></span>
@@ -652,7 +652,7 @@ export default function VenueManager({
 
               <form onSubmit={handleSubmitPrivateVenue} className="space-y-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-black text-slate-755 text-slate-700 dark:text-slate-300 block uppercase tracking-wide">
+                  <label className="text-xs font-black text-slate-700 text-slate-700 dark:text-slate-300 block uppercase tracking-wide">
                     Tên quán ăn / Thức uống <span className="text-orange-600">*</span>
                   </label>
                   <input
@@ -661,12 +661,12 @@ export default function VenueManager({
                     placeholder="Ví dụ: Bia Hơi Lan Béo - Hoàng Hoa Thám"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="w-full text-xs font-extrabold bg-slate-50 dark:bg-slate-850 border-2 border-slate-900 dark:border-slate-705 focus:border-orange-500 rounded-xl p-3 text-slate-900 dark:text-white outline-hidden"
+                    className="w-full text-xs font-extrabold bg-slate-50 dark:bg-slate-800 border-2 border-slate-900 dark:border-slate-700 focus:border-orange-500 rounded-xl p-3 text-slate-900 dark:text-white outline-hidden"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-black text-slate-755 text-slate-700 dark:text-slate-300 block uppercase tracking-wide">
+                  <label className="text-xs font-black text-slate-700 text-slate-700 dark:text-slate-300 block uppercase tracking-wide">
                     Địa chỉ hoặc vị trí
                   </label>
                   <input
@@ -674,12 +674,12 @@ export default function VenueManager({
                     placeholder="Ví dụ: Số 24 ngõ 39 Phạm Ngọc Thạch, Đống Đa"
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
-                    className="w-full text-xs font-bold bg-slate-50 dark:bg-slate-850 border-2 border-slate-900 dark:border-slate-705 focus:border-orange-500 rounded-xl p-3 text-slate-900 dark:text-white outline-hidden"
+                    className="w-full text-xs font-bold bg-slate-50 dark:bg-slate-800 border-2 border-slate-900 dark:border-slate-700 focus:border-orange-500 rounded-xl p-3 text-slate-900 dark:text-white outline-hidden"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-black text-slate-755 text-slate-700 dark:text-slate-300 block uppercase tracking-wide">
+                  <label className="text-xs font-black text-slate-700 text-slate-700 dark:text-slate-300 block uppercase tracking-wide">
                     Món Độc Bản Nhất / Điểm Cộng
                   </label>
                   <textarea
@@ -687,15 +687,15 @@ export default function VenueManager({
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     rows={3}
-                    className="w-full text-xs font-bold bg-slate-50 dark:bg-slate-850 border-2 border-slate-900 dark:border-slate-705 focus:border-orange-500 rounded-xl p-3 text-slate-900 dark:text-white outline-hidden"
+                    className="w-full text-xs font-bold bg-slate-50 dark:bg-slate-800 border-2 border-slate-900 dark:border-slate-700 focus:border-orange-500 rounded-xl p-3 text-slate-900 dark:text-white outline-hidden"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-black text-slate-755 text-slate-700 dark:text-slate-300 block uppercase tracking-wide">
+                  <label className="text-xs font-black text-slate-700 text-slate-700 dark:text-slate-300 block uppercase tracking-wide">
                     Mức độ sướng / Hài lòng
                   </label>
-                  <div className="flex items-center space-x-2 bg-slate-50 dark:bg-slate-850 p-2 border-2 border-slate-900 dark:border-slate-700 rounded-xl w-fit">
+                  <div className="flex items-center space-x-2 bg-slate-50 dark:bg-slate-800 p-2 border-2 border-slate-900 dark:border-slate-700 rounded-xl w-fit">
                     {[1, 2, 3, 4, 5].map((star) => (
                       <button
                         key={star}
@@ -719,7 +719,7 @@ export default function VenueManager({
             </div>
 
             {/* List existing personal places */}
-            <div className="lg:col-span-7 bg-white dark:bg-slate-900 border-4 border-slate-900 rounded-[32px] shadow-lg p-6 space-y-4">
+            <div className="lg:col-span-7 bg-white dark:bg-slate-900 border border-slate-200 rounded-3xl shadow-sm p-6 space-y-4">
               
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b-2 border-slate-100 dark:border-slate-800 pb-3">
                 <h3 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-1.5 tracking-tight">
@@ -745,7 +745,7 @@ export default function VenueManager({
                 filteredLocalVenues.map((v) => (
                   <div 
                     key={v.id} 
-                    className="bg-slate-50/20 dark:bg-slate-850/50 border-3 border-slate-900 dark:border-slate-800 rounded-[24px] p-4 flex flex-col justify-between space-y-3 shadow-3xs hover:-translate-y-0.5 transition-all"
+                    className="bg-slate-50/20 dark:bg-slate-800/50 border-3 border-slate-900 dark:border-slate-800 rounded-[24px] p-4 flex flex-col justify-between space-y-3 shadow-3xs hover:-translate-y-0.5 transition-all"
                   >
                     <div className="space-y-2">
                       <div className="flex items-start justify-between gap-1">
@@ -787,7 +787,7 @@ export default function VenueManager({
                     <div className="flex items-center justify-between pt-2.5 border-t border-dashed border-slate-200 dark:border-slate-800 text-xs font-black">
                       <div className="flex items-center gap-1.5">
                         <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                        <span className="text-slate-700 dark:text-slate-350">{v.rating ? v.rating.toFixed(1) : '5.0'} / 5.0</span>
+                        <span className="text-slate-700 dark:text-slate-300">{v.rating ? v.rating.toFixed(1) : '5.0'} / 5.0</span>
                       </div>
                       <span className="text-orange-700 bg-orange-100 border border-orange-300 dark:bg-orange-950/40 dark:border-orange-900 dark:text-orange-400 px-2.5 py-0.5 rounded-md">
                         {v.visitsCount} cuộc nhậu

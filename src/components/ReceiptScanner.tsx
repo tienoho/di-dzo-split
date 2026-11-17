@@ -12,6 +12,7 @@ import {
   Tv 
 } from 'lucide-react';
 import MoneyInput from './common/MoneyInput';
+import { useDialogA11y } from '../hooks/useDialogA11y';
 
 interface ReceiptScannerProps {
   onScanComplete: (data: { venueName: string; totalAmount: number; note: string; imageBase64?: string }) => void;
@@ -39,53 +40,86 @@ export default function ReceiptScanner({ onScanComplete, onClose }: ReceiptScann
   const streamRef = useRef<MediaStream | null>(null);
   const [cameraActive, setCameraActive] = useState<boolean>(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const dialogRef = useDialogA11y<HTMLDivElement>(true, () => { stopCamera(); onClose(); });
 
-  // Stop camera stream on unmount
-  useEffect(() => {
-    return () => {
-      stopCamera();
-    };
-  }, []);
+  const cameraRequestRef = useRef(0);
+  const mountedRef = useRef(false);
+  const previewObjectUrlRef = useRef<string | null>(null);
+  const requestControllerRef = useRef<AbortController | null>(null);
 
-  const startCamera = async () => {
-    try {
-      setCameraError(null);
-      stopCamera(); // clean active first
-      
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: 'environment' }, 
-        audio: false 
-      });
-      
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.play();
-        setCameraActive(true);
-      }
-    } catch (err: any) {
-      console.warn('Could not launch camera: ', err);
-      setCameraError('Không khởi động được camera. Vui lòng cấp quyền hoặc chuyển sang tải ảnh lên.');
-      setMode('upload');
-    }
+  const replacePreview = (url: string | null) => {
+    const previous = previewObjectUrlRef.current;
+    if (previous?.startsWith('blob:')) URL.revokeObjectURL(previous);
+    previewObjectUrlRef.current = url;
+    setPreviewUrl(url);
   };
 
   const stopCamera = () => {
+    // Invalidate any getUserMedia call awaiting browser permission.
+    cameraRequestRef.current++;
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
     }
-    setCameraActive(false);
+    if (videoRef.current) videoRef.current.srcObject = null;
+    if (mountedRef.current) setCameraActive(false);
   };
 
-  const handleModeChange = (newMode: 'upload' | 'camera') => {
-    setMode(newMode);
-    if (newMode === 'camera') {
-      startCamera();
+  const startCamera = async () => {
+    stopCamera();
+    const requestId = ++cameraRequestRef.current;
+    try {
+      setCameraError(null);
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error('Trình duyệt chưa hỗ trợ camera.');
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' } },
+        audio: false
+      });
+      if (!mountedRef.current || requestId !== cameraRequestRef.current) {
+        stream.getTracks().forEach(track => track.stop());
+        return;
+      }
+      if (!videoRef.current) {
+        stream.getTracks().forEach(track => track.stop());
+        return;
+      }
+      streamRef.current = stream;
+      videoRef.current.srcObject = stream;
+      await videoRef.current.play().catch(() => {});
+      if (mountedRef.current && requestId === cameraRequestRef.current) setCameraActive(true);
+    } catch (error) {
+      if (mountedRef.current && requestId === cameraRequestRef.current) {
+        console.warn('[ReceiptScanner] Camera unavailable:', error);
+        setCameraError('Không thể mở camera. Hãy cấp quyền hoặc dùng ảnh từ thư viện.');
+        setMode('upload');
+      }
+    }
+  };
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      requestControllerRef.current?.abort();
+      stopCamera();
+      if (previewObjectUrlRef.current?.startsWith('blob:')) {
+        URL.revokeObjectURL(previewObjectUrlRef.current);
+      }
+      previewObjectUrlRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (mode === 'camera') {
+      void startCamera();
     } else {
       stopCamera();
     }
-  };
+  }, [mode]);
+
+  const handleModeChange = (newMode: 'upload' | 'camera') => setMode(newMode);
 
   // Convert File to Base64 String
   const fileToBase64 = (file: File): Promise<string> => {
@@ -138,35 +172,31 @@ export default function ReceiptScanner({ onScanComplete, onClose }: ReceiptScann
     });
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setSelectedFile(file);
-      setErrorMsg(null);
-      
-      // Local preview URL
-      const url = URL.createObjectURL(file);
-      setPreviewUrl(url);
+  const acceptImageFile = (file: File) => {
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setErrorMsg('Chỉ hỗ trợ ảnh JPG, PNG hoặc WebP. Hãy chuyển ảnh HEIC sang JPG trước khi tải.');
+      return;
     }
+    if (file.size > 8 * 1024 * 1024 || file.size === 0) {
+      setErrorMsg('Ảnh phải nhỏ hơn 8 MB và không được rỗng.');
+      return;
+    }
+    setSelectedFile(file);
+    setErrorMsg(null);
+    replacePreview(URL.createObjectURL(file));
   };
 
-  // Drag & drop file handlers
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) acceptImageFile(file);
+    event.target.value = '';
   };
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const file = e.dataTransfer.files[0];
-      if (file.type.startsWith('image/')) {
-        setSelectedFile(file);
-        setErrorMsg(null);
-        setPreviewUrl(URL.createObjectURL(file));
-      } else {
-        setErrorMsg('Vui lòng chỉ kéo thả tệp hình ảnh (.jpg, .png, etc)!');
-      }
-    }
+  const handleDragOver = (event: React.DragEvent) => event.preventDefault();
+  const handleDrop = (event: React.DragEvent) => {
+    event.preventDefault();
+    const file = event.dataTransfer.files?.[0];
+    if (file) acceptImageFile(file);
   };
 
   // Live snapshot from Camera canvas
@@ -181,7 +211,7 @@ export default function ReceiptScanner({ onScanComplete, onClose }: ReceiptScann
         if (ctx) {
           ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
           const dataUrl = canvas.toDataURL('image/jpeg');
-          setPreviewUrl(dataUrl);
+          replacePreview(dataUrl);
           
           // Stop stream once taken
           stopCamera();
@@ -195,7 +225,9 @@ export default function ReceiptScanner({ onScanComplete, onClose }: ReceiptScann
 
   // Trích xuất hóa đơn qua server-side endpoint
   const handleAnalyzeReceipt = async () => {
-    if (!previewUrl) return;
+    if (!previewUrl || scanning) return;
+    const controller = new AbortController();
+    requestControllerRef.current = controller;
     setScanning(true);
     setErrorMsg(null);
     setIsOfflineWarning(false);
@@ -224,7 +256,8 @@ export default function ReceiptScanner({ onScanComplete, onClose }: ReceiptScann
       const response = await fetch('/api/scan-receipt', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: base64Image, provider: aiProvider })
+        body: JSON.stringify({ image: base64Image, provider: aiProvider }),
+        signal: controller.signal
       });
 
       if (!response.ok) {
@@ -244,15 +277,18 @@ export default function ReceiptScanner({ onScanComplete, onClose }: ReceiptScann
         throw new Error(result.error || 'AI không trích xuất được số tiền.');
       }
     } catch (err: any) {
+      if (controller.signal.aborted) return;
       console.error('Scan request failed:', err);
       setErrorMsg(err.message || 'Hệ thống quét ảnh gặp lỗi hoặc mất tín hiệu kết nối.');
     } finally {
-      setScanning(false);
+      if (requestControllerRef.current === controller) requestControllerRef.current = null;
+      if (!controller.signal.aborted && mountedRef.current) setScanning(false);
     }
   };
 
   const handleRetake = () => {
-    setPreviewUrl(null);
+    requestControllerRef.current?.abort();
+    replacePreview(null);
     setSelectedFile(null);
     setErrorMsg(null);
     setIsReviewMode(false);
@@ -266,15 +302,15 @@ export default function ReceiptScanner({ onScanComplete, onClose }: ReceiptScann
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xs flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-white dark:bg-slate-900 border-4 border-slate-900 rounded-[32px] w-full max-w-lg shadow-2xl relative overflow-hidden flex flex-col my-auto max-h-[90vh]">
+    <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xs flex items-center justify-center z-[200] p-3 sm:p-4 overflow-y-auto">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="scanner-title" tabIndex={-1} className="bg-white dark:bg-slate-900 border-4 border-slate-900 rounded-[32px] w-full max-w-lg shadow-2xl relative overflow-hidden flex flex-col my-auto max-h-[calc(100dvh-1.5rem)]">
         
         {/* Modal Header */}
         <div className="bg-gradient-to-r from-orange-500 to-amber-500 p-5 text-slate-950 border-b-4 border-slate-900 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 animate-bounce text-slate-900" />
             <div>
-              <h3 className="text-lg font-black tracking-tight text-white leading-tight">
+              <h3 id="scanner-title" className="text-lg font-black tracking-tight text-slate-950 leading-tight">
                 {isReviewMode ? "Xác Nhận Hóa Đơn AI 🧾" : "Quét Hóa Đơn AI 🤖"}
               </h3>
               <p className="text-[10px] font-bold text-orange-100">
@@ -288,7 +324,8 @@ export default function ReceiptScanner({ onScanComplete, onClose }: ReceiptScann
               stopCamera();
               onClose();
             }}
-            className="p-1 px-1.5 bg-slate-950/20 hover:bg-slate-950/40 rounded-full text-slate-900 transition-colors cursor-pointer"
+            aria-label="Đóng trình quét hóa đơn"
+            className="min-w-11 min-h-11 flex items-center justify-center p-1 px-1.5 bg-slate-950/20 hover:bg-slate-950/40 rounded-full text-slate-900 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5 text-white" />
           </button>
@@ -297,7 +334,7 @@ export default function ReceiptScanner({ onScanComplete, onClose }: ReceiptScann
         {/* Modal body */}
         <div className="p-6 space-y-5 overflow-y-auto flex-1">
           {errorMsg && (
-            <div className="bg-red-50 dark:bg-red-950/20 border-2 border-red-400 p-3 rounded-2xl flex items-start gap-2 text-xs text-red-750 font-bold">
+            <div role="alert" className="bg-red-50 dark:bg-red-950/20 border-2 border-red-400 p-3 rounded-2xl flex items-start gap-2 text-xs text-red-750 font-bold">
               <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
               <span>{errorMsg}</span>
             </div>

@@ -34,6 +34,7 @@ export default function DebtSettingsPanel({
 }: DebtSettingsPanelProps) {
   const [resetStep, setResetStep] = useState(0);
   const [isResetting, setIsResetting] = useState(false);
+  const [resetError, setResetError] = useState<string | null>(null);
 
   const handleHardReset = async () => {
     if (resetStep === 0) {
@@ -41,26 +42,31 @@ export default function DebtSettingsPanel({
       setTimeout(() => setResetStep(0), 4000); // reset if they don't confirm in 4 seconds
     } else {
       setIsResetting(true);
-      if (currentUser) {
-        try {
+      setResetError(null);
+      try {
+        if (currentUser) {
           const { clearUserCloudData } = await import('../../lib/firebase');
           await clearUserCloudData(currentUser.uid);
-        } catch (e) {
-          console.error("Failed to clear cloud data during hard reset:", e);
         }
+        // Only clear local data once remote deletion has been confirmed.
+        localStorage.clear();
+        sessionStorage.clear();
+        window.location.reload();
+      } catch (error) {
+        console.error('[Reset] Cloud data not cleared:', error);
+        setResetError('Chưa xóa được dữ liệu trên đám mây. Dữ liệu cục bộ được giữ nguyên; vui lòng kiểm tra kết nối rồi thử lại.');
+        setIsResetting(false);
+        setResetStep(0);
       }
-      localStorage.clear();
-      sessionStorage.clear();
-      window.location.reload();
     }
   };
 
   return (
-    <div className="lg:col-span-4 bg-white border-4 border-slate-900 rounded-[32px] shadow-lg p-6 h-fit space-y-5">
+    <div className="lg:col-span-4 bg-white border border-slate-200 rounded-3xl shadow-sm p-6 h-fit space-y-5 dark:bg-slate-900 dark:border-slate-700">
       <div className="space-y-1.5 border-b-2 border-dashed border-slate-100 pb-4">
         <div className="flex items-center gap-2">
           <span className="w-3 h-6 bg-teal-400 rounded-full inline-block"></span>
-          <h2 className="text-lg font-black text-slate-900 flex items-center gap-2 tracking-tight">
+          <h2 className="text-lg font-black text-slate-900 flex items-center gap-2 tracking-tight dark:text-slate-100">
             <CreditCard className="w-5 h-5 text-teal-500" />
             Thụ Hưởng Của Bạn
           </h2>
@@ -74,7 +80,7 @@ export default function DebtSettingsPanel({
           <select
             value={bankName}
             onChange={(e) => setBankName(e.target.value)}
-            className="w-full text-xs font-black bg-yellow-50/30 border-2 border-slate-900 focus:border-orange-500 rounded-xl p-3 text-slate-800"
+            className="w-full text-xs font-black bg-yellow-50/30 border-2 border-slate-900 focus:border-orange-500 rounded-xl p-3 text-slate-800 dark:text-slate-100 dark:border-slate-700"
           >
             <option value="mbbank">MB Bank (Quân Đội)</option>
             <option value="vcb">Vietcombank (VCB)</option>
@@ -98,7 +104,7 @@ export default function DebtSettingsPanel({
             placeholder="Nhập số tài khoản..."
             value={bankNo}
             onChange={(e) => setBankNo(e.target.value)}
-            className="w-full text-xs bg-yellow-50/30 border-2 border-slate-900 p-3 rounded-xl font-mono text-slate-900 font-extrabold focus:border-orange-500 outline-none"
+            className="w-full text-xs bg-yellow-50/30 border-2 border-slate-900 p-3 rounded-xl font-mono text-slate-900 font-extrabold focus:border-orange-500 outline-none dark:text-slate-100 dark:border-slate-700"
           />
         </div>
 
@@ -110,7 +116,7 @@ export default function DebtSettingsPanel({
             placeholder="Ví dụ: NGUYEN VAN TUAN ANH"
             value={bankAccountName}
             onChange={(e) => setBankAccountName(e.target.value.toUpperCase())}
-            className="w-full text-xs bg-yellow-50/30 border-2 border-slate-900 p-3 rounded-xl text-slate-900 font-black focus:border-orange-500 outline-none"
+            className="w-full text-xs bg-yellow-50/30 border-2 border-slate-900 p-3 rounded-xl text-slate-900 font-black focus:border-orange-500 outline-none dark:text-slate-100 dark:border-slate-700"
           />
         </div>
 
@@ -122,7 +128,7 @@ export default function DebtSettingsPanel({
 
         <button
           type="submit"
-          className="w-full bg-slate-900 hover:bg-orange-500 text-white hover:text-slate-900 rounded-2xl py-3 text-xs font-black border-2 border-slate-900 hover:-translate-y-0.5 shadow-sm transition-all cursor-pointer"
+          className="w-full bg-slate-900 hover:bg-orange-500 text-white hover:text-slate-900 rounded-2xl py-3 text-xs font-black border-2 border-slate-900 hover:-translate-y-0.5 shadow-sm transition-all cursor-pointer dark:border-slate-700"
         >
           Cập Nhật Thẻ Chuyển Khoản
         </button>
@@ -130,12 +136,12 @@ export default function DebtSettingsPanel({
 
       {/* Automatic Reminder Setup Card */}
       <div className="bg-orange-50/40 border-2 border-slate-900 rounded-[24px] p-4.5 space-y-3.5 mt-4">
-        <h3 className="text-xs font-black text-slate-950 uppercase tracking-widest flex items-center gap-1.5">
+        <h3 className="text-xs font-black text-slate-950 uppercase tracking-widest flex items-center gap-1.5 dark:text-slate-100">
           <Sparkles className="w-4 h-4 text-orange-500 animate-pulse animate-spin" />
           Nhắc Nợ Trình Duyệt Tự Động
         </h3>
         <p className="text-[10px] text-slate-500 font-extrabold leading-relaxed">
-          Trình duyệt sẽ tự động phát thông báo đẩy (Push Notification) định kỳ khi có cuộc vui trễ hạn quá 24h chưa được thanh toán dứt điểm.
+          Khi bật và đang mở ứng dụng, bạn có thể nhận nhắc nợ định kỳ cho hóa đơn quá 24 giờ. Thông báo hệ thống cần được cấp quyền riêng trong trình duyệt.
         </p>
 
         <div className="space-y-3 pt-1">
@@ -144,9 +150,9 @@ export default function DebtSettingsPanel({
               type="checkbox"
               checked={pushEnabled}
               onChange={(e) => handleTogglePush(e.target.checked)}
-              className="w-4 h-4 rounded text-orange-500 border-slate-900 focus:ring-orange-500 accent-orange-500 cursor-pointer"
+              className="w-4 h-4 rounded text-orange-500 border-slate-900 focus:ring-orange-500 accent-orange-500 cursor-pointer dark:border-slate-700"
             />
-            <span className="text-xs font-black text-slate-800">Bật nhắc nợ tự động đẩy</span>
+            <span className="text-xs font-black text-slate-800 dark:text-slate-100">Bật nhắc nợ tự động đẩy</span>
           </label>
 
           {pushEnabled && (
@@ -155,7 +161,7 @@ export default function DebtSettingsPanel({
               <select
                 value={pushInterval}
                 onChange={(e) => handleIntervalChange(e.target.value)}
-                className="w-full text-xs font-black bg-white border-2 border-slate-900 rounded-xl p-2.5 text-slate-800 cursor-pointer"
+                className="w-full text-xs font-black bg-white border-2 border-slate-900 rounded-xl p-2.5 text-slate-800 cursor-pointer dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700"
               >
                 <option value="24h">Lặp lại mỗi 24 giờ (Tiêu chuẩn)</option>
                 <option value="12h">Lặp lại mỗi 12 giờ</option>
@@ -244,6 +250,7 @@ export default function DebtSettingsPanel({
             </>
           )}
         </button>
+        {resetError && <p role="alert" className="mt-2 text-sm font-bold text-red-700 dark:text-red-300">{resetError}</p>}
         {resetStep === 1 && !isResetting && (
           <p className="text-center text-[10px] text-red-500 font-bold mt-2">
             Hành động này sẽ xóa toàn bộ hóa đơn, địa điểm và cài đặt của bạn trên cả máy và đám mây!

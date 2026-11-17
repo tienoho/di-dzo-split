@@ -1,14 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { getStoredVenues, saveStoredVenues, getStoredBills, saveStoredBills, getActiveDebts } from './utils/storage';
-import { Bill, Venue, Debt } from './types';
+import { Bill, Venue, Debt, ContactEntry } from './types';
 import BillSplitter from './components/BillSplitter';
-import VenueManager from './components/VenueManager';
-import HistoryAndReports from './components/HistoryAndReports';
-import DebtReminders from './components/DebtReminders';
-import AIRecommendations from './components/AIRecommendations';
-import SoloDining from './components/SoloDining';
-import ContactManager from './components/ContactManager';
-import PublicBillViewerModal from './components/PublicBillViewerModal';
+// Keep the primary splitter in memory; defer less common screens until selected.
+const VenueManager = React.lazy(() => import('./components/VenueManager'));
+const HistoryAndReports = React.lazy(() => import('./components/HistoryAndReports'));
+const DebtReminders = React.lazy(() => import('./components/DebtReminders'));
+const AIRecommendations = React.lazy(() => import('./components/AIRecommendations'));
+const SoloDining = React.lazy(() => import('./components/SoloDining'));
+const ContactManager = React.lazy(() => import('./components/ContactManager'));
+const PublicBillViewerModal = React.lazy(() => import('./components/PublicBillViewerModal'));
 import { resolveBillFromUrl } from './utils/shareLink';
 import { useCloudSync } from './hooks/useCloudSync';
 import { useFCM } from './hooks/useFCM';
@@ -29,9 +30,24 @@ import {
   fetchContactsFromCloud,
   saveContactToCloud,
   deleteContactFromCloud,
-  syncContactsToCloud
+  syncContactsToCloud,
+  refreshPublicBillIfShared,
+  revokePublicBillFromCloud
 } from './lib/firebase';
-import AuthModal from './components/AuthModal';
+const AuthModal = React.lazy(() => import('./components/AuthModal'));
+
+function FeatureLoading() {
+  return (
+    <div role="status" aria-live="polite" className="animate-pulse bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-3xl p-5 sm:p-8 shadow-sm space-y-5">
+      <span className="sr-only">Đang tải phân hệ…</span>
+      <div className="h-6 bg-slate-200 dark:bg-slate-700 rounded-xl w-2/5" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="h-32 bg-slate-100 dark:bg-slate-800 rounded-2xl" />
+        <div className="h-32 bg-slate-100 dark:bg-slate-800 rounded-2xl" />
+      </div>
+    </div>
+  );
+}
 
 export default function App() {
   const [venues, setVenues] = useState<Venue[]>(() => getStoredVenues('guest'));
@@ -45,9 +61,35 @@ export default function App() {
   
   // Navigation State
   const [activeTab, setActiveTab] = useState<'split' | 'venues' | 'history' | 'reminders' | 'recommendations' | 'solo' | 'contacts'>('split');
+  const [showMoreNav, setShowMoreNav] = useState(false);
+  const mobileNavigationRef = useRef<HTMLElement>(null);
+  const moreMenuFirstItemRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!showMoreNav) return;
+    moreMenuFirstItemRef.current?.focus();
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setShowMoreNav(false);
+    };
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      if (!mobileNavigationRef.current?.contains(event.target as Node)) setShowMoreNav(false);
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    document.addEventListener('pointerdown', closeOnOutsideClick);
+    return () => {
+      window.removeEventListener('keydown', closeOnEscape);
+      document.removeEventListener('pointerdown', closeOnOutsideClick);
+    };
+  }, [showMoreNav]);
+
+  const navigateTo = (tab: typeof activeTab) => {
+    setActiveTab(tab);
+    setShowMoreNav(false);
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  };
 
   // Contacts State
-  const [contacts, setContacts] = useState<Record<string, { phone?: string; messenger?: string }>>(() => {
+  const [contacts, setContacts] = useState<Record<string, ContactEntry>>(() => {
     const local = localStorage.getItem('nhau_contacts_guest') || localStorage.getItem('nhau_contacts');
     if (local) {
       try { return JSON.parse(local); } catch (e) { return {}; }
@@ -62,7 +104,7 @@ export default function App() {
     setContacts(prev => {
       const updated = {
         ...prev,
-        [name]: { phone: phone.trim(), messenger: messenger.trim() }
+        [name]: { phone: phone.trim(), messenger: messenger.trim(), updatedAt: new Date().toISOString() }
       };
       try {
         localStorage.setItem(key, JSON.stringify(updated));
@@ -75,6 +117,7 @@ export default function App() {
         await saveContactToCloud(activeUser.uid, name, phone, messenger);
       } catch (e) {
         console.error("Failed to sync contact to cloud:", e);
+        throw new Error('Đã lưu liên hệ trên thiết bị, nhưng chưa thể đồng bộ lên đám mây.');
       }
     }
   };
@@ -84,8 +127,8 @@ export default function App() {
     const key = activeUser ? `nhau_contacts_${activeUser.uid}` : 'nhau_contacts_guest';
 
     setContacts(prev => {
-      const updated = { ...prev };
-      delete updated[name];
+      const deletedAt = new Date().toISOString();
+      const updated = { ...prev, [name]: { updatedAt: deletedAt, deletedAt } };
       try {
         localStorage.setItem(key, JSON.stringify(updated));
       } catch (e) {}
@@ -97,6 +140,7 @@ export default function App() {
         await deleteContactFromCloud(activeUser.uid, name);
       } catch (e) {
         console.error("Failed to delete contact from cloud:", e);
+        throw new Error('Đã xóa liên hệ trên thiết bị, nhưng chưa thể đồng bộ thao tác xóa lên đám mây.');
       }
     }
   };
@@ -178,7 +222,7 @@ export default function App() {
 
   // Monitor debts to trigger push notification when user has an outstanding debt
   useEffect(() => {
-    if (debts.length === 0) return;
+    if (debts.length === 0 || localStorage.getItem('nhau_push_enabled') !== 'true') return;
 
     // Check if user has outstanding debts
     const myOutstanding = debts.filter(d => 
@@ -200,58 +244,15 @@ export default function App() {
       if (unnotified.length > 0) {
         unnotified.forEach((debt) => {
           const title = `🚨 Nhắc Nợ: Bạn có khoản nợ chưa trả!`;
-          const body = `Hóa đơn ${debt.venueName} còn thiếu ${debt.amount.toLocaleString('vi-VN')} đ chưa thanh toán cho ${debt.creditorName}.`;
+          const body = `Hóa đơn ${debt.venueName} còn thiếu ${(debt.remainingAmount ?? debt.amount).toLocaleString('vi-VN')} đ chưa thanh toán cho ${debt.creditorName}.`;
 
-          // 1. Browser Native Push Notification
-          if ('Notification' in window) {
-            if (Notification.permission === 'granted') {
-              try {
-                new Notification(title, {
-                  body: body,
-                  icon: 'https://cdn-icons-png.flaticon.com/512/3135/3135706.png',
-                });
-              } catch (e) {
-                console.error("Error creating Notification: ", e);
-              }
-            } else if (Notification.permission !== 'denied') {
-              Notification.requestPermission().then(permission => {
-                if (permission === 'granted') {
-                  new Notification(title, {
-                    body: body,
-                    icon: 'https://cdn-icons-png.flaticon.com/512/3135/3135706.png',
-                  });
-                }
-              });
-            }
+          // Respect the user's existing browser permission; request only via settings.
+          if ('Notification' in window && Notification.permission === 'granted') {
+            try { new Notification(title, { body }); }
+            catch (error) { console.warn('[Notifications] Native display unavailable:', error); }
           }
 
-          // 2. Play double-ding sound
-          try {
-            const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-            const osc = ctx.createOscillator();
-            const gainSym = ctx.createGain();
-            osc.connect(gainSym);
-            gainSym.connect(ctx.destination);
-            
-            osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
-            gainSym.gain.setValueAtTime(0.06, ctx.currentTime);
-            osc.start();
-            osc.stop(ctx.currentTime + 0.1);
-            
-            setTimeout(() => {
-              const osc2 = ctx.createOscillator();
-              const gainSym2 = ctx.createGain();
-              osc2.connect(gainSym2);
-              gainSym2.connect(ctx.destination);
-              osc2.frequency.setValueAtTime(783.99, ctx.currentTime); // G5
-              gainSym2.gain.setValueAtTime(0.06, ctx.currentTime);
-              osc2.start();
-              osc2.stop(ctx.currentTime + 0.18);
-            }, 100);
-          } catch (e) {
-            console.log('Audio chime blocked or unsupported');
-          }
-
+          // No automatic Web Audio contexts: autoplay can be blocked and leaks resources.
           // 3. Set visual toast
           setSystAlert({
             title: 'THÔNG BÁO TỨ THÌ (PUSH) 📬',
@@ -274,8 +275,8 @@ export default function App() {
     let initialTimeoutId: NodeJS.Timeout;
 
     const checkUnpaidReminders = () => {
-      const isEnabled = localStorage.getItem('nhau_push_enabled') !== 'false';
-      if (!isEnabled) return;
+      const isEnabled = localStorage.getItem('nhau_push_enabled') === 'true';
+      if (!isEnabled || document.hidden) return;
 
       const intervalType = localStorage.getItem('nhau_push_interval') || '24h';
       let intervalMs = 24 * 60 * 60 * 1000; // default 24h
@@ -288,7 +289,7 @@ export default function App() {
       const twentyFourHours = 24 * 60 * 60 * 1000; // 24 hours threshold
 
       // Filter active (unarchived) bills
-      const activeUnpaidBills = bills.filter(b => !b.isArchived);
+      const activeUnpaidBills = bills.filter(b => !b.isArchived && !b.deletedAt);
 
       activeUnpaidBills.forEach((bill) => {
         const billTime = new Date(bill.date).getTime();
@@ -297,33 +298,32 @@ export default function App() {
         // Verify if the bill is > 24 hours old
         if (ageMs < twentyFourHours) return;
 
-        // Find members who haven't paid their share (owes > 0 and hasPaidDebt is false)
-        const unpaidDebtors = bill.members.filter(m => m.initialPaid < m.finalShare && !m.hasPaidDebt);
-        if (unpaidDebtors.length === 0) return; // Perfect, all settled
-
-        // Find the host / creditor (who paid for this bill)
-        const creditors = bill.members.filter(m => m.initialPaid > m.finalShare);
-        const creditor = creditors[0] || { name: 'Chủ bàn' };
+        const unpaidTransfers = getActiveDebts([bill]).filter(debt => !debt.isPaid);
+        if (!unpaidTransfers.length) return;
 
         const userClean = activeCreatorName.toLowerCase().trim();
-        const isUserCreditor = creditor.name.toLowerCase().trim() === userClean;
-        const matchingDebtor = unpaidDebtors.find(d => d.name.toLowerCase().trim() === userClean);
+        const myCreditorTransfers = unpaidTransfers.filter(debt =>
+          debt.creditorName.toLowerCase().trim() === userClean
+        );
+        const myDebtorTransfers = unpaidTransfers.filter(debt =>
+          debt.debtorName.toLowerCase().trim() === userClean
+        );
 
         let title = '';
         let body = '';
         let trackingKey = '';
 
-        if (isUserCreditor) {
-          // Current user is the creditor reminding them of friends who haven't paid
-          const unpaidNames = unpaidDebtors.map(d => d.name).join(', ');
+        if (myCreditorTransfers.length) {
+          // Display only the outstanding transfers owed to the current user.
+          const unpaidNames = [...new Set(myCreditorTransfers.map(debt => debt.debtorName))].join(', ');
           title = `⏱️ Quá 24 Giờ: Hóa Đơn Trễ Hạn!`;
           body = `Cuộc nhậu "${bill.venueName}" còn chiến hữu (${unpaidNames}) chưa trả tiền. Click để hối đòi sòng phẳng!`;
           trackingKey = `creditor_remind_24h_${bill.id}`;
-        } else if (matchingDebtor) {
-          // Current user is the debtor who hasn't paid
-          const owedAmount = matchingDebtor.finalShare - matchingDebtor.initialPaid;
+        } else if (myDebtorTransfers.length) {
+          const owedAmount = myDebtorTransfers.reduce((sum, debt) => sum + (debt.remainingAmount ?? debt.amount), 0);
+          const creditorNames = [...new Set(myDebtorTransfers.map(debt => debt.creditorName))].join(', ');
           title = `⏳ Chưa Trả Tiền: Cuộc Nhậu >24h!`;
-          body = `Bạn còn thiếu ${owedAmount.toLocaleString('vi-VN')} đ tại "${bill.venueName}" chưa gửi trả cho ${creditor.name}.`;
+          body = `Bạn còn thiếu ${owedAmount.toLocaleString('vi-VN')} đ tại "${bill.venueName}" chưa gửi trả cho ${creditorNames}.`;
           trackingKey = `debtor_remind_24h_${bill.id}`;
         } else {
           return; // User is not involved or has paid their share
@@ -334,47 +334,12 @@ export default function App() {
         const lastNotifiedTime = lastNotified ? parseInt(lastNotified, 10) : 0;
 
         if (now - lastNotifiedTime >= intervalMs) {
-          // 1. Desktop Notification
-          if ('Notification' in window) {
-            if (Notification.permission === 'granted') {
-              try {
-                new Notification(title, {
-                  body: body,
-                  icon: 'https://cdn-icons-png.flaticon.com/512/3135/3135706.png',
-                  tag: trackingKey // merge identical notices on system tray
-                });
-              } catch (e) {
-                console.error("Error creating Notification: ", e);
-              }
-            }
+          if ('Notification' in window && Notification.permission === 'granted') {
+            try { new Notification(title, { body, tag: trackingKey }); }
+            catch (error) { console.warn('[Notifications] Native display unavailable:', error); }
           }
 
-          // 2. Play alert chime
-          try {
-            const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-            const osc = ctx.createOscillator();
-            const gainSym = ctx.createGain();
-            osc.connect(gainSym);
-            gainSym.connect(ctx.destination);
-            osc.type = 'triangle';
-            osc.frequency.setValueAtTime(440, ctx.currentTime); // A4
-            gainSym.gain.setValueAtTime(0.05, ctx.currentTime);
-            osc.start();
-            osc.stop(ctx.currentTime + 0.15);
-            
-            setTimeout(() => {
-              const osc2 = ctx.createOscillator();
-              const gainSym2 = ctx.createGain();
-              osc2.connect(gainSym2);
-              gainSym2.connect(ctx.destination);
-              osc2.type = 'triangle';
-              osc2.frequency.setValueAtTime(554.37, ctx.currentTime); // C#5
-              gainSym2.gain.setValueAtTime(0.05, ctx.currentTime);
-              osc2.start();
-              osc2.stop(ctx.currentTime + 0.25);
-            }, 120);
-          } catch (e) {}
-
+          // Quiet reminders avoid autoplay sound, unnecessary CPU use and disruption.
           // 3. Set visual toast
           setSystAlert({
             title: 'NHẮC NỢ ĐỊNH KỲ (>24H) ⏰',
@@ -396,11 +361,13 @@ export default function App() {
 
     // Listen to local 'storage' events to immediately apply changes
     window.addEventListener('storage', checkUnpaidReminders);
+    document.addEventListener('visibilitychange', checkUnpaidReminders);
 
     return () => {
       clearTimeout(initialTimeoutId);
       clearInterval(timerId);
       window.removeEventListener('storage', checkUnpaidReminders);
+      document.removeEventListener('visibilitychange', checkUnpaidReminders);
     };
   }, [bills, activeCreatorName]);
 
@@ -408,8 +375,9 @@ export default function App() {
   const handleAddVenue = (newVenue: Omit<Venue, 'id' | 'visitsCount'>): Venue => {
     const freshVenue: Venue = {
       ...newVenue,
-      id: `venue-${Date.now()}`,
-      visitsCount: 0
+      id: `venue-${crypto.randomUUID()}`,
+      visitsCount: 0,
+      updatedAt: new Date().toISOString()
     };
 
     const activeUser = currentUser || auth.currentUser;
@@ -432,7 +400,8 @@ export default function App() {
     const userKey = activeUser ? activeUser.uid : 'guest';
 
     setVenues(prev => {
-      const updated = prev.filter(v => v.id !== id);
+      const deletedAt = new Date().toISOString();
+      const updated = prev.map(v => v.id === id ? { ...v, deletedAt, updatedAt: deletedAt } : v);
       saveStoredVenues(updated, userKey);
       return updated;
     });
@@ -445,7 +414,8 @@ export default function App() {
   const handleSaveBill = (newBill: Omit<Bill, 'id'>) => {
     const freshBill: Bill = {
       ...newBill,
-      id: `bill-${Date.now()}`
+      id: `bill-${crypto.randomUUID()}`,
+      updatedAt: new Date().toISOString()
     };
 
     const activeUser = currentUser || auth.currentUser;
@@ -456,7 +426,7 @@ export default function App() {
       setVenues(prevVenues => {
         const updatedVenues = prevVenues.map(v => {
           if (v.id === freshBill.venueId) {
-            const updatedVisits = { ...v, visitsCount: v.visitsCount + 1 };
+            const updatedVisits = { ...v, visitsCount: v.visitsCount + 1, updatedAt: new Date().toISOString() };
             if (activeUser) {
               saveVenueToCloud(activeUser.uid, updatedVisits).catch(console.error);
             }
@@ -492,7 +462,7 @@ export default function App() {
         setVenues(prevVenues => {
           const updatedVenues = prevVenues.map(v => {
             if (v.id === targetBill.venueId) {
-              const updatedVisits = { ...v, visitsCount: Math.max(0, v.visitsCount - 1) };
+              const updatedVisits = { ...v, visitsCount: Math.max(0, v.visitsCount - 1), updatedAt: new Date().toISOString() };
               if (activeUser) {
                 saveVenueToCloud(activeUser.uid, updatedVisits).catch(console.error);
               }
@@ -505,7 +475,8 @@ export default function App() {
         });
       }
 
-      const updatedBills = prevBills.filter(b => b.id !== id);
+      const deletedAt = new Date().toISOString();
+      const updatedBills = prevBills.map(b => b.id === id ? { ...b, deletedAt, updatedAt: deletedAt } : b);
       saveStoredBills(updatedBills, userKey);
       setDebts(getActiveDebts(updatedBills));
       return updatedBills;
@@ -513,6 +484,7 @@ export default function App() {
 
     if (activeUser) {
       deleteBillFromCloud(activeUser.uid, id).catch(console.error);
+      revokePublicBillFromCloud(id).catch(() => {});
     }
   };
 
@@ -523,9 +495,10 @@ export default function App() {
     setBills(prevBills => {
       const updatedBills = prevBills.map(b => {
         if (b.id === id) {
-          const updatedBill = { ...b, isArchived };
+          const updatedBill = { ...b, isArchived, updatedAt: new Date().toISOString() };
           if (activeUser) {
             saveBillToCloud(activeUser.uid, updatedBill).catch(console.error);
+            refreshPublicBillIfShared(updatedBill).catch(console.error);
           }
           return updatedBill;
         }
@@ -538,38 +511,80 @@ export default function App() {
     });
   };
 
-  const handleMarkDebtAsPaid = (billId: string, debtorName: string) => {
+  // Payment actions append events rather than mutating paid amounts in place.
+  const appendSettlement = (
+    billId: string,
+    debtorName: string,
+    creditorName: string,
+    amount: number | null
+  ) => {
     const activeUser = currentUser || auth.currentUser;
     const userKey = activeUser ? activeUser.uid : 'guest';
+    const eventId = crypto.randomUUID();
 
-    setBills(prevBills => {
-      const updatedBills = prevBills.map(bill => {
-        if (bill.id === billId) {
-          const updatedBill = {
-            ...bill,
-            members: bill.members.map(member => 
-              member.name === debtorName ? { ...member, hasPaidDebt: !member.hasPaidDebt } : member
-            )
-          };
-          
-          if (activeUser) {
-            saveBillToCloud(activeUser.uid, updatedBill).catch(console.error);
-          }
-          return updatedBill;
+    setBills(prev => {
+      const updated = prev.map(bill => {
+        if (bill.id !== billId || bill.deletedAt) return bill;
+        const transfer = getActiveDebts([bill]).find(debt =>
+          debt.debtorName === debtorName && debt.creditorName === creditorName
+        );
+        if (!transfer) return bill;
+
+        const remaining = transfer.remainingAmount ?? transfer.amount;
+        const isReset = amount === null && transfer.isPaid;
+        const effectiveAmount = amount === null ? remaining : amount;
+        if (!isReset && (!Number.isSafeInteger(effectiveAmount) ||
+            effectiveAmount <= 0 || effectiveAmount > remaining)) {
+          return bill;
         }
-        return bill;
-      });
 
-      saveStoredBills(updatedBills, userKey);
-      setDebts(getActiveDebts(updatedBills));
-      return updatedBills;
+        const event = {
+          id: eventId,
+          type: isReset ? 'reset' as const : 'payment' as const,
+          amount: isReset ? 0 : effectiveAmount,
+          createdAt: new Date().toISOString()
+        };
+        const nextBill: Bill = {
+          ...bill,
+          updatedAt: event.createdAt,
+          payments: {
+            ...bill.payments,
+            [transfer.id]: [...(bill.payments?.[transfer.id] || []), event]
+          }
+        };
+        // The existing hasPaidDebt flag is a legacy snapshot, not a source of truth
+        // after per-transfer payment events have been written.
+        if (activeUser) {
+          saveBillToCloud(activeUser.uid, nextBill).catch(console.error);
+          refreshPublicBillIfShared(nextBill).catch(console.error);
+        }
+        return nextBill;
+      });
+      saveStoredBills(updated, userKey);
+      setDebts(getActiveDebts(updated));
+      return updated;
     });
   };
 
+  const handleMarkDebtAsPaid = (billId: string, debtorName: string, creditorName: string) => {
+    appendSettlement(billId, debtorName, creditorName, null);
+  };
+
+  const handleRecordPartialPayment = (
+    billId: string, debtorName: string, creditorName: string, amount: number
+  ) => {
+    appendSettlement(billId, debtorName, creditorName, amount);
+  };
+
+  // Do not render or count retained tombstones. They remain in cache solely for sync safety.
+  const visibleBills = bills.filter(b => !b.deletedAt);
+  const visibleVenues = venues.filter(v => !v.deletedAt);
+  const visibleContacts = Object.fromEntries(Object.keys(contacts).filter(name => !contacts[name]?.deletedAt).map(name => [name, contacts[name]]));
+
   // Quick stats panel
-  const totalAmountSplitted = bills.reduce((acc, b) => acc + b.totalAmount, 0);
+  const totalAmountSplitted = visibleBills.reduce((acc, b) => acc + b.totalAmount, 0);
   const unpaidDebtsLength = debts.filter(d => !d.isPaid).length;
-  const totalUnpaidDebtsAmount = debts.filter(d => !d.isPaid).reduce((acc, d) => acc + d.amount, 0);
+  const totalUnpaidDebtsAmount = debts.filter(d => !d.isPaid).reduce((acc, d) => acc + (d.remainingAmount ?? d.amount), 0);
 
   return (
     <div className={`min-h-screen ${isDarkMode ? 'dark bg-slate-950 text-slate-100' : 'bg-yellow-50 text-slate-800'} antialiased font-sans pb-12 transition-colors duration-300`}>
@@ -624,32 +639,34 @@ export default function App() {
       </AnimatePresence>
       
       {/* HEADER MASTER TITLE BRAND BAR - VIBRANT PALETTE */}
-      <header className="max-w-7xl mx-auto px-4 pt-8 pb-4 relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
+      <header className="max-w-7xl mx-auto px-3 sm:px-4 pt-4 sm:pt-8 pb-4 relative z-10 flex flex-col md:flex-row items-start justify-between gap-4 md:gap-6">
         <div className="flex items-center gap-4 self-start md:self-auto">
-          <div className="w-14 h-14 bg-orange-500 rounded-2xl flex items-center justify-center shadow-lg transform rotate-3 hover:rotate-6 transition-all duration-300">
+          <div className="shrink-0 w-12 h-12 sm:w-14 sm:h-14 bg-orange-500 rounded-2xl flex items-center justify-center shadow-lg transform rotate-3 hover:rotate-6 transition-all duration-300">
             <span className="text-white font-black text-3xl">Đ!</span>
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-3xl font-black tracking-tight text-slate-900">
+              <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-slate-100">
                 Dzô! <span className="text-orange-500">Split</span>
               </h1>
-              <span className="bg-orange-150 text-orange-600 text-[10px] uppercase tracking-wider font-black px-2 py-1 rounded-full border-2 border-orange-200">
+              <span className="hidden sm:inline-flex bg-orange-100 dark:bg-orange-950/60 text-orange-600 dark:text-orange-300 text-[10px] uppercase tracking-wider font-black px-2 py-1 rounded-full border-2 border-orange-200 dark:border-orange-900">
                 Lên Đồ Sòng Phẳng
               </span>
             </div>
-            <p className="text-xs font-bold text-slate-500 mt-1">
+            <p className="text-xs font-bold text-slate-600 dark:text-slate-300 mt-1">
               Phần mềm chia tiền mồi nước và phục vụ cực chuẩn cho cuộc vui sướng 🍻
             </p>
           </div>
         </div>
 
         {/* Quick Profile & Dark Mode Toggle Section */}
-        <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto justify-end">
+        <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto justify-start md:justify-end">
           {/* Dark Mode toggle Button */}
           <button
             onClick={() => setIsDarkMode(!isDarkMode)}
-            className="p-3 bg-white dark:bg-slate-900 border-2 border-slate-900 dark:border-slate-700 rounded-full shadow-sm hover:bg-yellow-100 dark:hover:bg-slate-800 transition-all cursor-pointer flex items-center justify-center text-slate-800 dark:text-yellow-400 group flex-shrink-0"
+            aria-label={isDarkMode ? "Chuyển sang Giao diện Sáng" : "Chuyển sang Giao diện Tối"}
+            aria-pressed={isDarkMode}
+            className="min-w-11 min-h-11 p-3 bg-white dark:bg-slate-900 border-2 border-slate-900 dark:border-slate-700 rounded-full shadow-sm hover:bg-yellow-100 dark:hover:bg-slate-800 transition-all cursor-pointer flex items-center justify-center text-slate-800 dark:text-yellow-400 group flex-shrink-0"
             title={isDarkMode ? "Chuyển sang Giao diện Sáng ☀️" : "Chuyển sang Giao diện Tối 🌙"}
           >
             {isDarkMode ? (
@@ -671,7 +688,8 @@ export default function App() {
               </div>
               <button
                 onClick={() => signOut(auth)}
-                className="p-1 px-1.5 ml-1 bg-slate-200 dark:bg-slate-800 hover:bg-red-200 dark:hover:bg-red-900/60 rounded-full hover:text-red-650 transition-all cursor-pointer border border-transparent dark:border-slate-700"
+                aria-label="Đăng xuất tài khoản"
+                className="min-w-9 min-h-9 flex items-center justify-center p-1 px-1.5 ml-1 bg-slate-200 dark:bg-slate-800 hover:bg-red-200 dark:hover:bg-red-900/60 rounded-full hover:text-red-600 transition-all cursor-pointer border border-transparent dark:border-slate-700"
                 title="Đăng xuất tài khoản"
               >
                 <LogOut className="w-3 h-3 text-slate-600 dark:text-slate-300" />
@@ -688,7 +706,7 @@ export default function App() {
           )}
 
           {/* Quick Profile config info - Vibrant Palette Styled */}
-          <div className="flex items-center space-x-3 bg-white dark:bg-slate-900 px-4 py-2 rounded-full shadow-sm border-2 border-yellow-105 dark:border-slate-800 w-full sm:w-auto flex-1 md:flex-initial">
+          <div className="flex items-center space-x-3 bg-white dark:bg-slate-900 px-4 py-2 rounded-full shadow-sm border-2 border-yellow-100 dark:border-slate-800 w-full sm:w-auto flex-1 md:flex-initial">
             <div className="w-8 h-8 bg-teal-400 rounded-full border-2 border-white flex items-center justify-center text-slate-900 font-extrabold text-xs shadow-inner">
               👤
             </div>
@@ -710,7 +728,7 @@ export default function App() {
                   }
                 }}
                 placeholder="Nhập tên"
-                className="text-xs font-black text-teal-600 dark:text-teal-400 bg-transparent outline-none w-full sm:w-28 border-b border-dashed border-teal-200 focus:border-teal-450 pb-0.5"
+                className="text-xs font-black text-teal-600 dark:text-teal-400 bg-transparent outline-none w-full sm:w-28 border-b border-dashed border-teal-200 focus:border-teal-400 pb-0.5"
                 title="Thay đổi tên chủ phòng để các thông báo nhắc nợ gán đúng STK của bạn!"
               />
             </div>
@@ -719,35 +737,35 @@ export default function App() {
       </header>
 
       {/* HIGH CONTRAST FINANCIAL LEDGER OVERVIEW STATS */}
-      <div className="max-w-7xl mx-auto px-4 mb-6">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 mb-5">
         <div className="bg-slate-900 text-white rounded-[32px] p-6 shadow-xl relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/20 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute bottom-0 left-12 w-48 h-48 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
           
-          <div className="relative z-10 grid grid-cols-2 lg:grid-cols-4 gap-6 items-center">
+          <div className="relative z-10 grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 items-center">
             <div className="space-y-1">
-              <span className="text-[10px] uppercase font-black text-slate-400 tracking-widest block">Tổng cuộc quây</span>
+              <span className="text-[10px] uppercase font-black text-slate-400 tracking-widest block">Tổng hóa đơn</span>
               <div className="flex items-center gap-2">
                 <Wine className="w-4 h-4 text-amber-400" />
-                <span className="text-lg font-black text-white">{bills.length} cuộc nhậu</span>
+                <span className="text-lg font-black text-white">{visibleBills.length} cuộc nhậu</span>
               </div>
             </div>
             <div className="space-y-1">
-              <span className="text-[10px] uppercase font-black text-slate-400 tracking-widest block">Địa bàn quán ngon</span>
+              <span className="text-[10px] uppercase font-black text-slate-400 tracking-widest block">Quán đã lưu</span>
               <div className="flex items-center gap-2">
                 <Store className="w-4 h-4 text-teal-400" />
-                <span className="text-lg font-black text-white">{venues.length} quán tủ</span>
+                <span className="text-lg font-black text-white">{visibleVenues.length} quán tủ</span>
               </div>
             </div>
             <div className="space-y-1">
-              <span className="text-[10px] uppercase font-black text-slate-400 tracking-widest block">F1 chưa trả nợ</span>
+              <span className="text-[10px] uppercase font-black text-slate-400 tracking-widest block">Khoản chưa thanh toán</span>
               <div className="flex items-center gap-2">
                 <Bell className="w-4 h-4 text-orange-400 animate-swing" />
-                <span className="text-lg font-black text-orange-400">{unpaidDebtsLength} đồng chí</span>
+                <span className="text-lg font-black text-orange-400">{unpaidDebtsLength} khoản</span>
               </div>
             </div>
             <div className="space-y-1">
-              <span className="text-[10px] uppercase font-black text-slate-400 tracking-widest block">Dư nợ tồn đọng</span>
+              <span className="text-[10px] uppercase font-black text-slate-400 tracking-widest block">Tổng tiền còn nợ</span>
               <div className="flex items-center gap-2">
                 <TrendingUp className="w-4 h-4 text-emerald-400" />
                 <span className="text-lg font-black text-emerald-400">{totalUnpaidDebtsAmount.toLocaleString('vi-VN')} đ</span>
@@ -758,12 +776,12 @@ export default function App() {
       </div>
 
       {/* PRIMARY TAB SELECTOR CONTROLLER */}
-      <nav className="max-w-7xl mx-auto px-4 mb-8">
-        <div className="bg-white dark:bg-slate-900 rounded-3xl p-2 shadow-md border-2 border-yellow-100 dark:border-slate-800 flex overflow-x-auto scrollbar-none gap-2">
+      <nav aria-label="Điều hướng máy tính" className="hidden md:block max-w-7xl mx-auto px-4 mb-8">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-2 shadow-md border-2 border-yellow-100 dark:border-slate-800 flex overflow-x-auto scrollbar-none gap-2 overscroll-x-contain">
           
           {/* Tab: Split */}
           <button
-            onClick={() => setActiveTab('split')}
+            onClick={() => navigateTo('split')}
             className={`flex items-center gap-2 py-3 px-5 rounded-2xl text-xs md:text-sm font-black transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'split' 
                 ? 'bg-orange-500 text-white shadow-md shadow-orange-200 dark:shadow-none' 
@@ -776,7 +794,7 @@ export default function App() {
 
           {/* Tab: Reminders */}
           <button
-            onClick={() => setActiveTab('reminders')}
+            onClick={() => navigateTo('reminders')}
             className={`relative flex items-center gap-2 py-3 px-5 rounded-2xl text-xs md:text-sm font-black transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'reminders' 
                 ? 'bg-blue-500 text-white shadow-md shadow-blue-200 dark:shadow-none' 
@@ -794,7 +812,7 @@ export default function App() {
 
           {/* Tab: History */}
           <button
-            onClick={() => setActiveTab('history')}
+            onClick={() => navigateTo('history')}
             className={`flex items-center gap-2 py-3 px-5 rounded-2xl text-xs md:text-sm font-black transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'history' 
                 ? 'bg-purple-500 text-white shadow-md shadow-purple-200 dark:shadow-none' 
@@ -807,7 +825,7 @@ export default function App() {
 
           {/* Tab: Contacts */}
           <button
-            onClick={() => setActiveTab('contacts')}
+            onClick={() => navigateTo('contacts')}
             className={`flex items-center gap-2 py-3 px-5 rounded-2xl text-xs md:text-sm font-black transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'contacts' 
                 ? 'bg-indigo-500 text-white shadow-md shadow-indigo-200 dark:shadow-none' 
@@ -820,7 +838,7 @@ export default function App() {
 
           {/* Tab: Venues */}
           <button
-            onClick={() => setActiveTab('venues')}
+            onClick={() => navigateTo('venues')}
             className={`flex items-center gap-2 py-3 px-5 rounded-2xl text-xs md:text-sm font-black transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'venues' 
                 ? 'bg-pink-500 text-white shadow-md shadow-pink-200 dark:shadow-none' 
@@ -833,7 +851,7 @@ export default function App() {
 
           {/* Tab: Recommendations */}
           <button
-            onClick={() => setActiveTab('recommendations')}
+            onClick={() => navigateTo('recommendations')}
             className={`flex items-center gap-2 py-3 px-5 rounded-2xl text-xs md:text-sm font-black transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'recommendations' 
                 ? 'bg-amber-500 text-white shadow-md shadow-amber-200 dark:shadow-none animate-pulse' 
@@ -846,10 +864,10 @@ export default function App() {
 
           {/* Tab: Solo eating expenditure tracker */}
           <button
-            onClick={() => setActiveTab('solo')}
+            onClick={() => navigateTo('solo')}
             className={`flex items-center gap-2 py-3 px-5 rounded-2xl text-xs md:text-sm font-black transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'solo' 
-                ? 'bg-emerald-500 text-white shadow-md shadow-emerald-250 dark:shadow-none' 
+                ? 'bg-emerald-500 text-white shadow-md shadow-emerald-200 dark:shadow-none' 
                 : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'
             }`}
           >
@@ -860,29 +878,74 @@ export default function App() {
         </div>
       </nav>
 
+      {/* Compact, reachable thumb navigation on phones; all seven destinations remain accessible. */}
+      <nav ref={mobileNavigationRef} aria-label="Điều hướng điện thoại" className="md:hidden fixed bottom-0 inset-x-0 z-[100] isolate bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200 dark:border-slate-700 shadow-2xl pb-[env(safe-area-inset-bottom)]">
+        {showMoreNav && (
+          <div id="more-mobile-sections" role="menu" aria-label="Phân hệ khác" className="absolute bottom-full inset-x-3 mb-2 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 shadow-xl rounded-2xl p-2 grid grid-cols-1 gap-1">
+            <button ref={moreMenuFirstItemRef} role="menuitem" onClick={() => navigateTo('venues')} className="min-h-11 flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl hover:bg-orange-50 dark:hover:bg-slate-800 text-slate-900 dark:text-slate-100"><Store className="w-5 h-5" /> Quán quen</button>
+            <button role="menuitem" onClick={() => navigateTo('recommendations')} className="min-h-11 flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl hover:bg-orange-50 dark:hover:bg-slate-800 text-slate-900 dark:text-slate-100"><Sparkles className="w-5 h-5" /> Gợi ý quán AI</button>
+            <button role="menuitem" onClick={() => navigateTo('solo')} className="min-h-11 flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl hover:bg-orange-50 dark:hover:bg-slate-800 text-slate-900 dark:text-slate-100"><Coins className="w-5 h-5" /> Ăn uống cá nhân</button>
+          </div>
+        )}
+        <div className="grid grid-cols-5 gap-0.5 px-1 pt-1.5">
+          {([
+            ['split', 'Chia tiền', Calculator],
+            ['reminders', 'Nhắc nợ', Bell],
+            ['history', 'Lịch sử', Calendar],
+            ['contacts', 'Bạn bè', Users]
+          ] as const).map(([tab, label, Icon]) => (
+            <button
+              key={tab}
+              type="button"
+              aria-current={activeTab === tab ? 'page' : undefined}
+              onClick={() => navigateTo(tab)}
+              className={`relative min-h-14 flex flex-col gap-1 items-center justify-center rounded-xl text-[11px] font-bold transition-colors ${activeTab === tab ? 'text-orange-700 dark:text-orange-300 bg-orange-100 dark:bg-orange-950/60' : 'text-slate-600 dark:text-slate-300'}`}
+            >
+              <Icon className="w-5 h-5" />
+              <span>{label}</span>
+              {tab === 'reminders' && unpaidDebtsLength > 0 && (
+                <span className="absolute top-0.5 right-2 min-w-4 h-4 px-0.5 text-[9px] text-white bg-red-600 rounded-full">{unpaidDebtsLength}</span>
+              )}
+            </button>
+          ))}
+          <button
+            type="button"
+            aria-expanded={showMoreNav}
+            aria-controls="more-mobile-sections"
+            aria-label="Thêm phân hệ"
+            onClick={() => setShowMoreNav(prev => !prev)}
+            className={`min-h-14 flex flex-col gap-1 items-center justify-center rounded-xl text-[11px] font-bold ${['venues', 'recommendations', 'solo'].includes(activeTab) || showMoreNav ? 'text-orange-700 dark:text-orange-300 bg-orange-100 dark:bg-orange-950/60' : 'text-slate-600 dark:text-slate-300'}`}
+          >
+            <Settings className="w-5 h-5" />
+            <span>Thêm</span>
+          </button>
+        </div>
+      </nav>
+
       {/* MAIN LAYOUT BODY CONTAINER WITH TRANSITIONS */}
-      <main className="max-w-7xl mx-auto px-4">
+      <main id="main-content" tabIndex={-1} className="max-w-7xl mx-auto px-3 sm:px-4 pb-28 md:pb-0">
+        {/* Keep an in-progress bill intact while visiting other screens. */}
+        <div className={activeTab === 'split' ? 'block' : 'hidden'} aria-hidden={activeTab !== 'split'}>
+          <BillSplitter
+            venues={visibleVenues}
+            onAddVenue={handleAddVenue}
+            onSaveBill={handleSaveBill}
+            activeCreatorName={activeCreatorName}
+            contacts={visibleContacts}
+          />
+        </div>
+        <Suspense fallback={<FeatureLoading />}>
         <AnimatePresence mode="wait">
-          <motion.div
+          {activeTab !== 'split' && <motion.div
             key={activeTab}
             initial={{ opacity: 0, scale: 0.98, y: 8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.98, y: -8 }}
             transition={{ duration: 0.2 }}
           >
-            {activeTab === 'split' && (
-              <BillSplitter 
-                venues={venues} 
-                onAddVenue={handleAddVenue} 
-                onSaveBill={handleSaveBill} 
-                activeCreatorName={activeCreatorName}
-                contacts={contacts}
-              />
-            )}
-
             {activeTab === 'venues' && (
               <VenueManager 
-                venues={venues} 
+                venues={visibleVenues} 
                 onAddVenue={handleAddVenue} 
                 onDeleteVenue={handleDeleteVenue} 
                 currentUser={currentUser}
@@ -892,7 +955,7 @@ export default function App() {
 
             {activeTab === 'history' && (
               <HistoryAndReports 
-                bills={bills} 
+                bills={visibleBills} 
                 onDeleteBill={handleDeleteBill} 
                 onArchiveBill={handleArchiveBill}
               />
@@ -902,16 +965,17 @@ export default function App() {
               <DebtReminders 
                 debts={debts} 
                 onMarkDebtAsPaid={handleMarkDebtAsPaid} 
+                onRecordPartialPayment={handleRecordPartialPayment} 
                 activeCreatorName={activeCreatorName}
                 currentUser={currentUser}
-                contacts={contacts}
+                contacts={visibleContacts}
                 onSaveContact={handleSaveContact}
               />
             )}
 
             {activeTab === 'contacts' && (
               <ContactManager 
-                contacts={contacts} 
+                contacts={visibleContacts} 
                 onSaveContact={handleSaveContact} 
                 onDeleteContact={handleDeleteContact} 
                 currentUser={currentUser}
@@ -927,18 +991,19 @@ export default function App() {
 
             {activeTab === 'solo' && (
               <SoloDining 
-                venues={venues} 
+                venues={visibleVenues} 
                 currentUser={currentUser} 
                 activeCreatorName={activeCreatorName}
-                bills={bills}
+                bills={visibleBills}
               />
             )}
-          </motion.div>
+          </motion.div>}
         </AnimatePresence>
+        </Suspense>
       </main>
 
       {/* FOOTER */}
-      <footer className="bg-transparent border-t-2 border-slate-200 dark:border-slate-800 py-6 text-center mt-12 text-slate-500 dark:text-slate-400 text-xs font-semibold">
+      <footer className="hidden md:block bg-transparent border-t-2 border-slate-200 dark:border-slate-800 py-6 text-center mt-12 text-slate-500 dark:text-slate-400 text-xs font-semibold">
         <p>© 2026 Chia Tiền Nhậu - Built with ❤️ for Vietnam drinking communities.</p>
         <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">Giải pháp sòng phẳng tối thượng, giữ trọn chân tình anh em.</p>
       </footer>
@@ -946,7 +1011,7 @@ export default function App() {
       {/* AUTH SYSTEM POPUP/MODAL */}
       <AnimatePresence>
         {showAuthModal && (
-          <AuthModal 
+          <Suspense fallback={null}><AuthModal 
             currentUser={currentUser}
             onClose={() => setShowAuthModal(false)}
             onSuccess={(user, name) => {
@@ -954,22 +1019,22 @@ export default function App() {
               setActiveCreatorName(name);
               setShowAuthModal(false);
             }}
-          />
+          /></Suspense>
         )}
       </AnimatePresence>
 
       {/* PUBLIC SHARED BILL VIEWER MODAL */}
       <AnimatePresence>
         {publicViewingBill && (
-          <PublicBillViewerModal 
+          <Suspense fallback={null}><PublicBillViewerModal 
             bill={publicViewingBill}
             onClose={handleClosePublicBillModal}
-          />
+          /></Suspense>
         )}
       </AnimatePresence>
 
       <Toaster 
-        position="bottom-center"
+        position="top-center"
         toastOptions={{
           style: {
             background: 'white',

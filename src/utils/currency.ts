@@ -23,34 +23,29 @@ export function formatCurrencyNumber(val: number | string | undefined | null): s
  * - "2tr" -> 2000000
  */
 export function parseCurrencyInput(inputStr: string): number {
-  if (!inputStr) return 0;
-
   const trimmed = inputStr.trim().toLowerCase();
+  if (!trimmed) return 0;
 
-  // Match shortcut notation like "500k", "1.5m", "2tr", "2.5tr"
-  const shortcutMatch = trimmed.match(/^([\d.,]+)\s*([kmtr]|tr)?$/i);
-  if (shortcutMatch) {
-    const rawDigits = shortcutMatch[1];
-    const unit = shortcutMatch[2]?.toLowerCase();
-
-    // If there is a unit like 'm' or 'tr' and digits have '.' or ',', treat as decimal (e.g. 1.5tr)
-    if (unit === 'm' || unit === 'tr') {
-      const normalizedFloat = parseFloat(rawDigits.replace(',', '.'));
-      if (!isNaN(normalizedFloat)) {
-        return Math.max(0, Math.round(normalizedFloat * 1000000));
-      }
-    } else if (unit === 'k') {
-      const normalizedFloat = parseFloat(rawDigits.replace(',', '.'));
-      if (!isNaN(normalizedFloat)) {
-        return Math.max(0, Math.round(normalizedFloat * 1000));
-      }
+  const shortcut = trimmed.match(/^([\d.,]+)\s*(tr|m|k)$/);
+  if (shortcut) {
+    const raw = shortcut[1];
+    const parts = raw.split(/[.,]/);
+    const last = parts[parts.length - 1];
+    // Vietnamese thousands groups have 3 digits; 1.000k means 1000k,
+    // while 1,5tr means 1.5 million. Also support 1.000,5tr.
+    const isDecimal = parts.length > 1 && last.length !== 3;
+    const whole = (isDecimal ? parts.slice(0, -1) : parts).join('');
+    const literal = isDecimal ? `${whole}.${last}` : whole;
+    const number = Number(literal);
+    const multiplier = shortcut[2] === 'k' ? 1_000 : 1_000_000;
+    if (Number.isFinite(number) && number >= 0) {
+      return Math.min(Number.MAX_SAFE_INTEGER, Math.round(number * multiplier));
     }
   }
 
-  // Remove any non-numeric characters (dots, commas, currency symbols)
-  const cleanDigits = trimmed.replace(/\D/g, '');
-  if (!cleanDigits) return 0;
-
-  const parsed = parseInt(cleanDigits, 10);
-  return isNaN(parsed) ? 0 : Math.max(0, parsed);
+  // Plain VND input accepts Vietnamese thousands punctuation, not fractions.
+  const digits = trimmed.replace(/\D/g, '');
+  if (!digits) return 0;
+  const parsed = Number(digits);
+  return Number.isFinite(parsed) ? Math.min(Number.MAX_SAFE_INTEGER, Math.max(0, Math.round(parsed))) : 0;
 }

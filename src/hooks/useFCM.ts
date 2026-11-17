@@ -43,7 +43,7 @@ export function useFCM({ activeCreatorName, currentUser }: UseFCMProps) {
   // Synchronize FCM Registration Token with Firestore mapping
   useEffect(() => {
     const registerFCM = async () => {
-      if (!('Notification' in window) || Notification.permission !== 'granted') return;
+      if (!currentUser || !('Notification' in window) || Notification.permission !== 'granted') return;
       
       try {
         const { getFirebaseMessaging, saveFCMTokenToCloud } = await import('../lib/firebase');
@@ -103,9 +103,7 @@ export function useFCM({ activeCreatorName, currentUser }: UseFCMProps) {
 
         if (token) {
           localStorage.setItem('nhau_my_fcm_token', token);
-          if (activeCreatorName && activeCreatorName.trim() !== '') {
-            await saveFCMTokenToCloud(activeCreatorName, token);
-          }
+          await saveFCMTokenToCloud(activeCreatorName, token);
         }
       } catch (err) {
         console.error('[FCM sync failed]', err);

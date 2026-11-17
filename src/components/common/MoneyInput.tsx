@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { formatCurrencyNumber, parseCurrencyInput } from '../../utils/currency';
 
 interface MoneyInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange'> {
@@ -18,14 +18,16 @@ export default function MoneyInput({
   readOnly = false,
   ...props
 }: MoneyInputProps) {
+  const editingRef = useRef(false);
   const [displayValue, setDisplayValue] = useState<string>(() => {
-    if (value === 0 && !allowZero) return '';
+    if (value === 0) return allowZero ? '0' : '';
     return formatCurrencyNumber(value);
   });
 
   useEffect(() => {
-    if (value === 0 && !allowZero) {
-      setDisplayValue('');
+    if (editingRef.current) return;
+    if (value === 0) {
+      setDisplayValue(allowZero ? '0' : '');
     } else {
       setDisplayValue(formatCurrencyNumber(value));
     }
@@ -33,20 +35,13 @@ export default function MoneyInput({
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value;
-    const parsed = parseCurrencyInput(raw);
-    onChange(parsed);
-
-    // If user is typing suffix shortcut (e.g. 'k', 'm', 'tr'), expand to formatted number
-    if (/[kmtr]/i.test(raw)) {
-      setDisplayValue(formatCurrencyNumber(parsed));
-    } else if (parsed === 0 && !allowZero) {
-      setDisplayValue(raw.trim() === '' ? '' : '0');
-    } else {
-      setDisplayValue(formatCurrencyNumber(parsed));
-    }
+    // Keep punctuation while focused so users can finish typing "1,5tr".
+    setDisplayValue(raw);
+    onChange(parseCurrencyInput(raw));
   };
 
   const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    editingRef.current = false;
     const parsed = parseCurrencyInput(e.target.value);
     onChange(parsed);
     setDisplayValue(parsed > 0 ? formatCurrencyNumber(parsed) : (allowZero ? '0' : ''));
@@ -57,6 +52,7 @@ export default function MoneyInput({
     <div className="relative w-full">
       <input
         {...props}
+        onFocus={(event) => { editingRef.current = true; props.onFocus?.(event); }}
         type="text"
         inputMode="numeric"
         readOnly={readOnly}

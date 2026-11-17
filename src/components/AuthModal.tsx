@@ -10,6 +10,7 @@ import {
 } from '../lib/firebase';
 import { Mail, Lock, User, Sparkles, AlertCircle, X, ShieldAlert, Check, CheckCircle2 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useDialogA11y } from '../hooks/useDialogA11y';
 
 interface AuthModalProps {
   currentUser: FirebaseUser | null;
@@ -25,6 +26,7 @@ export default function AuthModal({ currentUser, onClose, onSuccess }: AuthModal
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const dialogRef = useDialogA11y<HTMLDivElement>(true, onClose);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,11 +55,7 @@ export default function AuthModal({ currentUser, onClose, onSuccess }: AuthModal
           displayName: displayName.trim()
         });
         
-        setSuccessMsg(`Chào mừng ${displayName.trim()} đến với bàn nhậu! 🍻`);
-        setTimeout(() => {
-          onSuccess(userCredential.user, displayName.trim());
-          onClose();
-        }, 1500);
+        onSuccess(userCredential.user, displayName.trim());
 
       } else {
         // Sign in
@@ -68,11 +66,7 @@ export default function AuthModal({ currentUser, onClose, onSuccess }: AuthModal
         );
         
         const nameToUse = userCredential.user.displayName || email.split('@')[0];
-        setSuccessMsg(`Đã đăng nhập thành công. Chào mừng trở lại, ${nameToUse}! 🥂`);
-        setTimeout(() => {
-          onSuccess(userCredential.user, nameToUse);
-          onClose();
-        }, 1500);
+        onSuccess(userCredential.user, nameToUse);
       }
     } catch (err: any) {
       console.error(err);
@@ -96,11 +90,7 @@ export default function AuthModal({ currentUser, onClose, onSuccess }: AuthModal
     try {
       const user = await signInWithGoogle();
       const nameToUse = user.displayName || user.email?.split('@')[0] || 'Chiến hữu';
-      setSuccessMsg(`Chào mừng bạng ${nameToUse} đã tham gia bàn nhậu thành công! 🍻`);
-      setTimeout(() => {
-        onSuccess(user, nameToUse);
-        onClose();
-      }, 1500);
+      onSuccess(user, nameToUse);
     } catch (err: any) {
       console.error(err);
       if (err.code !== 'auth/popup-closed-by-user') {
@@ -112,7 +102,7 @@ export default function AuthModal({ currentUser, onClose, onSuccess }: AuthModal
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
       {/* Backdrop */}
       <motion.div 
         initial={{ opacity: 0 }}
@@ -128,11 +118,17 @@ export default function AuthModal({ currentUser, onClose, onSuccess }: AuthModal
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.8, opacity: 0, y: 50 }}
         transition={{ type: "spring", stiffness: 400, damping: 25 }}
-        className="relative bg-white dark:bg-slate-900 w-full max-w-md border-4 border-slate-900 dark:border-slate-700 rounded-[32px] shadow-2xl p-6 md:p-8 overflow-hidden z-10 text-slate-800 dark:text-slate-100"
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="auth-dialog-title"
+        tabIndex={-1}
+        className="relative bg-white dark:bg-slate-900 w-full max-w-md border-4 border-slate-900 dark:border-slate-700 rounded-[28px] sm:rounded-[32px] shadow-2xl p-5 sm:p-6 md:p-8 max-h-[calc(100dvh-2rem)] overflow-y-auto z-10 text-slate-800 dark:text-slate-100"
       >
         {/* Close Button */}
         <button
           onClick={onClose}
+          aria-label="Đóng đăng nhập"
           className="absolute top-4 right-4 p-2 bg-slate-100 dark:bg-slate-800 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors border border-slate-900/10 dark:border-slate-700 cursor-pointer"
         >
           <X className="w-4 h-4 text-slate-700 dark:text-slate-200" />
@@ -143,7 +139,7 @@ export default function AuthModal({ currentUser, onClose, onSuccess }: AuthModal
           <div className="inline-flex w-12 h-12 rounded-full bg-orange-100 border-2 border-slate-900 dark:border-orange-500 items-center justify-center mb-1 text-2xl">
             🍻
           </div>
-          <h3 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">
+          <h3 id="auth-dialog-title" className="text-xl md:text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">
             {isSignUp ? 'Đăng ký sòng phẳng' : 'Chào mừng đồng nhậu'}
           </h3>
           <p className="text-xs font-bold text-slate-500 dark:text-slate-400">
@@ -155,7 +151,7 @@ export default function AuthModal({ currentUser, onClose, onSuccess }: AuthModal
 
         {/* Error Notification Banner */}
         {error && (
-          <div className="mt-4 bg-red-50 border-2 border-red-500 rounded-xl p-3 flex items-start gap-2.5 text-xs font-black text-red-650 animate-bounce">
+          <div role="alert" className="mt-4 bg-red-50 border-2 border-red-500 rounded-xl p-3 flex items-start gap-2.5 text-xs font-black text-red-650 animate-bounce">
             <ShieldAlert className="w-4 h-4 flex-shrink-0 text-red-650 mt-0.5" />
             <div className="flex-1 leading-relaxed">{error}</div>
           </div>
@@ -198,7 +194,8 @@ export default function AuthModal({ currentUser, onClose, onSuccess }: AuthModal
               </span>
               <input
                 type="email"
-                required
+                  autoComplete="email"
+                  required
                 placeholder="lapke_hoadon@gmail.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -215,7 +212,9 @@ export default function AuthModal({ currentUser, onClose, onSuccess }: AuthModal
               </span>
               <input
                 type="password"
-                required
+                  autoComplete={isSignUp ? 'new-password' : 'current-password'}
+                  minLength={6}
+                  required
                 placeholder="••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}

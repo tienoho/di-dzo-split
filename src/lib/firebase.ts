@@ -22,10 +22,13 @@ import {
   query, 
   where,
   writeBatch,
-  arrayUnion
+  arrayUnion,
+  serverTimestamp,
+  Timestamp
 } from 'firebase/firestore';
 import { getMessaging, getToken, isSupported } from 'firebase/messaging';
-import { Venue, Bill, SoloMeal } from '../types';
+import { Venue, Bill, SoloMeal, ContactEntry } from '../types';
+import { getActiveDebts } from '../utils/storage';
 
 // Import config directly (supported natively by Vite)
 import config from '../../firebase-applet-config.json';
@@ -164,7 +167,9 @@ export const fetchVenuesFromCloud = async (userId: string): Promise<Venue[]> => 
         address: data.address || '',
         notes: data.notes || '',
         rating: data.rating || 0,
-        visitsCount: data.visitsCount || 0
+        visitsCount: data.visitsCount || 0,
+        updatedAt: data.updatedAt || undefined,
+        deletedAt: data.deletedAt || undefined
       });
     });
     return venues;
@@ -195,7 +200,14 @@ export const fetchBillsFromCloud = async (userId: string): Promise<Bill[]> => {
         note: data.note || '',
         members: data.members || [],
         receiptImage: data.receiptImage || undefined,
-        isArchived: data.isArchived || false
+        isArchived: data.isArchived || false,
+        updatedAt: data.updatedAt || undefined,
+        deletedAt: data.deletedAt || undefined,
+        settledTransfers: data.settledTransfers || undefined,
+        payments: data.payments || undefined,
+        bankName: data.bankName || undefined,
+        bankNo: data.bankNo || undefined,
+        bankAccountName: data.bankAccountName || undefined
       });
     });
     return bills;
@@ -225,7 +237,8 @@ export const saveBillToCloud = async (userId: string, bill: Bill) => {
 export const deleteVenueFromCloud = async (userId: string, venueId: string) => {
   try {
     const venueRef = doc(db, 'users', userId, 'venues', venueId);
-    await deleteDoc(venueRef);
+    const deletedAt = new Date().toISOString();
+    await setDoc(venueRef, { id: venueId, deletedAt, updatedAt: deletedAt, userId });
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, `users/${userId}/venues/${venueId}`);
   }
@@ -234,25 +247,50 @@ export const deleteVenueFromCloud = async (userId: string, venueId: string) => {
 export const deleteBillFromCloud = async (userId: string, billId: string) => {
   try {
     const billRef = doc(db, 'users', userId, 'bills', billId);
-    await deleteDoc(billRef);
+    const deletedAt = new Date().toISOString();
+    await setDoc(billRef, { id: billId, deletedAt, updatedAt: deletedAt, userId });
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, `users/${userId}/bills/${billId}`);
   }
 };
 
-export const clearUserCloudData = async (userId: string) => {
+export const getUserResetEpoch = async (userId: string): Promise<number> => {
+  const snap = await getDoc(doc(db, 'users', userId, 'account', 'reset'));
+  const epoch = snap.data()?.resetAt;
+  return typeof epoch === 'number' && Number.isFinite(epoch) ? epoch : 0;
+};
+
+export const clearUserCloudData = async (userId: string): Promise<void> => {
+  if (auth.currentUser?.uid !== userId) {
+    throw new Error('Chỉ được xóa dữ liệu của tài khoản đang đăng nhập.');
+  }
   try {
-    const subcollections = ['bills', 'venues', 'solo_meals', 'contacts', 'solo_settings'];
-    for (const subcol of subcollections) {
-      const q = query(collection(db, 'users', userId, subcol));
-      const snap = await getDocs(q);
-      const batch = writeBatch(db);
-      snap.forEach((d) => {
-        batch.delete(d.ref);
-      });
-      await batch.commit();
+    // Revoke public links before deleting the private source of their IDs.
+    const privateBills = await getDocs(collection(db, 'users', userId, 'bills'));
+    for (const billDoc of privateBills.docs) {
+      try {
+        await revokePublicBillFromCloud(billDoc.id);
+      } catch (error) {
+        // A bill may never have been shared or its link may already be revoked.
+        console.warn('[Reset] Public link revocation skipped:', billDoc.id);
+      }
     }
-    console.log(`[Firestore] Successfully cleared cloud data for user ${userId}`);
+
+    const subcollections = ['bills', 'venues', 'solo_meals', 'contacts', 'solo_settings', 'fcm'];
+    for (const subcol of subcollections) {
+      const snapshot = await getDocs(collection(db, 'users', userId, subcol));
+      // Firestore commits permit at most 500 writes. Leave headroom for safety.
+      for (let offset = 0; offset < snapshot.docs.length; offset += 400) {
+        const batch = writeBatch(db);
+        snapshot.docs.slice(offset, offset + 400).forEach(item => batch.delete(item.ref));
+        await batch.commit();
+      }
+    }
+    // Durable reset fence: a returning device must not replay stale offline records.
+    await setDoc(doc(db, 'users', userId, 'account', 'reset'), {
+      resetAt: Date.now(),
+      updatedAt: new Date().toISOString()
+    });
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, `users/${userId}/[all]`);
   }
@@ -303,7 +341,17 @@ export const fetchPublicVenuesFromCloud = async (): Promise<PublicVenue[]> => {
         createdAt: data.createdAt || new Date().toISOString()
       });
     });
-    return venues;
+    // Recalculate from owner-scoped reviews; do not trust writable venue scores.
+    return Promise.all(venues.map(async venue => {
+      try {
+        const reviews = await fetchPublicVenueReviewsFromCloud(venue.id);
+        if (!reviews.length) return { ...venue, rating: 0, ratingsCount: 0 };
+        const rating = reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length;
+        return { ...venue, rating, ratingsCount: reviews.length };
+      } catch (error) {
+        return venue;
+      }
+    }));
   } catch (error) {
     handleFirestoreError(error, OperationType.LIST, 'public_venues');
   }
@@ -333,7 +381,7 @@ export const shareVenueToCommunityCloud = async (
     await setDoc(docRef, sanitizeFirestoreData(pubVenue));
     
     // Auto populate first rating review
-    const reviewRef = doc(collection(db, 'public_venues', docRef.id, 'reviews'));
+    const reviewRef = doc(db, 'public_venues', docRef.id, 'reviews', currentUserId);
     const initialReview: PublicVenueReview = {
       id: reviewRef.id,
       authorId: currentUserId,
@@ -383,7 +431,7 @@ export const addPublicVenueReviewCloud = async (
   currentUserName: string
 ): Promise<PublicVenueReview> => {
   const reviewCollectionRef = collection(db, 'public_venues', venueId, 'reviews');
-  const reviewDocRef = doc(reviewCollectionRef);
+  const reviewDocRef = doc(reviewCollectionRef, currentUserId);
   try {
     const newReview: PublicVenueReview = {
       id: reviewDocRef.id,
@@ -395,37 +443,88 @@ export const addPublicVenueReviewCloud = async (
     };
     
     await setDoc(reviewDocRef, sanitizeFirestoreData(newReview));
-    
-    // Calculate new averages
-    const reviews = await fetchPublicVenueReviewsFromCloud(venueId);
-    const ratingsCount = reviews.length;
-    const totalSum = reviews.reduce((sum, r) => sum + r.rating, 0);
-    const avgRating = ratingsCount > 0 ? Number((totalSum / ratingsCount).toFixed(1)) : rating;
-    
-    const venueRef = doc(db, 'public_venues', venueId);
-    await updateDoc(venueRef, {
-      rating: avgRating,
-      ratingsCount: ratingsCount
-    });
-    
+    // Never allow a review author to modify public aggregate scores.
     return newReview;
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, `public_venues/${venueId}/reviews/${reviewDocRef.id}`);
   }
 };
 
-// Save a bill to public_bills collection for shareable web links
-export const savePublicBillToCloud = async (bill: Bill): Promise<void> => {
-  try {
-    const docRef = doc(db, 'public_bills', bill.id);
-    const sanitized = sanitizeFirestoreData(bill);
-    await setDoc(docRef, {
-      ...sanitized,
-      sharedAt: new Date().toISOString()
-    });
-  } catch (error) {
-    console.warn("Could not save bill to public cloud, relying on URL encoding fallback:", error);
+// Shared bills are intentionally public-read, but writes require an authenticated owner.
+// Do not leak receipt images or member contact details to the shared collection.
+export const savePublicBillToCloud = async (bill: Bill, existingExpiry?: Timestamp): Promise<void> => {
+  const ownerUid = auth.currentUser?.uid;
+  if (!ownerUid) {
+    throw new Error('Đăng nhập Google để tạo liên kết ngắn trên đám mây');
   }
+  const docRef = doc(db, 'public_bills', bill.id);
+  let expiry = existingExpiry;
+  if (!expiry) {
+    // Keep the original expiry when an owner re-shares an existing bill.
+    // An expired/revoked entry cannot be read, and its write remains denied.
+    try {
+      const current = await getDoc(docRef);
+      if (current.exists()) expiry = current.data().expiresAt as Timestamp | undefined;
+    } catch (error) {
+      console.info('[Share] No readable existing link; attempting a new authorized create.');
+    }
+  }
+  const balances = getActiveDebts([{ ...bill, isArchived: false }]);
+  const publicMembers = bill.members.map(({ name, initialPaid, finalShare, penaltyAmount, hasPaidDebt }) => ({
+    name,
+    initialPaid,
+    finalShare,
+    penaltyAmount: penaltyAmount || 0,
+    hasPaidDebt: balances.filter(d => d.debtorName === name).every(d => d.isPaid) || (hasPaidDebt && !balances.some(d => d.debtorName === name))
+  }));
+  await setDoc(docRef, { ...sanitizeFirestoreData({
+    id: bill.id,
+    ownerUid,
+    venueId: bill.venueId,
+    venueName: bill.venueName,
+    totalAmount: bill.totalAmount,
+    rawAmount: bill.rawAmount,
+    tipPercent: bill.tipPercent,
+    tipAmount: bill.tipAmount,
+    additionalFee: bill.additionalFee,
+    discountAmount: bill.discountAmount,
+    splitType: bill.splitType,
+    date: bill.date,
+    note: bill.note || '',
+    bankName: bill.bankName || '',
+    bankNo: bill.bankNo || '',
+    bankAccountName: bill.bankAccountName || '',
+    members: publicMembers,
+    payments: bill.payments || {},
+    settledTransfers: bill.settledTransfers || {},
+    sharedAt: new Date().toISOString()
+  }), expiresAt: expiry || Timestamp.fromDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)) });
+};
+
+/**
+ * Refresh only an existing, readable, owner-created link.
+ * Never create a new public link during background cloud synchronization.
+ */
+export const refreshPublicBillIfShared = async (bill: Bill): Promise<boolean> => {
+  const uid = auth.currentUser?.uid;
+  if (!uid || bill.deletedAt) return false;
+  try {
+    const snapshot = await getDoc(doc(db, 'public_bills', bill.id));
+    if (!snapshot.exists() || snapshot.data().ownerUid !== uid) return false;
+    const expiry = snapshot.data().expiresAt as Timestamp | undefined;
+    await savePublicBillToCloud(bill, expiry);
+    return true;
+  } catch (error) {
+    // Expired/revoked/unauthorized links must not be created or reactivated.
+    console.warn('[Public bill] Refresh skipped:', error);
+    return false;
+  }
+};
+
+// Revoked links become permanently unavailable; an old URL must not revive the bill.
+export const revokePublicBillFromCloud = async (billId: string): Promise<void> => {
+  if (!auth.currentUser) throw new Error('Đăng nhập với tài khoản chủ hóa đơn để thu hồi liên kết.');
+  await updateDoc(doc(db, 'public_bills', billId), { revokedAt: serverTimestamp() });
 };
 
 // Fetch a public bill by ID from public_bills collection
@@ -447,6 +546,8 @@ export const fetchPublicBillFromCloud = async (billId: string): Promise<Bill | n
         discountAmount: data.discountAmount || 0,
         date: data.date || new Date().toISOString(),
         members: Array.isArray(data.members) ? data.members : [],
+        payments: data.payments || undefined,
+        settledTransfers: data.settledTransfers || undefined,
         splitType: data.splitType || 'equal',
         note: data.note || '',
         receiptImage: data.receiptImage || undefined,
@@ -500,75 +601,26 @@ export const getFirebaseMessaging = async () => {
   return null;
 };
 
-export const saveFCMTokenToCloud = async (userName: string, token: string) => {
-  const cleanName = userName.trim();
-  if (!cleanName) return;
-
-  // Detect if we have an active logged-in user at the moment
-  const currentUser = auth.currentUser;
-  const authMetadata = currentUser ? {
-    userId: currentUser.uid,
-    email: currentUser.email || null,
-    isGuest: false
-  } : {
-    userId: null,
-    email: null,
-    isGuest: true
-  };
-
-  const lowerName = cleanName.toLowerCase();
-  const tokenLowerRef = doc(db, 'user_fcm_tokens', lowerName);
-
-  try {
-    // Save with case-insensitive normalized document ID
-    await setDoc(tokenLowerRef, {
-      name: cleanName,
-      tokens: arrayUnion(token),
-      updatedAt: new Date().toISOString(),
-      ...authMetadata
-    }, { merge: true });
-
-    // Also register under original name for complete redundancy
-    if (cleanName !== lowerName) {
-      const tokenOriginalRef = doc(db, 'user_fcm_tokens', cleanName);
-      await setDoc(tokenOriginalRef, {
-        name: cleanName,
-        tokens: arrayUnion(token),
-        updatedAt: new Date().toISOString(),
-        ...authMetadata
-      }, { merge: true });
-    }
-
-    console.log(`[FCM] Registered token for name: ${cleanName} | Status: ${currentUser ? 'Logged-In' : 'Guest'}`);
-  } catch (error) {
-    handleFirestoreError(error, OperationType.WRITE, `user_fcm_tokens/${lowerName}`);
-  }
+/**
+ * Device tokens are private to a verified Firebase account.
+ * An arbitrary display name must NEVER be used to locate FCM devices.
+ */
+export const saveFCMTokenToCloud = async (_displayName: string, token: string) => {
+  const user = auth.currentUser;
+  if (!user) throw new Error('Đăng nhập để đăng ký thông báo đẩy an toàn.');
+  if (!token || token.length > 4096) throw new Error('FCM token không hợp lệ.');
+  const tokenRef = doc(db, 'users', user.uid, 'fcm', 'tokens');
+  await setDoc(tokenRef, {
+    tokens: arrayUnion(token),
+    updatedAt: new Date().toISOString()
+  }, { merge: true });
 };
 
-export const getFCMTokensByUserName = async (userName: string): Promise<string[]> => {
-  const cleanName = userName.trim();
-  if (!cleanName) return [];
-
-  const lowerName = cleanName.toLowerCase();
-  
-  try {
-    // 1. Try lowercase matching (the default normalized approach)
-    const lowerRef = doc(db, 'user_fcm_tokens', lowerName);
-    const snapLower = await getDoc(lowerRef);
-    if (snapLower.exists()) {
-      const tokens = snapLower.data().tokens || [];
-      if (tokens.length > 0) return tokens;
-    }
-
-    // 2. Fallback to exact casing match
-    const origRef = doc(db, 'user_fcm_tokens', cleanName);
-    const snapOrig = await getDoc(origRef);
-    if (snapOrig.exists()) {
-      return snapOrig.data().tokens || [];
-    }
-  } catch (error) {
-    handleFirestoreError(error, OperationType.GET, `user_fcm_tokens/${lowerName}`);
-  }
+/**
+ * The client cannot enumerate other people's push devices.
+ * Cross-account pushes require an identity-bound consent flow on the server.
+ */
+export const getFCMTokensByUserName = async (_userName: string): Promise<string[]> => {
   return [];
 };
 
@@ -592,7 +644,9 @@ export const fetchSoloMealsFromCloud = async (userId: string): Promise<SoloMeal[
         drinkAmount: data.drinkAmount || 0,
         otherAmount: data.otherAmount || 0,
         totalAmount: data.totalAmount || 0,
-        note: data.note || ''
+        note: data.note || '',
+        updatedAt: data.updatedAt || undefined,
+        deletedAt: data.deletedAt || undefined
       });
     });
     return meals;
@@ -614,8 +668,9 @@ export const saveSoloMealToCloud = async (userId: string, meal: SoloMeal) => {
 export const deleteSoloMealFromCloud = async (userId: string, mealId: string) => {
   try {
     const mealRef = doc(db, 'users', userId, 'solo_meals', mealId);
-    await deleteDoc(mealRef);
-    console.log(`[Firestore] Successfully deleted solo meal ${mealId}`);
+    const deletedAt = new Date().toISOString();
+    await setDoc(mealRef, { id: mealId, deletedAt, updatedAt: deletedAt, userId });
+    console.log(`[Firestore] Retained deletion tombstone for solo meal ${mealId}`);
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, `users/${userId}/solo_meals/${mealId}`);
   }
@@ -644,16 +699,18 @@ export const fetchSoloBudgetFromCloud = async (userId: string): Promise<number |
   return null;
 };
 
-export const fetchContactsFromCloud = async (userId: string): Promise<Record<string, { phone?: string; messenger?: string }>> => {
+export const fetchContactsFromCloud = async (userId: string): Promise<Record<string, ContactEntry>> => {
   try {
     const q = query(collection(db, 'users', userId, 'contacts'));
     const querySnapshot = await getDocs(q);
-    const contactsMap: Record<string, { phone?: string; messenger?: string }> = {};
+    const contactsMap: Record<string, ContactEntry> = {};
     querySnapshot.forEach((doc) => {
       const data = doc.data();
       contactsMap[doc.id] = {
         phone: data.phone || '',
-        messenger: data.messenger || ''
+        messenger: data.messenger || '',
+        updatedAt: data.updatedAt || undefined,
+        deletedAt: data.deletedAt || undefined
       };
     });
     return contactsMap;
@@ -662,13 +719,13 @@ export const fetchContactsFromCloud = async (userId: string): Promise<Record<str
   }
 };
 
-export const saveContactToCloud = async (userId: string, name: string, phone: string, messenger: string) => {
+export const saveContactToCloud = async (userId: string, name: string, phone: string, messenger: string, updatedAt = new Date().toISOString()) => {
   try {
     const contactRef = doc(db, 'users', userId, 'contacts', name);
     await setDoc(contactRef, sanitizeFirestoreData({
       phone: phone.trim(),
       messenger: messenger.trim(),
-      updatedAt: new Date().toISOString()
+      updatedAt
     }));
     console.log(`[Firestore] Successfully saved contact ${name}`);
   } catch (error) {
@@ -676,10 +733,10 @@ export const saveContactToCloud = async (userId: string, name: string, phone: st
   }
 };
 
-export const deleteContactFromCloud = async (userId: string, name: string) => {
+export const deleteContactFromCloud = async (userId: string, name: string, deletedAt = new Date().toISOString()) => {
   try {
     const contactRef = doc(db, 'users', userId, 'contacts', name);
-    await deleteDoc(contactRef);
+    await setDoc(contactRef, { deletedAt, updatedAt: deletedAt });
     console.log(`[Firestore] Successfully deleted contact ${name}`);
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, `users/${userId}/contacts/${name}`);

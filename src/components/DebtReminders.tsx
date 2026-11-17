@@ -4,10 +4,12 @@ import toast from 'react-hot-toast';
 import { Bell, Check, MessageSquare, AlertCircle, Share2, Copy, CheckCheck, QrCode, Smile } from 'lucide-react';
 import DebtSettingsPanel from './DebtReminders/DebtSettingsPanel';
 import DebtActionModal from './DebtReminders/DebtActionModal';
+import MoneyInput from './common/MoneyInput';
 
 interface DebtRemindersProps {
   debts: Debt[];
-  onMarkDebtAsPaid: (billId: string, debtorName: string) => void;
+  onMarkDebtAsPaid: (billId: string, debtorName: string, creditorName: string) => void;
+  onRecordPartialPayment: (billId: string, debtorName: string, creditorName: string, amount: number) => void;
   activeCreatorName: string;
   currentUser?: any;
   contacts: Record<string, { phone?: string; messenger?: string }>;
@@ -69,7 +71,7 @@ const bankCodeMap: Record<string, string> = {
   sacombank: 'STB'
 };
 
-export default function DebtReminders({ debts, onMarkDebtAsPaid, activeCreatorName, currentUser, contacts, onSaveContact }: DebtRemindersProps) {
+export default function DebtReminders({ debts, onMarkDebtAsPaid, onRecordPartialPayment, activeCreatorName, currentUser, contacts, onSaveContact }: DebtRemindersProps) {
   const defaultBank = 'mbbank';
   const defaultNo = '';
   const defaultAccountName = '';
@@ -81,7 +83,7 @@ export default function DebtReminders({ debts, onMarkDebtAsPaid, activeCreatorNa
   const [settingsSaved, setSettingsSaved] = useState<boolean>(false);
 
   // Periodic Browser Push Notification settings state
-  const [pushEnabled, setPushEnabled] = useState<boolean>(() => localStorage.getItem('nhau_push_enabled') !== 'false');
+  const [pushEnabled, setPushEnabled] = useState<boolean>(() => localStorage.getItem('nhau_push_enabled') === 'true');
   const [pushInterval, setPushInterval] = useState<string>(() => localStorage.getItem('nhau_push_interval') || '24h');
 
   // FCM Real settings and client token status variables
@@ -95,11 +97,7 @@ export default function DebtReminders({ debts, onMarkDebtAsPaid, activeCreatorNa
       setLocalFcmToken(localStorage.getItem('nhau_my_fcm_token') || '');
     };
     window.addEventListener('storage', handleStorageChange);
-    const intervalId = setInterval(handleStorageChange, 1000);
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      clearInterval(intervalId);
-    };
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
   // Custom modal-based confirmation dialog to bypass sandbox iframe bugs
@@ -149,6 +147,10 @@ export default function DebtReminders({ debts, onMarkDebtAsPaid, activeCreatorNa
   };
 
   const handleTestFCMRegister = async () => {
+    if (!currentUser) {
+      toast.error('Đăng nhập để liên kết FCM với tài khoản của bạn.');
+      return;
+    }
     if (!('Notification' in window)) {
       toast.error("Trình duyệt không hỗ trợ push notifications.");
       return;
@@ -223,9 +225,11 @@ export default function DebtReminders({ debts, onMarkDebtAsPaid, activeCreatorNa
       return;
     }
     try {
+      if (!currentUser) throw new Error('Đăng nhập để xác thực thiết bị.');
+      const idToken = await currentUser.getIdToken();
       const response = await fetch('/api/send-fcm', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
         body: JSON.stringify({
           tokens: [localFcmToken],
           title: "Bia ơi dứt khoát! 🍻",
@@ -252,6 +256,9 @@ export default function DebtReminders({ debts, onMarkDebtAsPaid, activeCreatorNa
 
   // Active modal / Panel expansion
   const [selectedDebt, setSelectedDebt] = useState<Debt | null>(null);
+  const [partialFor, setPartialFor] = useState<Debt | null>(null);
+  const [partialAmount, setPartialAmount] = useState<number>(0);
+  const payable = (debt: Debt) => debt.remainingAmount ?? debt.amount;
   const [copiedNotification, setCopiedNotification] = useState<string | null>(null);
 
   // Message customization & stickers template states
@@ -347,77 +354,19 @@ export default function DebtReminders({ debts, onMarkDebtAsPaid, activeCreatorNa
   };
 
   // Trigger actual cloud or simulated mobile deep push notice
-  const handleTriggerVirtualPush = async (debt: Debt) => {
-    try {
-      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const oscillator = audioCtx.createOscillator();
-      const gainNode = audioCtx.createGain();
-      oscillator.connect(gainNode);
-      gainNode.connect(audioCtx.destination);
-      oscillator.type = 'sine';
-      oscillator.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
-      gainNode.gain.setValueAtTime(0.08, audioCtx.currentTime);
-      oscillator.start();
-      oscillator.stop(audioCtx.currentTime + 0.15);
-    } catch (e) {}
-
-    setPushNotificationText(`⏳ Đang tìm kiếm thiết bị của chiến hữu ${debt.debtorName} trên đám mây...`);
-
-    try {
-      const { getFCMTokensByUserName } = await import('../lib/firebase');
-      const tokens = await getFCMTokensByUserName(debt.debtorName);
-
-      if (tokens && tokens.length > 0) {
-        const title = `⚠️ Nhắc Nợ: Cuộc Vui "${debt.venueName}"`;
-        const body = `Chiến hữu ${activeCreatorName || 'Cầm Quỹ'} nhắc bạn thanh toán ${debt.amount.toLocaleString('vi-VN')}đ tiền nhậu còn thiếu. Click để thanh toán!`;
-
-        const response = await fetch('/api/send-fcm', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            tokens,
-            title,
-            body,
-            data: {
-              billId: debt.billId,
-              debtId: debt.id,
-              type: 'debt_reminder'
-            }
-          })
-        });
-
-        if (!response.ok) {
-          throw new Error(`Máy chủ trả về mã (${response.status})`);
-        }
-
-        const data = await response.json();
-        if (data.success) {
-          if (data.isSimulated) {
-            setPushNotificationText(`📬 CHẾ ĐỘ GIẢ LẬP: Máy chủ đã ghi nợ tới ${debt.debtorName} (Tìm thấy ${tokens.length} thiết bị).`);
-          } else {
-            setPushNotificationText(`🚀 HOÀN THÀNH: Đã bắn 1 thông báo đẩy REAL-TIME cực dứt khoát tới ${tokens.length} thiết bị của chiến hữu ${debt.debtorName}!`);
-          }
-        } else {
-          setPushNotificationText(`❌ Gửi PUSH lỗi trên server: ${data.error}`);
-        }
-      } else {
-        setPushNotificationText(`📢 Thiết bị của ${debt.debtorName} chưa đăng ký PUSH. Nhắc đối phương bấm "Cấp quyền thông báo đẩy" ở cài đặt bên phải.`);
-      }
-    } catch (err: any) {
-      console.error(err);
-      setPushNotificationText(`❌ Không thể kết nối quét thiết bị: ${err.message || err}`);
-    }
-
-    setTimeout(() => {
-      setPushNotificationText(null);
-    }, 8500);
+  // A display name is NOT sufficient to authorize access to another user's device.
+  // Until recipients explicitly bind a verified account to a bill, direct push is disabled.
+  const handleTriggerVirtualPush = async (_debt: Debt) => {
+    setPushNotificationText(
+      'Thông báo FCM trực tiếp cần người nhận liên kết tài khoản đã xác thực và đồng ý nhận nhắc nợ. Hãy gửi lời nhắc qua Zalo/Messenger thay thế.'
+    );
   };
 
   // Generate payment reminder messages
   const getReminderMessage = (debt: Debt, style: 'friendly' | 'formal' | 'funny') => {
     const dObj = new Date(debt.billDate);
     const friendlyDate = `${dObj.getDate()}/${dObj.getMonth() + 1}`;
-    const amountStr = `${debt.amount.toLocaleString('vi-VN')}đ`;
+    const amountStr = `${payable(debt).toLocaleString('vi-VN')}đ`;
     
     const removeVietnameseTones = (str: string): string => {
       return str
@@ -428,7 +377,7 @@ export default function DebtReminders({ debts, onMarkDebtAsPaid, activeCreatorNa
         .replace(/[^a-zA-Z0-9]/g, '');
     };
 
-    const formattedAmount = Math.round(debt.amount);
+    const formattedAmount = Math.round(payable(debt));
     const debtorTag = removeVietnameseTones(debt.debtorName);
     const venueTag = removeVietnameseTones(debt.venueName.substring(0, 8));
     const paymentMemo = `${debtorTag} tra tien ${venueTag}`.trim();
@@ -509,7 +458,7 @@ Xin chân thành cảm ơn!`;
     <div className="space-y-6" id="debt-reminders-section">
       {/* VIRTUAL MOBILE PUSH NOTIFICATION INDICATORS */}
       {pushNotificationText && (
-        <div id="virtual-push-banner" className="fixed top-4 left-4 right-4 md:left-auto md:right-4 md:w-96 bg-slate-900 text-white rounded-2xl p-5 shadow-2xl border-4 border-slate-900 z-50 flex items-start space-x-3 animate-slideIn">
+        <div id="virtual-push-banner" className="fixed top-4 left-4 right-4 md:left-auto md:right-4 md:w-96 bg-slate-900 text-white rounded-2xl p-5 shadow-2xl border-4 border-slate-900 z-50 flex items-start space-x-3 animate-slideIn dark:border-slate-700">
           <div className="bg-orange-500 p-2.5 rounded-xl text-white self-center">
             <Bell className="w-5 h-5 animate-swing" />
           </div>
@@ -549,11 +498,11 @@ Xin chân thành cảm ơn!`;
         />
 
         {/* RIGHT COLUMN: Outstanding Balances List */}
-        <div className="lg:col-span-8 bg-white border-4 border-slate-900 rounded-[32px] shadow-lg p-6 space-y-6">
+        <div className="lg:col-span-8 bg-white border border-slate-200 rounded-3xl shadow-sm p-6 space-y-6 dark:bg-slate-900 dark:border-slate-700">
           
           {(!bankNo || !bankAccountName) && (
             <div className="bg-orange-50 border-4 border-orange-500 rounded-[28px] p-5 flex items-start gap-3.5 shadow-sm">
-              <span className="text-2xl animate-pulse">⚠️</span>
+              <span className="text-2xl">⚠️</span>
               <div className="flex-1 space-y-1">
                 <h3 className="text-sm font-black text-orange-950 uppercase tracking-wide">Bạn Chưa Thiết Lập Tài Khoản Thụ Hưởng!</h3>
                 <p className="text-xs font-bold text-orange-900 leading-relaxed">
@@ -568,7 +517,7 @@ Xin chân thành cảm ơn!`;
             const myDebts = debts.filter(d => d.debtorName.toLowerCase().trim() === activeCreatorName.toLowerCase().trim() && !d.isPaid);
             if (myDebts.length === 0) return null;
             return (
-              <div className="bg-red-50 border-4 border-red-500 rounded-[28px] p-5 space-y-4 shadow-sm animate-pulse">
+              <div className="bg-red-50 border-4 border-red-500 rounded-[28px] p-5 space-y-4 shadow-sm">
                 <div className="flex items-center gap-2">
                   <span className="text-xl">🚨</span>
                   <h3 className="text-sm font-black text-red-900 uppercase tracking-wide">Bạn Có {myDebts.length} Khoản Nợ Chưa Trả!</h3>
@@ -577,24 +526,24 @@ Xin chân thành cảm ơn!`;
                 
                 <div className="space-y-3">
                   {myDebts.map(debt => (
-                    <div key={debt.id} className="bg-white border-2 border-red-500 rounded-2xl p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                    <div key={debt.id} className="bg-white border-2 border-red-500 rounded-2xl p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 dark:bg-slate-900">
                       <div>
-                        <span className="text-xs font-black text-slate-900">💸 Bạn còn nợ {debt.creditorName}</span>
+                        <span className="text-xs font-black text-slate-900 dark:text-slate-100">💸 Bạn còn nợ {debt.creditorName}</span>
                         <p className="text-xs text-slate-500 font-bold mt-0.5 mt-1">Tại cuộc nhậu {debt.venueName} • {new Date(debt.billDate).toLocaleDateString('vi-VN')}</p>
                       </div>
                       <div className="flex items-center gap-2 self-stretch sm:self-auto justify-between sm:justify-end">
-                        <span className="text-xs font-black text-red-600 bg-red-105 bg-red-100 border border-red-200 px-3 py-1.5 rounded-xl">
-                          {debt.amount.toLocaleString('vi-VN')} đ
+                        <span className="text-xs font-black text-red-600 bg-red-100 bg-red-100 border border-red-200 px-3 py-1.5 rounded-xl">
+                          {payable(debt).toLocaleString('vi-VN')} đ
                         </span>
                         <button
                           onClick={() => {
                             triggerConfirm(
-                              `Bạn đã chuyển khoản trả nợ thành công ${debt.amount.toLocaleString('vi-VN')}đ cho ${debt.creditorName} rồi đúng không?`,
-                              () => onMarkDebtAsPaid(debt.billId, debt.debtorName),
+                              `Bạn đã chuyển khoản trả hết ${payable(debt).toLocaleString('vi-VN')}đ còn lại cho ${debt.creditorName} rồi đúng không?`,
+                              () => onMarkDebtAsPaid(debt.billId, debt.debtorName, debt.creditorName),
                               "Xác nhận chuyển khoản"
                             );
                           }}
-                          className="bg-red-500 hover:bg-emerald-500 text-white font-black text-xs px-3.5 py-2 rounded-xl border-2 border-slate-900 hover:text-white transition-colors cursor-pointer shadow-sm animate-pulse"
+                          className="bg-red-500 hover:bg-emerald-500 text-white font-black text-xs px-3.5 py-2 rounded-xl border-2 border-slate-900 hover:text-white transition-colors cursor-pointer shadow-sm"
                         >
                           Đã CK Trả Xong
                         </button>
@@ -620,7 +569,7 @@ Xin chân thành cảm ơn!`;
                 <div className="space-y-1.5 border-b-2 border-dashed border-slate-100 pb-4">
                   <div className="flex items-center gap-2">
                     <span className="w-3 h-6 bg-orange-500 rounded-full inline-block"></span>
-                    <h2 className="text-base sm:text-xl font-black text-slate-900 flex flex-wrap items-center gap-2 tracking-tight">
+                    <h2 className="text-base sm:text-xl font-black text-slate-900 flex flex-wrap items-center gap-2 tracking-tight dark:text-slate-100">
                       <AlertCircle className="w-5 h-5 text-orange-500 shrink-0" />
                       Chiến Hữu Của Bạn ({otherDebts.filter(d => !d.isPaid).length} Chưa Trả • {otherDebts.filter(d => d.isPaid).length} Đã Trả)
                     </h2>
@@ -641,7 +590,7 @@ Xin chân thành cảm ơn!`;
                       
                       const mappedBankCode = bankCodeMap[bankName] || bankName;
                       // Bank QR generator link from VietQR
-                      const formattedAmount = Math.round(debt.amount);
+                      const formattedAmount = Math.round(payable(debt));
                       const paymentMemo = `${debt.debtorName.replace(/\s+/g, '')} guitennhau ${debt.venueName.substring(0, 5).replace(/\s+/g, '')}`;
                       const vietQrUrl = `https://img.vietqr.io/image/${mappedBankCode}-${bankNo}-compact2.png?amount=${formattedAmount}&addInfo=${encodeURIComponent(paymentMemo)}&accountName=${encodeURIComponent(bankAccountName)}`;
 
@@ -658,19 +607,19 @@ Xin chân thành cảm ơn!`;
                           <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
                             <div>
                               <div className="flex flex-wrap items-center gap-2">
-                                <span className={`text-sm font-black ${debt.isPaid ? 'text-slate-500 line-through' : 'text-slate-900 dark:text-slate-550'}`}>👤 {debt.debtorName}</span>
+                                <span className={`text-sm font-black ${debt.isPaid ? 'text-slate-500 line-through' : 'text-slate-900 dark:text-slate-500'}`}>👤 {debt.debtorName}</span>
                                 {debt.isPaid ? (
                                   <span className="text-xs bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-400 border border-emerald-300 px-2.5 py-0.5 rounded-full font-black flex items-center gap-1">
                                     <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> Đã Trả Xong
                                   </span>
                                 ) : (
                                   <span className="text-sm bg-orange-100 text-orange-600 border-2 border-orange-200 px-2.5 py-0.5 rounded-full font-black">
-                                    {debt.amount.toLocaleString('vi-VN')} đ
+                                    {payable(debt).toLocaleString('vi-VN')} đ
                                   </span>
                                 )}
                               </div>
                               <p className="text-sm font-bold text-slate-400 mt-1">
-                                Sản phẩm tại <strong className="text-slate-705 text-slate-700">{debt.venueName}</strong> • {new Date(debt.billDate).toLocaleDateString('vi-VN')}
+                                Sản phẩm tại <strong className="text-slate-700 text-slate-700 dark:text-slate-100">{debt.venueName}</strong> • {new Date(debt.billDate).toLocaleDateString('vi-VN')}
                               </p>
                               {/* Display filled contact indications */}
                               <div className="flex items-center gap-2 mt-1">
@@ -695,11 +644,11 @@ Xin chân thành cảm ơn!`;
                                   onClick={() => {
                                     triggerConfirm(
                                       `Hủy ghi nhận "Đã trả" của ${debt.debtorName} cho cuộc nhậu này?`,
-                                      () => onMarkDebtAsPaid(debt.billId, debt.debtorName),
+                                      () => onMarkDebtAsPaid(debt.billId, debt.debtorName, debt.creditorName),
                                       "Báo chưa thanh toán"
                                     );
                                   }}
-                                  className="bg-slate-200 hover:bg-rose-100 border-2 border-slate-900 text-slate-700 hover:text-rose-700 text-xs font-black px-3 py-2.5 rounded-xl transition-all shadow-sm cursor-pointer flex items-center justify-center gap-1 w-full sm:w-auto text-center font-mono"
+                                  className="bg-slate-200 hover:bg-rose-100 border-2 border-slate-900 text-slate-700 hover:text-rose-700 text-xs font-black px-3 py-2.5 rounded-xl transition-all shadow-sm cursor-pointer flex items-center justify-center gap-1 w-full sm:w-auto text-center font-mono dark:text-slate-100 dark:border-slate-700"
                                   title="Đặt lại thành chưa thanh toán"
                                 >
                                   ↩️ Báo Chưa Trả
@@ -710,14 +659,23 @@ Xin chân thành cảm ơn!`;
                                   <button
                                     onClick={() => {
                                       triggerConfirm(
-                                        `Bạn xác nhận chiến hữu ${debt.debtorName} đã chuyển khoản thanh toán đủ ${debt.amount.toLocaleString('vi-VN')}đ chứ?`,
-                                        () => onMarkDebtAsPaid(debt.billId, debt.debtorName),
+                                        `Bạn xác nhận ${debt.debtorName} đã thanh toán đủ ${payable(debt).toLocaleString('vi-VN')}đ còn lại chứ?`,
+                                        () => onMarkDebtAsPaid(debt.billId, debt.debtorName, debt.creditorName),
                                         "Xác nhận Trả Xong"
                                       );
                                     }}
-                                    className="bg-[#22c55e] hover:bg-[#16a34a] border-2 border-slate-900 text-white text-xs font-black px-3 py-2.5 rounded-xl transition-all hover:-translate-y-0.5 shadow-sm cursor-pointer flex items-center justify-center gap-1 w-full sm:w-auto text-center"
+                                    className="bg-[#22c55e] hover:bg-[#16a34a] border-2 border-slate-900 text-white text-xs font-black px-3 py-2.5 rounded-xl transition-all hover:-translate-y-0.5 shadow-sm cursor-pointer flex items-center justify-center gap-1 w-full sm:w-auto text-center dark:border-slate-700"
                                   >
                                     <Check className="w-3.5 h-3.5 shrink-0" /> Trả Xong
+                                  </button>
+
+                                  {/* Partial payment creates a separate ledger event. */}
+                                  <button
+                                    type="button"
+                                    onClick={() => { setPartialFor(debt); setPartialAmount(0); }}
+                                    className="bg-white dark:bg-slate-800 border-2 border-orange-400 text-orange-700 dark:text-orange-300 text-xs font-bold px-3 py-2.5 rounded-xl min-h-11"
+                                  >
+                                    Ghi nhận trả một phần
                                   </button>
 
                                   {/* Quick Copier with VietQR */}
@@ -730,7 +688,7 @@ Xin chân thành cảm ơn!`;
                                       const text = getReminderMessage(debt, 'friendly');
                                       copyToClipboard(text, `quick-copy-${debt.id}`);
                                     }}
-                                    className="bg-indigo-600 hover:bg-indigo-750 text-white text-xs font-black px-3 py-2.5 rounded-xl transition-all hover:-translate-y-0.5 shadow-sm cursor-pointer flex items-center justify-center gap-1 w-full sm:w-auto text-center"
+                                    className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black px-3 py-2.5 rounded-xl transition-all hover:-translate-y-0.5 shadow-sm cursor-pointer flex items-center justify-center gap-1 w-full sm:w-auto text-center"
                                     title="Sao chép nhanh lời nhắc nợ kèm mã QR sòng phẳng vào bộ nhớ tạm"
                                   >
                                     {copiedNotification === `quick-copy-${debt.id}` ? (
@@ -758,7 +716,7 @@ Xin chân thành cảm ơn!`;
                                   {/* Open customized message templates panel */}
                                   <button
                                     onClick={() => setSelectedDebt(isSelected ? null : debt)}
-                                    className="bg-slate-900 hover:bg-slate-850 text-white text-xs font-black px-3 py-2.5 rounded-xl transition-all hover:-translate-y-0.5 shadow-sm cursor-pointer flex items-center justify-center gap-1 w-full sm:w-auto text-center"
+                                    className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-black px-3 py-2.5 rounded-xl transition-all hover:-translate-y-0.5 shadow-sm cursor-pointer flex items-center justify-center gap-1 w-full sm:w-auto text-center"
                                   >
                                     <MessageSquare className="w-3.5 h-3.5 text-orange-400 shrink-0" /> <span className="truncate">Đòi Zalo / FB</span>
                                   </button>
@@ -771,7 +729,7 @@ Xin chân thành cảm ơn!`;
                           {!debt.isPaid && (
                             <div className="bg-white dark:bg-slate-900 border-2 border-slate-900 dark:border-slate-800 p-3 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-5xs text-xs">
                               <div className="flex flex-wrap items-center gap-2">
-                                <span className="text-xs uppercase font-black text-indigo-500 bg-indigo-50 dark:bg-indigo-950/40 dark:text-indigo-400 px-2.5 py-1 rounded-md animate-pulse">STK Thụ hưởng</span>
+                                <span className="text-xs uppercase font-black text-indigo-500 bg-indigo-50 dark:bg-indigo-950/40 dark:text-indigo-400 px-2.5 py-1 rounded-md">STK Thụ hưởng</span>
                                 <span className="font-extrabold text-slate-700 dark:text-slate-300">
                                   {mappedBankCode.toUpperCase()}:
                                 </span>
@@ -786,7 +744,7 @@ Xin chân thành cảm ơn!`;
                                   {copiedNotification === `stk-${debt.id}` ? (
                                     <Check className="w-3.5 h-3.5 text-emerald-500" />
                                   ) : (
-                                    <Copy className="w-3.5 h-3.5 text-slate-450 text-slate-400 hover:text-slate-850 dark:hover:text-white" />
+                                    <Copy className="w-3.5 h-3.5 text-slate-400 text-slate-400 hover:text-slate-800 dark:hover:text-white" />
                                   )}
                                 </button>
                               </div>
@@ -809,7 +767,7 @@ Xin chân thành cảm ơn!`;
                                   onClick={() => {
                                     copyToClipboard(vietQrUrl, `link-${debt.id}`);
                                   }}
-                                  className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-150 font-extrabold text-xs border-2 border-slate-900 dark:border-slate-705 px-3.5 py-1.5 rounded-xl cursor-pointer transition-all shadow-5xs"
+                                  className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-100 font-extrabold text-xs border-2 border-slate-900 dark:border-slate-700 px-3.5 py-1.5 rounded-xl cursor-pointer transition-all shadow-5xs"
                                   title="Sao chép đường dẫn ảnh mã QR này để gửi nhanh khắp nơi!"
                                 >
                                   {copiedNotification === `link-${debt.id}` ? (
@@ -830,14 +788,14 @@ Xin chân thành cảm ơn!`;
 
                           {/* Expandable template texts & QR code area */}
                           {isSelected && (
-                            <div className="pt-4 border-t-3 border-dashed border-slate-900 grid grid-cols-1 md:grid-cols-12 gap-4.5 animate-slideIn">
+                            <div className="pt-4 border-t-3 border-dashed border-slate-900 grid grid-cols-1 md:grid-cols-12 gap-4.5 animate-slideIn dark:border-slate-700">
                               
                               {/* CONTACT CONFIGURATION ROW */}
-                              <div className="col-span-12 bg-white/80 dark:bg-slate-900/45 border-2 border-slate-900 rounded-2xl p-3 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-5xs">
+                              <div className="col-span-12 bg-white/80 dark:bg-slate-900/45 border-2 border-slate-900 rounded-2xl p-3 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-5xs dark:border-slate-700">
                                 <div className="flex items-center gap-2 self-start sm:self-auto">
                                   <span className="text-xl">⚙️</span>
                                   <div>
-                                    <h5 className="text-sm font-black text-slate-850">Liên kết nhanh</h5>
+                                    <h5 className="text-sm font-black text-slate-800 dark:text-slate-100">Liên kết nhanh</h5>
                                     <p className="text-xs text-slate-500 font-bold">Lưu thông tin liên hệ giúp nhảy thẳng tới ứng dụng nhắn tin đòi nợ!</p>
                                   </div>
                                 </div>
@@ -847,14 +805,14 @@ Xin chân thành cảm ơn!`;
                                     placeholder="SĐT Zalo (09...)"
                                     value={contacts[debt.debtorName]?.phone || ''}
                                     onChange={(e) => onSaveContact(debt.debtorName, e.target.value, contacts[debt.debtorName]?.messenger || '')}
-                                    className="text-xs font-black bg-white border-2 border-slate-900 rounded-lg px-2 py-1.5 focus:border-teal-500 outline-hidden w-full sm:w-36 text-slate-950 text-center sm:text-left shadow-2xs"
+                                    className="text-xs font-black bg-white border-2 border-slate-900 rounded-lg px-2 py-1.5 focus:border-teal-500 outline-hidden w-full sm:w-36 text-slate-950 text-center sm:text-left shadow-2xs dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700"
                                   />
                                   <input
                                     type="text"
                                     placeholder="Messenger User"
                                     value={contacts[debt.debtorName]?.messenger || ''}
                                     onChange={(e) => onSaveContact(debt.debtorName, contacts[debt.debtorName]?.phone || '', e.target.value)}
-                                    className="text-xs font-black bg-white border-2 border-slate-900 rounded-lg px-2 py-1.5 focus:border-teal-500 outline-hidden w-full sm:w-36 text-slate-950 text-center sm:text-left shadow-2xs"
+                                    className="text-xs font-black bg-white border-2 border-slate-900 rounded-lg px-2 py-1.5 focus:border-teal-500 outline-hidden w-full sm:w-36 text-slate-950 text-center sm:text-left shadow-2xs dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700"
                                   />
                                 </div>
                               </div>
@@ -863,10 +821,10 @@ Xin chân thành cảm ơn!`;
                               <div className="md:col-span-8 space-y-3.5">
                                  <span className="text-xs font-black text-slate-400 uppercase tracking-widest block">💬 PHÒNG SOẠN TIN ĐÒI NỢ THÂN THIỆN</span>
                                  
-                                 <div className="bg-slate-50 dark:bg-slate-900/60 p-4 border-2 border-slate-900 rounded-2xl space-y-3 shadow-5xs">
+                                 <div className="bg-slate-50 dark:bg-slate-900/60 p-4 border-2 border-slate-900 rounded-2xl space-y-3 shadow-5xs dark:border-slate-700">
                                    
                                    {/* Style Selector Tabs */}
-                                   <div className="flex bg-slate-200/60 dark:bg-slate-800 p-1 rounded-xl border-2 border-slate-900 gap-1">
+                                   <div className="flex bg-slate-200/60 dark:bg-slate-800 p-1 rounded-xl border-2 border-slate-900 gap-1 dark:border-slate-700">
                                      {[
                                        { id: 'friendly', label: '🥺 Ngọt ngào' },
                                        { id: 'funny', label: '🤪 Hài hước' },
@@ -893,7 +851,7 @@ Xin chân thành cảm ơn!`;
                                        ref={textareaRef}
                                        value={customMessage}
                                        onChange={(e) => setCustomMessage(e.target.value)}
-                                       className="w-full text-xs font-extrabold p-3 bg-white dark:bg-slate-950 border-2 border-slate-900 rounded-xl focus:border-orange-500 outline-hidden h-36 resize-y font-sans text-slate-800 dark:text-slate-100 pr-10 shadow-inner"
+                                       className="w-full text-xs font-extrabold p-3 bg-white dark:bg-slate-950 border-2 border-slate-900 rounded-xl focus:border-orange-500 outline-hidden h-36 resize-y font-sans text-slate-800 dark:text-slate-100 pr-10 shadow-inner dark:border-slate-700"
                                        placeholder="Soạn lời nhắc nợ ngọt ngào vào đây..."
                                      />
                                      <div className="absolute top-2.5 right-2.5 text-slate-400 hover:text-slate-600 transition-colors pointer-events-none">
@@ -902,8 +860,8 @@ Xin chân thành cảm ơn!`;
                                    </div>
 
                                    {/* Sticker & Emoji library section */}
-                                   <div className="bg-white dark:bg-slate-950 p-2.5 rounded-xl border-2 border-slate-900/40 space-y-2">
-                                     <div className="flex items-center gap-1.5 text-xs uppercase font-black text-rose-600 dark:text-rose-450 border-b pb-1.5 border-slate-100 dark:border-slate-800">
+                                   <div className="bg-white dark:bg-slate-950 p-2.5 rounded-xl border-2 border-slate-900/40 space-y-2 dark:border-slate-700">
+                                     <div className="flex items-center gap-1.5 text-xs uppercase font-black text-rose-600 dark:text-rose-400 border-b pb-1.5 border-slate-100 dark:border-slate-800">
                                        <span>🎨 Thư viện Sticker & Emoji nịnh bợ:</span>
                                      </div>
                                      
@@ -916,7 +874,7 @@ Xin chân thành cảm ơn!`;
                                            onClick={() => setActiveStickerTab(idx)}
                                            className={`px-2 py-1 rounded-md text-xs font-black transition-all cursor-pointer ${
                                              activeStickerTab === idx
-                                               ? 'bg-rose-550 bg-rose-500 text-white border border-rose-600 shadow-4xs'
+                                               ? 'bg-rose-500 bg-rose-500 text-white border border-rose-600 shadow-4xs'
                                                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
                                            }`}
                                          >
@@ -952,7 +910,7 @@ Xin chân thành cảm ơn!`;
                                          }
                                          copyToClipboard(customMessage, `custom-copy-${debt.id}`);
                                        }}
-                                       className="text-xs font-black bg-white dark:bg-slate-800 hover:bg-slate-50 text-slate-700 dark:text-slate-200 px-3 py-2.5 rounded-xl border-2 border-slate-900 flex items-center justify-center gap-1.5 transition-all cursor-pointer text-center shadow-5xs active:translate-y-0.5"
+                                       className="text-xs font-black bg-white dark:bg-slate-800 hover:bg-slate-50 text-slate-700 dark:text-slate-200 px-3 py-2.5 rounded-xl border-2 border-slate-900 flex items-center justify-center gap-1.5 transition-all cursor-pointer text-center shadow-5xs active:translate-y-0.5 dark:border-slate-700"
                                      >
                                        {copiedNotification === `custom-copy-${debt.id}` ? (
                                          <>
@@ -979,7 +937,7 @@ Xin chân thành cảm ơn!`;
                                      <button
                                        type="button"
                                        onClick={() => handleOpenMessenger(customMessage, debt)}
-                                       className="text-xs font-black bg-blue-600 hover:bg-blue-700 text-white px-3 py-2.5 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer transition-colors border-2 border-slate-900 shadow-5xs active:translate-y-0.5 text-center"
+                                       className="text-xs font-black bg-blue-600 hover:bg-blue-700 text-white px-3 py-2.5 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer transition-colors border-2 border-slate-900 shadow-5xs active:translate-y-0.5 text-center dark:border-slate-700"
                                        title="Gửi tin nhắn tuỳ chỉnh này qua Messenger"
                                      >
                                        🔵 <span>Gửi Messenger</span>
@@ -990,8 +948,8 @@ Xin chân thành cảm ơn!`;
                               </div>
 
                               {/* VietQR code column */}
-                              <div className="md:col-span-4 bg-white/80 dark:bg-slate-900/45 p-4 border-2 border-slate-900 rounded-2xl flex flex-col items-center justify-center space-y-3 shadow-5xs text-center">
-                                <span className="text-xs font-black text-slate-800 text-center uppercase tracking-wide">QUÉT QR VIETQR SÒNG PHẲNG 💸</span>
+                              <div className="md:col-span-4 bg-white/80 dark:bg-slate-900/45 p-4 border-2 border-slate-900 rounded-2xl flex flex-col items-center justify-center space-y-3 shadow-5xs text-center dark:border-slate-700">
+                                <span className="text-xs font-black text-slate-800 text-center uppercase tracking-wide dark:text-slate-100">QUÉT QR VIETQR SÒNG PHẲNG 💸</span>
                                 
                                 {(!bankNo || !bankAccountName) ? (
                                   <div className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-red-300 rounded-xl bg-red-50 text-red-700 min-h-[144px]">
@@ -1003,7 +961,7 @@ Xin chân thành cảm ơn!`;
                                   </div>
                                 ) : (
                                   <>
-                                    <div className="bg-white p-2.5 rounded-xl border-3 border-slate-900 shadow-md">
+                                    <div className="bg-white p-2.5 rounded-xl border-3 border-slate-900 shadow-md dark:bg-slate-900 dark:border-slate-700">
                                       <img 
                                         src={vietQrUrl} 
                                         alt="VietQR Bank Transfer" 
@@ -1015,7 +973,7 @@ Xin chân thành cảm ơn!`;
                                     </div>
                                     
                                     <span className="text-xs text-slate-500 font-bold text-center leading-relaxed">
-                                      Gửi ảnh QR này để đối phương tự điền số tiền <strong className="text-slate-900">{debt.amount.toLocaleString('vi-VN')} đ</strong> và chính xác thông tin thụ hưởng của bạn.
+                                      Gửi ảnh QR này để đối phương tự điền số tiền <strong className="text-slate-900 dark:text-slate-100">{payable(debt).toLocaleString('vi-VN')} đ</strong> và chính xác thông tin thụ hưởng của bạn.
                                     </span>
                                   </>
                                 )}
@@ -1034,6 +992,57 @@ Xin chân thành cảm ơn!`;
 
         </div>
       </div>
+
+      {/* PARTIAL SETTLEMENT INPUT */}
+      {partialFor && (
+        <div className="fixed inset-0 z-[200] bg-slate-950/80 flex items-center justify-center p-4">
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              const limit = payable(partialFor);
+              if (!Number.isSafeInteger(partialAmount) || partialAmount <= 0 || partialAmount > limit) {
+                toast.error(`Số tiền cần lớn hơn 0 và không vượt quá ${limit.toLocaleString('vi-VN')}đ.`);
+                return;
+              }
+              onRecordPartialPayment(partialFor.billId, partialFor.debtorName, partialFor.creditorName, partialAmount);
+              toast.success('Đã ghi nhận khoản thanh toán vào lịch sử.');
+              setPartialFor(null);
+              setPartialAmount(0);
+            }}
+            className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl p-5 w-full max-w-sm space-y-4"
+          >
+            <h3 className="font-black text-lg text-slate-900 dark:text-white">Ghi nhận thanh toán một phần</h3>
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              {partialFor.debtorName} → {partialFor.creditorName}
+              <span className="block font-bold mt-1">Còn phải trả: {payable(partialFor).toLocaleString('vi-VN')}đ</span>
+              {(partialFor.paidAmount || 0) > 0 && (
+                <span className="block text-emerald-700 dark:text-emerald-300">
+                  Đã ghi nhận: {(partialFor.paidAmount || 0).toLocaleString('vi-VN')}đ
+                </span>
+              )}
+            </p>
+            <label className="block text-sm font-bold text-slate-900 dark:text-white">
+              Số tiền thực nhận
+              <MoneyInput
+                value={partialAmount}
+                onChange={setPartialAmount}
+                autoFocus
+                placeholder="Nhập số tiền"
+                className="mt-2 w-full min-h-12 rounded-xl border-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white p-3 pr-10"
+              />
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button type="button" onClick={() => setPartialFor(null)}
+                className="min-h-11 rounded-xl border-2 border-slate-300 text-slate-700 dark:text-white">
+                Hủy
+              </button>
+              <button type="submit" className="min-h-11 rounded-xl bg-emerald-600 text-white font-bold">
+                Ghi nhận
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {/* CUSTOM CONFIRMATION DIALOG MODAL */}
       <DebtActionModal 

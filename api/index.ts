@@ -3,15 +3,78 @@ import path from 'path';
 import dotenv from 'dotenv';
 import { GoogleGenAI } from '@google/genai';
 import admin from 'firebase-admin';
+import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
+import { getApp as getAdminApp } from 'firebase-admin/app';
+import { getAuth as getAdminAuth } from 'firebase-admin/auth';
+import { getMessaging as getAdminMessaging } from 'firebase-admin/messaging';
 import fs from 'fs';
+import { createHash } from 'node:crypto';
 
 dotenv.config();
 
 const app = express();
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.disable('x-powered-by');
+app.set('trust proxy', 1);
+app.use(express.json({ limit: '12mb' }));
+app.use(express.urlencoded({ limit: '1mb', extended: true }));
+
+// Per-client AI budget control. Production uses a Firestore transaction so
+// separate serverless instances observe the same quota.
+const localAiQuota = new Map<string, { startsAt: number; count: number }>();
+const AI_WINDOW_MS = 60 * 60 * 1000;
+const AI_MAX_PER_HOUR = 20;
+
+app.use(['/api/scan-receipt', '/api/recommendations', '/api/predict-budget'], async (req, res, next) => {
+  if (req.method !== 'POST') return next();
+  const rawClient = req.ip || req.socket.remoteAddress || 'unknown';
+  const salt = process.env.AI_RATE_LIMIT_SALT || process.env.GEMINI_API_KEY || 'dev-only';
+  const bucket = createHash('sha256').update(`${salt}:${rawClient}`).digest('hex');
+  const now = Date.now();
+
+  // On production, fail closed if the distributed limiter is unavailable.
+  if (process.env.VERCEL || process.env.AI_RATE_LIMIT_MODE === 'firestore') {
+    try {
+      if (!initFirebaseAdmin()) throw new Error('Firebase Admin unavailable');
+      const dbId = process.env.FIRESTORE_DATABASE_ID || process.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID || '(default)';
+      const database = getAdminFirestore(getAdminApp(), dbId);
+      const reference = database.doc(`ai_rate_limits/${bucket}`);
+      const permitted = await database.runTransaction(async transaction => {
+        const snap = await transaction.get(reference);
+        const current = snap.data();
+        const withinWindow = typeof current?.startsAt === 'number' && now - current.startsAt < AI_WINDOW_MS;
+        const count = withinWindow ? (Number(current?.count) || 0) : 0;
+        if (count >= AI_MAX_PER_HOUR) return false;
+        transaction.set(reference, {
+          startsAt: withinWindow ? current.startsAt : now,
+          count: count + 1,
+          updatedAt: now
+        });
+        return true;
+      });
+      if (!permitted) return res.status(429).json({ success: false, error: 'Đã hết hạn mức sử dụng AI trong giờ này.' });
+      return next();
+    } catch (error) {
+      console.error('[AI quota] Distributed verification failed:', error);
+      return res.status(503).json({ success: false, error: 'Dịch vụ AI đang được bảo vệ hạn mức. Vui lòng thử lại sau.' });
+    }
+  }
+
+  const previous = localAiQuota.get(bucket);
+  const inWindow = previous && now - previous.startsAt < AI_WINDOW_MS;
+  const count = inWindow ? previous.count : 0;
+  if (count >= AI_MAX_PER_HOUR) {
+    return res.status(429).json({ success: false, error: 'Đã hết hạn mức AI trên thiết bị này.' });
+  }
+  localAiQuota.set(bucket, { startsAt: inWindow ? previous.startsAt : now, count: count + 1 });
+  if (localAiQuota.size > 2000) {
+    for (const [key, value] of localAiQuota) {
+      if (now - value.startsAt >= AI_WINDOW_MS) localAiQuota.delete(key);
+    }
+  }
+  return next();
+});
 
 // Lazy-initialized Gemini client safe against missing API key crashes at startup
 let aiClient: GoogleGenAI | null = null;
@@ -145,11 +208,7 @@ const fallbackRecommendations = [
 app.get('/api/fcm-vapid', (req, res) => {
   const key = process.env.VITE_FCM_VAPID_KEY || process.env.FCM_VAPID_KEY || process.env.VAPID_KEY || process.env.FIREBASE_VAPID_KEY || null;
   res.setHeader('Content-Type', 'application/json');
-  res.json({
-    success: true,
-    key: key,
-    envKeys: Object.keys(process.env).filter(k => k.toLowerCase().includes('vapid') || k.toLowerCase().includes('fcm'))
-  });
+  res.json({ success: true, key });
 });
 
 // API endpoint for AI-powered venues recommendations with Google Search Grounding
@@ -157,6 +216,15 @@ app.post('/api/recommendations', async (req, res) => {
   try {
     const { location, category, savedVenues, provider } = req.body;
 
+    if (typeof location !== 'undefined' && (typeof location !== 'string' || location.length > 200)) {
+      return res.status(400).json({ success: false, error: 'Vị trí không hợp lệ.' });
+    }
+    if (typeof category !== 'undefined' && (typeof category !== 'string' || category.length > 200)) {
+      return res.status(400).json({ success: false, error: 'Loại quán không hợp lệ.' });
+    }
+    if (savedVenues !== undefined && (!Array.isArray(savedVenues) || savedVenues.length > 30)) {
+      return res.status(400).json({ success: false, error: 'Danh sách quán không hợp lệ.' });
+    }
     const targetLocation = location ? location.trim() : 'Hà Nội';
     const targetCategory = category ? category.trim() : 'Bia hơi, Lẩu nướng, Quán ăn nhậu ngon';
     const isDeepSeek = provider === 'deepseek';
@@ -306,8 +374,11 @@ app.post('/api/scan-receipt', async (req, res) => {
   const isDeepSeek = provider === 'deepseek';
   try {
     const { image } = req.body;
-    if (!image) {
+    if (!image || typeof image !== 'string') {
       return res.status(400).json({ success: false, error: 'Không tìm thấy dữ liệu ảnh để quét.' });
+    }
+    if (image.length > 10_000_000 || !/^(data:image\/(?:jpeg|png|webp);base64,)?[A-Za-z0-9+/=]+$/.test(image)) {
+      return res.status(413).json({ success: false, error: 'Ảnh quá lớn hoặc định dạng không hợp lệ.' });
     }
 
     let base64Data = image;
@@ -507,25 +578,12 @@ Bắt buộc trả về DUY NHẤT một chuỗi JSON sạch để hệ thống 
       throw new Error('Sai định dạng phản hồi JSON của Gemini Vision.');
     }
   } catch (apiError: any) {
-    console.log('OCR processing failed, calling fallback mockup/offline sandbox engine:', apiError?.message);
-    const sampleNames = ['Lẩu nướng ngói tươi 79', 'Bia hơi Hải Xồm', 'Hẻm Ốc Sài thành', 'Lẩu bò súng sính Đống Đa'];
-    const randomName = sampleNames[Math.floor(Math.random() * sampleNames.length)];
-    const randomTotal = Math.floor(Math.random() * 4 + 2) * 250000 + 45000;
-
-    return res.json({
-      success: true,
-      data: {
-        venueName: randomName,
-        totalAmount: randomTotal,
-        note: `Hóa đơn quét giả lập (Gặp sự cố kết nối: ${apiError?.message || 'Thiếu API Key'})`,
-        items: [
-          { name: 'Nồi lẩu bò thập cẩm lớn', quantity: 1, price: 380000 },
-          { name: 'Đĩa bò nướng bản gang', quantity: 1, price: 180000 },
-          { name: 'Vỉ bia sảng khoái', quantity: 12, price: 180000 }
-        ]
-      },
-      isMock: true,
-      warning: `LƯU Ý: Không thể kết nối AI (${isDeepSeek ? 'DeepSeek' : 'Gemini'}). Hệ thống đã dùng giả lập hóa đơn ngoại tuyến.`
+    console.error('[OCR] Receipt analysis failed:', apiError?.message);
+    // Financial amounts must never be fabricated, even when AI is unavailable.
+    return res.status(502).json({
+      success: false,
+      isMock: false,
+      error: 'Không thể nhận diện hóa đơn. Hãy thử lại hoặc nhập số tiền thủ công.'
     });
   }
 });
@@ -789,73 +847,73 @@ app.get('/firebase-messaging-sw.js', (req, res) => {
   `);
 });
 
-// Endpoint to dispatch FCM push notification
+// Authenticated, owner-device-only push dispatch. Arbitrary device tokens,
+// custom notification content and recipient-name lookups are intentionally forbidden.
 app.post('/api/send-fcm', async (req, res) => {
+  const authHeader = req.header('authorization') || '';
+  const match = /^Bearer ([A-Za-z0-9._-]+)$/.exec(authHeader);
+  if (!match) return res.status(401).json({ success: false, error: 'Yêu cầu đăng nhập Firebase.' });
+
+  if (!initFirebaseAdmin()) {
+    return res.status(503).json({ success: false, error: 'FCM server chưa được cấu hình.' });
+  }
+
+  let uid: string;
   try {
-    const { tokens, title, body, data } = req.body;
-    if (!tokens || !Array.isArray(tokens) || tokens.length === 0) {
-      return res.status(400).json({ success: false, error: 'Danh sách tokens không hợp lệ.' });
+    const decoded = await getAdminAuth(getAdminApp()).verifyIdToken(match[1], true);
+    uid = decoded.uid;
+  } catch (err) {
+    return res.status(401).json({ success: false, error: 'Phiên xác thực không hợp lệ hoặc đã hết hạn.' });
+  }
+
+  const tokens = req.body?.tokens;
+  if (!Array.isArray(tokens) || tokens.length !== 1 ||
+      typeof tokens[0] !== 'string' || tokens[0].length < 12 || tokens[0].length > 4096) {
+    return res.status(400).json({ success: false, error: 'Chỉ hỗ trợ kiểm thử một thiết bị đã liên kết.' });
+  }
+
+  try {
+    const databaseId = process.env.FIRESTORE_DATABASE_ID ||
+      process.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID || '(default)';
+    const database = getAdminFirestore(getAdminApp(), databaseId);
+    const userTokens = await database.doc(`users/${uid}/fcm/tokens`).get();
+    const registered = userTokens.data()?.tokens;
+    if (!Array.isArray(registered) || !registered.includes(tokens[0])) {
+      return res.status(403).json({ success: false, error: 'Thiết bị chưa thuộc tài khoản được xác thực.' });
     }
 
-    const cleanTokens = tokens.filter(t => typeof t === 'string' && t.trim() !== '');
-    if (cleanTokens.length === 0) {
-      return res.status(400).json({ success: false, error: 'Không tìm thấy token dạng chuỗi hợp lệ.' });
-    }
-
-    const isReady = initFirebaseAdmin();
-    if (!isReady) {
-      console.log('[FCM Backend Fallback] FCM is not active. Message logged:', { title, body, cleanTokens });
-      return res.json({
-        success: true,
-        isSimulated: true,
-        message: 'Ứng dụng đang giả lập FCM Push (Chế độ Sandbox). Gửi thông báo hoàn thành.',
-        results: cleanTokens.map(t => ({ token: t, success: true }))
+    // Distributed per-account quota, safe across separate serverless instances.
+    const limitRef = database.doc(`push_rate_limits/${uid}`);
+    const now = Date.now();
+    const allowed = await database.runTransaction(async transaction => {
+      const snapshot = await transaction.get(limitRef);
+      const previous = snapshot.data();
+      const inWindow = typeof previous?.windowStart === 'number' && (now - previous.windowStart) < 60_000;
+      const attempts = inWindow ? (Number(previous?.attempts) || 0) : 0;
+      if (attempts >= 3) return false;
+      transaction.set(limitRef, {
+        attempts: attempts + 1,
+        windowStart: inWindow ? previous.windowStart : now,
+        updatedAt: new Date(now).toISOString()
       });
-    }
-
-    const payload = {
-      notification: {
-        title: title || 'Chia Tiền Nhậu 🍻',
-        body: body || 'Có nhắc nhở mới liên quan đến cuộc nhậu của bạn!'
-      },
-      data: data || {},
-      tokens: cleanTokens
-    };
-
-    console.log(`[FCM Backend] Dispatching Multicast Notification to ${cleanTokens.length} devices...`);
-    try {
-      const result = await (admin as any).messaging().sendEachForMulticast(payload);
-      console.log(`[FCM Backend] Success: ${result.successCount}, Fail: ${result.failureCount}`);
-
-      const responsesParsed = result.responses.map((resp: any, i: number) => ({
-        token: cleanTokens[i],
-        success: resp.success,
-        error: resp.error ? resp.error.message : null
-      }));
-
-      return res.json({
-        success: true,
-        isSimulated: false,
-        successCount: result.successCount,
-        failureCount: result.failureCount,
-        results: responsesParsed
-      });
-    } catch (sendErr: any) {
-      console.warn('[FCM Backend] Real FCM dispatch failed (missing server-side credentials/private keys). Falling back to simulated successful delivery.', sendErr.message || sendErr);
-      return res.json({
-        success: true,
-        isSimulated: true,
-        message: `Đã giả lập thông báo thành công. (Gặp lỗi khi gửi FCM thực tế: ${sendErr.message || 'Lỗi xác thực/Quyền hạn'})`,
-        results: cleanTokens.map(t => ({ token: t, success: true }))
-      });
-    }
-
-  } catch (err: any) {
-    console.error('FCM Core error:', err);
-    return res.status(500).json({
-      success: false,
-      error: err.message || 'Lỗi truyền tải Firebase Cloud Messaging.'
+      return true;
     });
+    if (!allowed) return res.status(429).json({ success: false, error: 'Vượt hạn mức 3 lần kiểm thử mỗi phút.' });
+
+    const result = await getAdminMessaging(getAdminApp()).sendEachForMulticast({
+      tokens: [tokens[0]],
+      notification: {
+        title: 'Dzô! Split — Kiểm thử thông báo',
+        body: 'Thiết bị của bạn đã nhận thông báo kiểm thử thành công.'
+      }
+    });
+    if (result.successCount !== 1) {
+      return res.status(502).json({ success: false, error: 'FCM không xác nhận giao thông báo.', successCount: 0 });
+    }
+    return res.json({ success: true, successCount: 1, failureCount: 0, isSimulated: false });
+  } catch (error) {
+    console.error('[FCM] Authenticated dispatch error:', error);
+    return res.status(503).json({ success: false, error: 'Không gửi được thông báo. Kiểm tra cấu hình Firebase Admin.' });
   }
 });
 

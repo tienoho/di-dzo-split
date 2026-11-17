@@ -7,6 +7,7 @@ import ReceiptScanner from './ReceiptScanner';
 import Confetti from 'react-confetti';
 import MoneyInput from './common/MoneyInput';
 import { parseCurrencyInput } from '../utils/currency';
+import { equalShares, percentageShares, rouletteShares } from '../utils/splitMath';
 interface BillSplitterProps {
   venues: Venue[];
   onAddVenue: (venue: Omit<Venue, 'id' | 'visitsCount'>) => Venue;
@@ -76,23 +77,22 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
   const [scannedReceiptImage, setScannedReceiptImage] = useState<string | undefined>(undefined);
 
   // Calculations that depend on inputs
-  const totalAmount = Math.max(0, rawAmount + tipAmount + additionalFee - discountAmount);
+  const totalAmount = Math.max(0, Math.round(rawAmount + tipAmount + additionalFee - discountAmount));
   const totalPenalties = members.reduce((acc, m) => acc + (m.penaltyAmount || 0), 0);
   const netAmountToSplit = Math.max(0, totalAmount - totalPenalties);
 
-  // Helper function to distribute percentages as evenly as imaginable
+  // Rebalance percentages and shares deterministically, preserving each đồng.
   const autoDistributePercentages = (currentMembers: Member[]): Member[] => {
     if (currentMembers.length === 0) return currentMembers;
     const basePercent = Math.floor(100 / currentMembers.length);
     const remainder = 100 - basePercent * currentMembers.length;
-    return currentMembers.map((m, idx) => {
-      const pct = idx === 0 ? basePercent + remainder : basePercent;
-      return {
-        ...m,
-        percentage: pct,
-        finalShare: Math.round((netAmountToSplit * pct) / 100) + (m.penaltyAmount || 0)
-      };
-    });
+    const percentages = currentMembers.map((_, idx) => idx === 0 ? basePercent + remainder : basePercent);
+    const shares = percentageShares(netAmountToSplit, percentages);
+    return currentMembers.map((member, index) => ({
+      ...member,
+      percentage: percentages[index],
+      finalShare: shares[index] + (member.penaltyAmount || 0)
+    }));
   };
 
   const handleScanComplete = (data: { venueName: string; totalAmount: number; note: string; imageBase64?: string }) => {
@@ -105,7 +105,13 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
     }
 
     if (data.imageBase64) {
-      setScannedReceiptImage(data.imageBase64);
+      // Firestore documents must stay under 1 MiB, including all participant data.
+      if (data.imageBase64.length <= 450_000) {
+        setScannedReceiptImage(data.imageBase64);
+      } else {
+        setScannedReceiptImage(undefined);
+        toast('Ảnh quét quá lớn để lưu cùng hóa đơn. Số tiền vẫn được giữ lại.', { icon: '📸' });
+      }
     }
 
     if (data.venueName) {
@@ -118,13 +124,11 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
       if (matched) {
         setSelectedVenueId(matched.id);
       } else {
-        const added = onAddVenue({
-          name: data.venueName,
-          address: 'Nhận diện tự động từ máy ảnh 📸',
-          notes: 'Quét chuẩn xác 10/10',
-          rating: 4.5
-        });
-        setSelectedVenueId(added.id);
+        // OCR text is unverified; never create a fake rated venue automatically.
+        setNewVenueName(data.venueName.trim());
+        setSelectedVenueId('');
+        setShowNewVenueForm(true);
+        toast('Đã nhận diện tên quán. Vui lòng kiểm tra trước khi thêm vào quán quen.', { icon: '📍' });
       }
     }
     
@@ -134,7 +138,7 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
   // Synchronize tip percent and raw tip amount
   useEffect(() => {
     if (useTipPercent) {
-      setTipAmount((rawAmount * tipPercent) / 100);
+      setTipAmount(Math.round(rawAmount * tipPercent / 100));
     } else {
       if (rawAmount > 0) {
         setTipPercent(Math.round((tipAmount / rawAmount) * 100));
@@ -144,54 +148,21 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
     }
   }, [rawAmount, tipPercent, tipAmount, useTipPercent]);
 
-  // Recalculate shares based on split type, penalties, and roulette
+  // Recalculate all system-controlled shares whenever the bill or member count changes.
   useEffect(() => {
-    if (members.length === 0) return;
-    
+    if (members.length === 0 || splitType === 'unequal') return;
+    let shares: number[];
     if (splitType === 'equal') {
-      const perCapitaShare = netAmountToSplit / members.length;
-      setMembers(prev => prev.map(m => ({
-        ...m,
-        finalShare: Math.round(perCapitaShare) + (m.penaltyAmount || 0)
-      })));
+      shares = equalShares(netAmountToSplit, members.length);
     } else if (splitType === 'percentage') {
-      setMembers(prev => prev.map(m => {
-        const pct = m.percentage !== undefined ? m.percentage : 0;
-        return {
-          ...m,
-          percentage: pct,
-          finalShare: Math.round((netAmountToSplit * pct) / 100) + (m.penaltyAmount || 0)
-        };
-      }));
-    } else if (splitType === 'roulette') {
-      setMembers(prev => prev.map((m, idx) => {
-        if (luckyWinnerIndex === null || luckyWinnerIndex === -1) {
-          // If no winner yet, distribute equally as a placeholder
-          const perCapitaShare = netAmountToSplit / members.length;
-          return {
-            ...m,
-            finalShare: Math.round(perCapitaShare) + (m.penaltyAmount || 0)
-          };
-        }
-
-        if (idx === luckyWinnerIndex) {
-          const victimShare = (netAmountToSplit * roulettePenaltyPercent) / 100;
-          return {
-            ...m,
-            finalShare: Math.round(victimShare) + (m.penaltyAmount || 0)
-          };
-        } else {
-          // The remaining amount is split among the others
-          const remainingAmount = netAmountToSplit - ((netAmountToSplit * roulettePenaltyPercent) / 100);
-          const othersCount = members.length > 1 ? members.length - 1 : 1;
-          const otherShare = remainingAmount / othersCount;
-          return {
-            ...m,
-            finalShare: Math.round(otherShare) + (m.penaltyAmount || 0)
-          };
-        }
-      }));
+      shares = percentageShares(netAmountToSplit, members.map(member => member.percentage || 0));
+    } else {
+      shares = rouletteShares(netAmountToSplit, members.length, luckyWinnerIndex, roulettePenaltyPercent);
     }
+    setMembers(prev => prev.map((member, index) => ({
+      ...member,
+      finalShare: shares[index] + (member.penaltyAmount || 0)
+    })));
   }, [totalAmount, totalPenalties, splitType, members.length, luckyWinnerIndex, roulettePenaltyPercent, netAmountToSplit]);
 
   const handleAddMember = (name: string) => {
@@ -275,17 +246,15 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
   };
 
   const handlePercentageChange = (index: number, val: number) => {
-    const pct = Math.max(0, Math.min(100, val));
-    setMembers(prev => prev.map((m, i) => {
-      if (i === index) {
-        return {
-          ...m,
-          percentage: pct,
-          finalShare: Math.round((totalAmount * pct) / 100)
-        };
-      }
-      return m;
-    }));
+    const pct = Number.isFinite(val) ? Math.max(0, Math.min(100, val)) : 0;
+    setMembers(prev => {
+      const updated = prev.map((member, i) => i === index ? { ...member, percentage: pct } : member);
+      const shares = percentageShares(netAmountToSplit, updated.map(member => member.percentage || 0));
+      return updated.map((member, i) => ({
+        ...member,
+        finalShare: shares[i] + (member.penaltyAmount || 0)
+      }));
+    });
   };
 
   // Helper calculation validators
@@ -332,15 +301,15 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
       }
     });
 
-    const perCapita = Math.round(totalAmount / uniqueNames.length);
+    const shares = equalShares(totalAmount, uniqueNames.length); // Quick split discards old penalties.
 
-    setMembers(uniqueNames.map(name => {
+    setMembers(uniqueNames.map((name, index) => {
       const isSelf = name.toLowerCase() === activeCreatorName.toLowerCase();
       return {
         name,
         // Host typically pays the full dining bill upfront, others owe debt
         initialPaid: isSelf ? totalAmount : 0,
-        finalShare: perCapita,
+        finalShare: shares[index],
         hasPaidDebt: isSelf
       };
     }));
@@ -372,29 +341,36 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
         ...finalProcessedMembers[targetIdx],
         initialPaid: totalAmount
       };
-    } else if (Math.abs(discrepancyPaid) > 100) {
+    } else if (discrepancyPaid !== 0) {
       toast.error(`Tổng số tiền các thành viên đã thanh toán trên bàn ăn là ${sumInitialPaid.toLocaleString('vi-VN')}đ, nhưng tổng hóa đơn là ${totalAmount.toLocaleString('vi-VN')}đ.\n\nVui lòng điều chỉnh lại cho khớp!`);
       return;
     }
 
-    if (splitType === 'unequal' && Math.abs(discrepancyShare) > 100) {
-      toast.error(`Bạn chọn chia tùy chỉnh nhưng tổng tiền mọi người gánh (${sumFinalShare.toLocaleString('vi-VN')}đ) chưa khớp hóa đơn (${totalAmount.toLocaleString('vi-VN')}đ).\n\nChênh lệch: ${discrepancyShare.toLocaleString('vi-VN')}đ.`);
+    if (splitType === 'percentage' && Math.abs(sumPercentages - 100) > 1e-8) {
+      toast.error(`Tổng tỷ lệ phần trăm là ${sumPercentages}%. Cần đúng 100% trước khi lưu.`);
       return;
     }
-    if (splitType === 'percentage' && sumPercentages !== 100) {
-      toast.error(`Tổng tỷ lệ phần trăm hiện tại là ${sumPercentages}%. Phải bằng đúng 100%!`);
-      return;
-    }
-    if (splitType === 'percentage') {
-      const calculatedSum = finalProcessedMembers.reduce((acc, m) => acc + m.finalShare, 0);
-      const moneyDiff = totalAmount - calculatedSum;
-      if (moneyDiff !== 0 && finalProcessedMembers.length > 0) {
-        // Adjust host or first member to match exact money amount
-        finalProcessedMembers[0] = {
-          ...finalProcessedMembers[0],
-          finalShare: finalProcessedMembers[0].finalShare + moneyDiff
-        };
+
+    // Recalculate from current state at submit time; never persist stale or rounded-away differences.
+    if (splitType !== 'unequal') {
+      let shares: number[];
+      if (splitType === 'equal') {
+        shares = equalShares(netAmountToSplit, finalProcessedMembers.length);
+      } else if (splitType === 'percentage') {
+        shares = percentageShares(netAmountToSplit, finalProcessedMembers.map(m => m.percentage || 0));
+      } else {
+        shares = rouletteShares(netAmountToSplit, finalProcessedMembers.length, luckyWinnerIndex, roulettePenaltyPercent);
       }
+      finalProcessedMembers = finalProcessedMembers.map((member, index) => ({
+        ...member,
+        finalShare: shares[index] + (member.penaltyAmount || 0)
+      }));
+    }
+
+    const processedShareTotal = finalProcessedMembers.reduce((sum, member) => sum + member.finalShare, 0);
+    if (processedShareTotal !== totalAmount) {
+      toast.error(`Tổng phần chia (${processedShareTotal.toLocaleString('vi-VN')}đ) phải khớp chính xác với hóa đơn (${totalAmount.toLocaleString('vi-VN')}đ).`);
+      return;
     }
 
     const matchedVenue = venues.find(v => v.id === selectedVenueId);
@@ -416,11 +392,10 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
       bankAccountName: localStorage.getItem('nhau_bank_account_name') || undefined,
       members: finalProcessedMembers.map(m => {
         // Creditors are marked paid, and debtors start as unpaid unless they paid their full debt initial share
-        const isSelf = m.name === activeCreatorName;
         const owes = m.finalShare - m.initialPaid;
         return {
           ...m,
-          hasPaidDebt: owes <= 0 || isSelf
+          hasPaidDebt: owes <= 0
         };
       }),
       receiptImage: scannedReceiptImage
@@ -440,7 +415,9 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
     setScannedReceiptImage(undefined);
     
     // Reset members of choice
-    setMembers([{ name: activeCreatorName, initialPaid: 0, finalShare: 0, hasPaidDebt: true }]);
+    setMembers([{ name: activeCreatorName, initialPaid: 0, finalShare: 0, hasPaidDebt: true, percentage: 100 }]);
+    setSplitType('equal');
+    setLuckyWinnerIndex(null);
 
     setTimeout(() => {
       setSavedSuccess(false);
@@ -453,11 +430,11 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
   return (
     <div className="space-y-6" id="bill-splitter-section">
       {savedSuccess && (
-        <div id="alert-save-success" className="bg-emerald-400 border-4 border-slate-900 dark:border-slate-700 text-slate-900 dark:text-slate-100 px-5 py-4 rounded-3xl shadow-md flex items-center justify-between animate-bounce">
+        <div id="alert-save-success" className="bg-emerald-400 border-4 border-slate-900 dark:border-slate-700 text-slate-900 dark:text-slate-100 px-5 py-4 rounded-3xl shadow-md flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <Sparkles className="w-6 h-6 text-slate-900 dark:text-slate-100" />
             <span className="text-sm font-black">
-              YÊU CẦU ĐÃ LƯU! Hóa đơn cuộc nhậu đã được chia đều & lưu lịch sử thành công sòng phẳng!
+              Đã lưu hóa đơn trên thiết bị. Dữ liệu sẽ đồng bộ lên tài khoản khi kết nối thành công.
             </span>
           </div>
         </div>
@@ -466,7 +443,7 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         {/* LEFT COLUMN: Input Details */}
-        <div className="lg:col-span-7 bg-white dark:bg-slate-900 border-4 border-slate-900 dark:border-slate-700 rounded-[32px] shadow-lg p-6 space-y-6">
+        <div className="lg:col-span-7 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-3xl shadow-sm p-6 space-y-6">
           <div className="space-y-1.5 border-b-2 border-dashed border-slate-100 pb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <div className="flex items-center gap-3">
@@ -482,7 +459,7 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
             <button
               type="button"
               onClick={() => setShowScanner(true)}
-              className="flex items-center justify-center gap-2 bg-slate-950 text-white font-extrabold text-sm uppercase tracking-wide px-4 py-3 rounded-2xl hover:bg-orange-600 hover:text-slate-950 hover:-translate-y-0.5 border-2 border-slate-950 cursor-pointer shadow-md transition-all shrink-0 animate-pulse"
+              className="flex items-center justify-center gap-2 bg-slate-950 text-white font-extrabold text-sm uppercase tracking-wide px-4 py-3 rounded-2xl hover:bg-orange-600 hover:text-slate-950 hover:-translate-y-0.5 border-2 border-slate-950 cursor-pointer shadow-md transition-colors shrink-0"
             >
               <Camera className="w-4 h-4 text-orange-400" />
               <span>Quét Hóa Đơn AI 🤖</span>
@@ -653,7 +630,7 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
                         onChange={(e) => setTipPercent(Number(e.target.value))}
                         className="w-full h-2 bg-slate-300 rounded-lg appearance-none cursor-pointer accent-orange-500"
                       />
-                      <span className="text-xs font-black text-slate-900 dark:text-slate-100 w-10 text-right bg-white dark:bg-slate-900 px-1.5 py-0.5 rounded border border-slate-350">{tipPercent}%</span>
+                      <span className="text-xs font-black text-slate-900 dark:text-slate-100 w-10 text-right bg-white dark:bg-slate-900 px-1.5 py-0.5 rounded border border-slate-300">{tipPercent}%</span>
                     </div>
                     <p className="text-xs font-bold text-slate-500 dark:text-slate-400">Quy đổi: +{tipAmount.toLocaleString('vi-VN')} đ</p>
                   </div>
@@ -738,7 +715,7 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
         </div>
         
         {/* RIGHT COLUMN: Member Setup & Contribution split */}
-        <div className="lg:col-span-5 bg-white dark:bg-slate-900 border-4 border-slate-900 dark:border-slate-700 rounded-[32px] shadow-lg p-6 flex flex-col justify-between space-y-6">
+        <div className="lg:col-span-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-3xl shadow-sm p-6 flex flex-col justify-between space-y-6">
           <div className="space-y-4">
             <div className="space-y-1.5 border-b-2 border-dashed border-slate-100 pb-4">
               <div className="flex items-center gap-3">
@@ -755,7 +732,7 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
             <div id="quick-split-board" className="bg-orange-50 border-3 border-orange-500 p-4.5 rounded-3xl space-y-3 shadow-xs">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-orange-600 animate-pulse" />
+                  <Sparkles className="w-5 h-5 text-orange-600" />
                   <span className="text-xs font-black text-orange-950 uppercase tracking-wider">⚡ Chia Nhanh Nhóm Bạn Thân (Quick Split)</span>
                 </div>
                 <span className="bg-orange-200 text-orange-900 text-xs font-black px-2 py-0.5 rounded-full border border-orange-400">Có sẵn {presetNames.length + 1} người</span>
@@ -798,7 +775,7 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
             </div>
 
             {/* Split Strategy Choice */}
-            <div className="grid grid-cols-4 gap-1.5 bg-yellow-105 bg-yellow-100 border-2 border-slate-900 dark:border-slate-700 p-1.5 rounded-2xl">
+            <div className="grid grid-cols-4 gap-1.5 bg-yellow-100 bg-yellow-100 border-2 border-slate-900 dark:border-slate-700 p-1.5 rounded-2xl">
               <button
                 type="button"
                 onClick={() => setSplitType('equal')}
@@ -840,11 +817,11 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
                 value={newMemberName}
                 onChange={(e) => setNewMemberName(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleAddMember(newMemberName)}
-                className="flex-1 text-xs bg-slate-50 border-2 border-slate-900 dark:border-slate-700 outline-hidden focus:border-orange-500 rounded-xl p-3 text-slate-900 dark:text-slate-100 font-extrabold"
+                className="flex-1 min-w-0 text-xs bg-slate-50 border-2 border-slate-900 dark:border-slate-700 outline-hidden focus:border-orange-500 rounded-xl p-3 text-slate-900 dark:text-slate-100 font-extrabold"
               />
               <button
                 onClick={() => handleAddMember(newMemberName)}
-                className="px-4 py-2 bg-slate-900 hover:bg-teal-500 text-white rounded-xl text-xs font-black border-2 border-slate-900 dark:border-slate-700 hover:-translate-y-0.5 transition-all flex items-center gap-1 cursor-pointer"
+                className="shrink-0 px-3 sm:px-4 py-2 bg-slate-900 hover:bg-teal-500 text-white rounded-xl text-xs font-black border-2 border-slate-900 dark:border-slate-700 hover:-translate-y-0.5 transition-all flex items-center gap-1 cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" /> Thêm
               </button>
@@ -875,7 +852,7 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
                     >
                       🎲
                     </motion.div>
-                    <div className="mt-4 text-sm font-black animate-pulse text-orange-600">Đang chọn người xui xẻo...</div>
+                    <div className="mt-4 text-sm font-black text-orange-600">Đang chọn người xui xẻo...</div>
                   </div>
                 ) : (
                   <button 
@@ -901,7 +878,7 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
                 {luckyWinnerIndex !== null && !isSpinning && members[luckyWinnerIndex] && (
                   <div className="text-center p-3 bg-red-100 dark:bg-red-900/30 rounded-xl border-2 border-red-500 relative">
                     <div className="fixed inset-0 z-50 pointer-events-none">
-                      <Confetti recycle={false} numberOfPieces={300} gravity={0.3} />
+                      <Confetti recycle={false} numberOfPieces={typeof window !== 'undefined' && window.innerWidth < 640 ? 60 : 140} gravity={0.24} />
                     </div>
                     <div className="text-xs font-bold text-red-600 dark:text-red-400">Người được độ đêm nay:</div>
                     <div className="text-lg font-black text-red-700 dark:text-red-300">🚨 {members[luckyWinnerIndex].name} 🚨</div>
@@ -934,7 +911,7 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
                           <summary className="list-none text-[10px] bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 font-bold px-2.5 py-0.5 rounded-full border border-red-200 dark:border-red-800 flex items-center gap-1 cursor-pointer hover:bg-red-200 dark:hover:bg-red-900/60 shadow-xs transition-colors">
                             🍺 Phạt {member.penaltyAmount ? `(+${member.penaltyAmount.toLocaleString('vi-VN')})` : ''}
                           </summary>
-                          <div className="absolute left-0 top-full mt-2 bg-white dark:bg-slate-800 border-2 border-slate-900 dark:border-slate-700 rounded-xl p-2 w-48 shadow-[4px_4px_0px_0px_rgba(15,23,42,1)] dark:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                          <div className="absolute right-0 top-full mt-2 bg-white dark:bg-slate-800 border-2 border-slate-900 dark:border-slate-700 rounded-xl p-2 w-48 shadow-[4px_4px_0px_0px_rgba(15,23,42,1)] dark:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
                             <div className="text-[10px] font-black text-slate-500 dark:text-slate-400 mb-1">Cộng tiền phạt mồi:</div>
                             <button onClick={() => { handleAddPenalty(index, 20000); }} className="w-full text-left text-xs font-bold p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-700 dark:text-slate-200 cursor-pointer">📱 Bấm đt (+20k)</button>
                             <button onClick={() => { handleAddPenalty(index, 50000); }} className="w-full text-left text-xs font-bold p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-700 dark:text-slate-200 cursor-pointer">🐌 Tới trễ (+50k)</button>
@@ -1030,7 +1007,7 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
                             suffix="đ"
                             className={`w-full text-xs p-2 rounded-xl text-slate-900 dark:text-slate-100 font-black ${
                               splitType === 'equal' 
-                                ? 'bg-slate-150 text-slate-450 border-2 border-slate-200 dark:border-slate-700 cursor-not-allowed text-center'
+                                ? 'bg-slate-100 text-slate-400 border-2 border-slate-200 dark:border-slate-700 cursor-not-allowed text-center'
                                 : 'bg-white dark:bg-slate-900 border-2 border-orange-500'
                             }`}
                           />
@@ -1038,7 +1015,7 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
                       )}
                     </div>
 
-                    <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-2 rounded-xl border border-slate-250 text-xs font-bold">
+                    <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-2 rounded-xl border border-slate-200 text-xs font-bold">
                       <span className="text-slate-500 dark:text-slate-400">Cân đối ví tiền:</span>
                       {owes > 0 ? (
                         <span className="font-extrabold text-red-600">Cần đóng: +{owes.toLocaleString('vi-VN')} đ</span>
@@ -1058,9 +1035,9 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
           {/* Validation indicators */}
           <div className="pt-4 border-t-2 border-slate-100 space-y-3">
             {splitType === 'percentage' && sumPercentages !== 100 && (
-              <div className="text-sm bg-red-100 text-red-950 p-3.5 rounded-2xl border-2 border-red-350 font-extrabold space-y-2">
+              <div className="text-sm bg-red-100 text-red-950 p-3.5 rounded-2xl border-2 border-red-300 font-extrabold space-y-2">
                 <div>
-                  ⚠️ Tổng tỷ lệ phần trăm phân chi đang là <strong className="text-red-650 font-black text-xs">{sumPercentages}%</strong>. Cần điều chỉnh về đúng <strong className="text-teal-600 font-black text-xs">100%</strong> (Lệch {100 - sumPercentages}%).
+                  ⚠️ Tổng tỷ lệ phần trăm phân chi đang là <strong className="text-red-600 font-black text-xs">{sumPercentages}%</strong>. Cần điều chỉnh về đúng <strong className="text-teal-600 font-black text-xs">100%</strong> (Lệch {100 - sumPercentages}%).
                 </div>
                 <button
                   type="button"

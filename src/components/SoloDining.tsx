@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Venue, Bill, SoloMeal } from '../types';
+import { mergeVersioned, visibleEntities } from '../utils/syncMerge';
+import DebtActionModal from './DebtReminders/DebtActionModal';
 import toast from 'react-hot-toast';
 import MoneyInput from './common/MoneyInput';
 import { 
@@ -29,7 +31,8 @@ import {
   saveSoloMealToCloud,
   deleteSoloMealFromCloud,
   saveSoloBudgetToCloud,
-  fetchSoloBudgetFromCloud
+  fetchSoloBudgetFromCloud,
+  getUserResetEpoch
 } from '../lib/firebase';
 
 interface SoloDiningProps {
@@ -69,102 +72,106 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
   
   // Alerts / Success feedbacks
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   // Search & Filter
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [monthFilter, setMonthFilter] = useState<string>('all'); // 'all' or 'YYYY-MM'
 
-  // Load initial solo meals & budget settings
+  // Private account-scoped caches: never implicitly upload guest data on sign-in.
+  const readSoloCache = (userKey: string): SoloMeal[] => {
+    try {
+      const raw = localStorage.getItem(`nhau_solo_meals_${userKey}`) ||
+        (userKey === 'guest' ? localStorage.getItem('nhau_solo_meals') : null);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+      console.warn('[Solo] Invalid local cache:', error);
+      return [];
+    }
+  };
+
   useEffect(() => {
-    const userKey = currentUser ? currentUser.uid : 'guest';
+    let cancelled = false;
+    const uid = currentUser?.uid as string | undefined;
+    const userKey = uid || 'guest';
+    const cachedMeals = readSoloCache(userKey);
+    setSoloMeals(visibleEntities(cachedMeals));
 
-    const loadLocalData = () => {
-      const cachedMeals = localStorage.getItem(`nhau_solo_meals_${userKey}`) || localStorage.getItem('nhau_solo_meals');
-      if (cachedMeals) {
-        try {
-          setSoloMeals(JSON.parse(cachedMeals));
-        } catch (e) {
-          console.error(e);
-        }
-      }
-      const cachedBudget = localStorage.getItem(`nhau_solo_budget_${userKey}`) || localStorage.getItem('nhau_solo_budget');
-      if (cachedBudget) {
-        setMonthlyBudget(parseInt(cachedBudget, 10));
-        setBudgetInput(cachedBudget);
-      } else {
-        setBudgetInput(String(monthlyBudget));
-      }
-    };
+    const cachedBudget = localStorage.getItem(`nhau_solo_budget_${userKey}`) ||
+      (uid ? null : localStorage.getItem('nhau_solo_budget'));
+    const localBudget = cachedBudget !== null ? Number(cachedBudget) : 3_000_000;
+    const safeBudget = Number.isSafeInteger(localBudget) && localBudget >= 0 ? localBudget : 3_000_000;
+    setMonthlyBudget(safeBudget);
+    setBudgetInput(String(safeBudget));
 
-    const loadSoloData = async () => {
-      setLoading(true);
-      // Fast load from local storage first
-      loadLocalData();
-
-      if (currentUser) {
-        try {
-          const cloudMeals = await fetchSoloMealsFromCloud(currentUser.uid);
-          
-          // Intelligent Merge: keep local & cloud meals
-          const cachedMealsRaw = localStorage.getItem(`nhau_solo_meals_${currentUser.uid}`);
-          const localMeals: SoloMeal[] = cachedMealsRaw ? JSON.parse(cachedMealsRaw) : [];
-          const mealMap = new Map<string, SoloMeal>();
-          
-          cloudMeals.forEach(m => mealMap.set(m.id, m));
-          localMeals.forEach(m => {
-            if (!mealMap.has(m.id)) {
-              mealMap.set(m.id, m);
-              saveSoloMealToCloud(currentUser.uid, m).catch(console.error);
-            }
-          });
-
-          let mergedMeals = Array.from(mealMap.values()).sort(
-            (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-          );
-
-          // If new cloud account has no solo meals, migrate guest meals
-          if (mergedMeals.length === 0) {
-            const guestMealsRaw = localStorage.getItem('nhau_solo_meals_guest') || localStorage.getItem('nhau_solo_meals');
-            if (guestMealsRaw) {
-              try {
-                const guestMeals: SoloMeal[] = JSON.parse(guestMealsRaw);
-                if (guestMeals.length > 0) {
-                  guestMeals.forEach(m => saveSoloMealToCloud(currentUser.uid, m).catch(console.error));
-                  mergedMeals = guestMeals;
-                }
-              } catch (e) {}
-            }
-          }
-
-          setSoloMeals(mergedMeals);
-          localStorage.setItem(`nhau_solo_meals_${currentUser.uid}`, JSON.stringify(mergedMeals));
-
-          const cloudBudget = await fetchSoloBudgetFromCloud(currentUser.uid);
-          if (cloudBudget !== null) {
-            setMonthlyBudget(cloudBudget);
-            setBudgetInput(String(cloudBudget));
-            localStorage.setItem(`nhau_solo_budget_${currentUser.uid}`, String(cloudBudget));
-          }
-        } catch (e) {
-          console.error("Failed to fetch cloud solo dining data, retaining local cache:", e);
-        }
-      }
+    if (!uid) {
       setLoading(false);
+      return () => { cancelled = true; };
+    }
+
+    const loadCloudData = async () => {
+      setLoading(true);
+      try {
+        const [cloudMeals, cloudBudget, resetEpoch] = await Promise.all([
+          fetchSoloMealsFromCloud(uid),
+          fetchSoloBudgetFromCloud(uid),
+          getUserResetEpoch(uid)
+        ]);
+        if (cancelled) return;
+        // Full-account reset fences stale solo records on devices that were offline.
+        const epochKey = `nhau_seen_solo_reset_${uid}`;
+        const seenEpoch = Number(localStorage.getItem(epochKey) || '0');
+        if (resetEpoch > seenEpoch) {
+          localStorage.removeItem(`nhau_solo_meals_${uid}`);
+          localStorage.removeItem(`nhau_solo_budget_${uid}`);
+          localStorage.setItem(epochKey, String(resetEpoch));
+        }
+        // Re-read cache after I/O to capture offline edits made during fetch.
+        const merged = mergeVersioned(cloudMeals, readSoloCache(uid));
+        localStorage.setItem(`nhau_solo_meals_${uid}`, JSON.stringify(merged.entities));
+        setSoloMeals(visibleEntities(merged.entities).sort((a,b) => b.date.localeCompare(a.date)));
+
+        if (cloudBudget !== null && Number.isSafeInteger(cloudBudget) && cloudBudget >= 0) {
+          setMonthlyBudget(cloudBudget);
+          setBudgetInput(String(cloudBudget));
+          localStorage.setItem(`nhau_solo_budget_${uid}`, String(cloudBudget));
+        } else if (resetEpoch > seenEpoch) {
+          setMonthlyBudget(3_000_000);
+          setBudgetInput('3000000');
+        }
+        if (merged.toUpload.length) {
+          const results = await Promise.allSettled(merged.toUpload.map(meal => saveSoloMealToCloud(uid, meal)));
+          if (results.some(result => result.status === 'rejected')) {
+            toast.error('Một số bữa ăn chưa đồng bộ. Dữ liệu trên thiết bị vẫn được giữ.');
+          }
+        }
+      } catch (error) {
+        console.warn('[Solo] Cloud unavailable; retaining account cache:', error);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     };
+    void loadCloudData();
+    return () => { cancelled = true; };
+  }, [currentUser?.uid]);
 
-    loadSoloData();
-  }, [currentUser]);
-
-  // Sync to local storage always (Optimistic Offline-First)
   const persistMeals = async (updatedMeals: SoloMeal[]) => {
-    setSoloMeals(updatedMeals);
-    const userKey = currentUser ? currentUser.uid : 'guest';
-    localStorage.setItem(`nhau_solo_meals_${userKey}`, JSON.stringify(updatedMeals));
+    const userKey = currentUser?.uid || 'guest';
+    const tombstones = readSoloCache(userKey).filter(meal =>
+      meal.deletedAt && !updatedMeals.some(active => active.id === meal.id)
+    );
+    const all = [...updatedMeals, ...tombstones];
+    localStorage.setItem(`nhau_solo_meals_${userKey}`, JSON.stringify(all));
+    setSoloMeals(visibleEntities(updatedMeals));
   };
 
   const handleSaveBudget = async () => {
     const limit = parseInt(budgetInput, 10);
-    if (isNaN(limit) || limit < 0) return;
+    if (!Number.isSafeInteger(limit) || limit < 0 || limit > 100_000_000_000) {
+      toast.error('Hạn mức phải là số nguyên VND từ 0 đến 100 tỷ đồng.');
+      return;
+    }
     
     setMonthlyBudget(limit);
     setShowBudgetForm(false);
@@ -176,11 +183,13 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
       try {
         await saveSoloBudgetToCloud(currentUser.uid, limit);
       } catch (e) {
-        console.error("Cloud Budget Save Error:", e);
+        console.warn('[Solo] Budget cloud save pending:', e);
+        toast.error('Hạn mức đã lưu trên thiết bị nhưng chưa đồng bộ lên đám mây.');
+        return;
       }
     }
 
-    setSuccessMsg("Cập nhật ngân sách ăn uống thành công! 🎉");
+    setSuccessMsg('Đã cập nhật hạn mức ăn uống.');
     setTimeout(() => setSuccessMsg(null), 3000);
   };
 
@@ -197,13 +206,15 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
 
     const total = rawAmount + drinkAmount + otherAmount;
 
-    if (total <= 0) {
-      toast.error("Tổng chi phí bữa ăn phải lớn hơn 0đ!");
+    if (!Number.isSafeInteger(total) || total <= 0 || total > 100_000_000_000 ||
+        ![rawAmount, drinkAmount, otherAmount].every(value => Number.isSafeInteger(value) && value >= 0)) {
+      toast.error('Chi phí phải là số nguyên VND hợp lệ, lớn hơn 0 và không vượt quá 100 tỷ.');
       return;
     }
 
     const newMeal: SoloMeal = {
-      id: 'solo-' + Date.now(),
+      id: `solo-${crypto.randomUUID()}`,
+      updatedAt: new Date().toISOString(),
       name: mealName.trim(),
       venueName: venueNameUsed || 'Tự túc',
       date: mealDate,
@@ -217,15 +228,20 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
     const updated = [newMeal, ...soloMeals];
     await persistMeals(updated);
 
+    let synced = !currentUser;
     if (currentUser) {
       try {
         await saveSoloMealToCloud(currentUser.uid, newMeal);
+        synced = true;
       } catch (e) {
-        console.error("Cloud Solo Meal Save Error:", e);
+        console.warn('[Solo] Meal saved locally but cloud unavailable:', e);
+        toast.error('Đã lưu trên thiết bị. Chưa thể đồng bộ bữa ăn lên đám mây.');
       }
     }
 
-    setSuccessMsg(`Đã ghi nhận bữa ăn solo: ${total.toLocaleString('vi-VN')} đ! 🍽️`);
+    setSuccessMsg(synced
+      ? `Đã ghi nhận bữa ăn: ${total.toLocaleString('vi-VN')} đ.`
+      : `Bữa ăn ${total.toLocaleString('vi-VN')} đ đã được lưu cục bộ, chờ đồng bộ.`);
     setTimeout(() => setSuccessMsg(null), 3000);
 
     // Clear form
@@ -239,20 +255,26 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
   };
 
   const handleDeleteMeal = async (mealId: string) => {
-    if (!window.confirm("Bạn có chắc chắn muốn xoá bữa ăn solo này khỏi lịch sử chi tiêu?")) return;
-
-    const filtered = soloMeals.filter(m => m.id !== mealId);
-    await persistMeals(filtered);
+    const target = soloMeals.find(meal => meal.id === mealId);
+    if (!target) return;
+    const deletedAt = new Date().toISOString();
+    const tombstone: SoloMeal = { ...target, deletedAt, updatedAt: deletedAt };
+    const userKey = currentUser?.uid || 'guest';
+    const remaining = soloMeals.filter(meal => meal.id !== mealId);
+    const retained = readSoloCache(userKey).filter(meal => meal.id !== mealId);
+    localStorage.setItem(`nhau_solo_meals_${userKey}`, JSON.stringify([...retained, tombstone]));
+    setSoloMeals(remaining);
 
     if (currentUser) {
       try {
         await deleteSoloMealFromCloud(currentUser.uid, mealId);
-      } catch (e) {
-        console.error("Cloud Solo Meal Delete Error:", e);
+      } catch (error) {
+        console.warn('[Solo] Deletion not synced:', error);
+        toast.error('Đã xóa trên thiết bị, nhưng chưa đồng bộ xóa lên đám mây.');
+        return;
       }
     }
-
-    setSuccessMsg("Đã xoá thành công bữa ăn!");
+    setSuccessMsg('Đã xóa bữa ăn khỏi lịch sử.');
     setTimeout(() => setSuccessMsg(null), 3000);
   };
 
@@ -276,15 +298,12 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
   // Look at bills in the current month where the current user name or (Bạn) is in bill members
   // Sum finalShare
   const currentMonthGroupTotal = React.useMemo(() => bills
-    .filter(b => b.date.startsWith(currentYearMonth) && !b.isArchived)
+    .filter(b => b.date.startsWith(currentYearMonth) && !b.isArchived && !b.deletedAt)
     .reduce((sum, bill) => {
       const userMember = bill.members.find(m => {
         const cleanName = m.name.toLowerCase().trim();
         const cleanActive = activeCreatorName.toLowerCase().trim();
-        return cleanName.includes(cleanActive) || 
-               cleanActive.includes(cleanName) ||
-               cleanName.includes('(bạn)') || 
-               cleanName.includes('bạn');
+        return cleanName === cleanActive;
       });
       return sum + (userMember ? userMember.finalShare : 0);
     }, 0), [bills, currentYearMonth, activeCreatorName]);
@@ -413,7 +432,7 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         {/* BUDGET STATUS CARD */}
-        <div className="lg:col-span-8 bg-white dark:bg-slate-900 border-4 border-slate-900 dark:border-slate-800 rounded-[32px] p-6 shadow-md space-y-6">
+        <div className="lg:col-span-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-md space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b-2 border-dashed border-slate-100 dark:border-slate-800 pb-4">
             <div className="flex items-center gap-3">
               <span className="w-3.5 h-7 bg-amber-500 rounded-full inline-block"></span>
@@ -504,25 +523,25 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
 
             {/* REMAINING STATS */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2">
-              <div className="bg-slate-50 dark:bg-slate-955 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
+              <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
                 <span className="text-[8px] uppercase font-black text-slate-400 block tracking-widest">Ví còn khả dụng</span>
                 <span className={`text-sm font-black block mt-0.5 ${remainingBudget < 0 ? 'text-red-500' : 'text-slate-700 dark:text-white'}`}>
                   {remainingBudget.toLocaleString('vi-VN')} đ
                 </span>
               </div>
-              <div className="bg-slate-50 dark:bg-slate-955 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
+              <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
                 <span className="text-[8px] uppercase font-black text-slate-400 block tracking-widest">Tổng bữa Solo</span>
                 <span className="text-sm font-black text-slate-700 dark:text-white block mt-0.5">
                   {currentMonthMeals.length} bữa ăn
                 </span>
               </div>
-              <div className="bg-slate-50 dark:bg-slate-955 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
+              <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
                 <span className="text-[8px] uppercase font-black text-slate-400 block tracking-widest">Tiền ăn TB / Bữa</span>
                 <span className="text-sm font-black text-slate-700 dark:text-white block mt-0.5">
                   {Math.round(averageSoloMealCost).toLocaleString('vi-VN')} đ
                 </span>
               </div>
-              <div className="bg-slate-50 dark:bg-slate-955 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
+              <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
                 <span className="text-[8px] uppercase font-black text-slate-400 block tracking-widest">Đồ uống / Bia bọt</span>
                 <span className="text-sm font-black text-amber-500 block mt-0.5">
                   {currentMonthSoloDrinks.toLocaleString('vi-VN')} đ
@@ -536,7 +555,7 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
         <div className="lg:col-span-4 bg-slate-900 border-4 border-slate-950 p-6 rounded-[32px] text-white flex flex-col justify-between shadow-md min-h-[300px]">
           <div>
             <div className="flex items-center gap-2 mb-4">
-              <TrendingUp className="w-5 h-5 text-emerald-400 animate-pulse" />
+              <TrendingUp className="w-5 h-5 text-emerald-400" />
               <span className="text-xs uppercase font-black text-slate-400 tracking-widest">
                 Tổng hợp chi tiêu tháng này
               </span>
@@ -572,7 +591,7 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
             </div>
           </div>
 
-          <div className="bg-slate-800/60 rounded-2xl p-3 border border-slate-850 mt-4 text-xs text-slate-300 font-bold leading-relaxed flex items-start gap-2">
+          <div className="bg-slate-800/60 rounded-2xl p-3 border border-slate-800 mt-4 text-xs text-slate-300 font-bold leading-relaxed flex items-start gap-2">
             <Info className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
             <p>
               Hóa đơn nhóm được tách biệt khỏi ngân quỹ Solo để bảo vệ hầu bao ăn uống hàng ngày độc lập của bạn khỏi các bữa tiệc bất thình lình!
@@ -583,10 +602,10 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
       </div>
 
       {/* SPENDING FORECAST & PREDICTIVE BUDGET SUGGESTIONS */}
-      <div className="bg-white dark:bg-slate-900 border-4 border-slate-900 dark:border-slate-850 rounded-[32px] p-6 shadow-md space-y-6">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-md space-y-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-dashed border-slate-100 dark:border-slate-800 pb-4">
           <div className="flex items-center gap-3">
-            <div className="bg-emerald-50 dark:bg-emerald-950/40 p-2.5 rounded-2xl border-2 border-slate-950 dark:border-slate-855 text-emerald-600 dark:text-emerald-400">
+            <div className="bg-emerald-50 dark:bg-emerald-950/40 p-2.5 rounded-2xl border-2 border-slate-950 dark:border-slate-800 text-emerald-600 dark:text-emerald-400">
               <TrendingUp className="w-6 h-6 shrink-0" />
             </div>
             <div>
@@ -606,7 +625,7 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
           
           {/* LEFT COLUMN: GORGEOUS DYNAMIC SVG CHART */}
-          <div className="lg:col-span-7 bg-slate-50 dark:bg-slate-955 border-2 border-slate-900 dark:border-slate-800 rounded-2xl p-4 space-y-4">
+          <div className="lg:col-span-7 bg-slate-50 dark:bg-slate-950 border-2 border-slate-900 dark:border-slate-800 rounded-2xl p-4 space-y-4">
             <span className="text-xs text-slate-400 uppercase font-black tracking-widest block">Biểu đồ dự báo xu hướng chi tiêu</span>
             
             <div className="relative pt-6 pb-2 px-1">
@@ -638,7 +657,7 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
 
                       {/* Bubble status badge for tomorrow prediction */}
                       {item.isForecast && (
-                        <span className="absolute -top-4 right-1 bg-amber-500 text-[7px] text-slate-950 font-black px-1.5 py-0.5 rounded-full border border-slate-955 scale-90 sm:scale-100">
+                        <span className="absolute -top-4 right-1 bg-amber-500 text-[7px] text-slate-950 font-black px-1.5 py-0.5 rounded-full border border-slate-950 scale-90 sm:scale-100">
                           PRO 🔮
                         </span>
                       )}
@@ -674,7 +693,7 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
           <div className="lg:col-span-12 xl:col-span-5 space-y-5">
             <div className="bg-slate-900 text-white border-2 border-slate-950 p-5 rounded-2xl space-y-4">
               <div className="flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-amber-400 animate-pulse shrink-0" />
+                <Sparkles className="w-5 h-5 text-amber-400 shrink-0" />
                 <span className="text-xs font-black uppercase text-amber-400 tracking-wider">
                   Cấu hình phong cách chi tiêu
                 </span>
@@ -735,9 +754,9 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
                   </p>
                 )}
 
-                <div className="bg-slate-800 p-3 rounded-xl border border-slate-750 flex justify-between items-center gap-2">
+                <div className="bg-slate-800 p-3 rounded-xl border border-slate-700 flex justify-between items-center gap-2">
                   <div>
-                    <span className="text-xs uppercase font-black text-slate-450 block tracking-wider">Hạn mức đề xuất</span>
+                    <span className="text-xs uppercase font-black text-slate-400 block tracking-wider">Hạn mức đề xuất</span>
                     <span className="text-lg font-black text-emerald-400">{predictedBudget.toLocaleString('vi-VN')} đ</span>
                   </div>
                   <button
@@ -778,7 +797,7 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         {/* LOG SOLO MEAL FORM */}
-        <div className="lg:col-span-5 bg-white dark:bg-slate-900 border-4 border-slate-900 dark:border-slate-800 rounded-[32px] p-6 shadow-md space-y-6">
+        <div className="lg:col-span-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-md space-y-6">
           <div className="space-y-1.5 border-b pb-4 border-slate-100 dark:border-slate-800">
             <div className="flex items-center gap-2.5">
               <span className="w-3 h-6 bg-orange-600 rounded-full inline-block"></span>
@@ -811,7 +830,7 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
               <button
                 type="button"
                 onClick={() => applyPresetMeal('nhau-solo')}
-                className="bg-amber-100 dark:bg-amber-950/20 hover:bg-amber-250 text-amber-900 overflow-hidden text-xs font-black px-2.5 py-1.5 rounded-lg border border-amber-200"
+                className="bg-amber-100 dark:bg-amber-950/20 hover:bg-amber-200 text-amber-900 overflow-hidden text-xs font-black px-2.5 py-1.5 rounded-lg border border-amber-200"
               >
                 🍺 Nhậu Solo (250k)
               </button>
@@ -858,7 +877,7 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
                 <button
                   type="button"
                   onClick={() => setUseCustomVenue(!useCustomVenue)}
-                  className="bg-slate-200 dark:bg-slate-855 text-slate-800 dark:text-slate-300 text-xs font-black px-2 py-1 rounded-sm border border-slate-900"
+                  className="bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-300 text-xs font-black px-2 py-1 rounded-sm border border-slate-900"
                 >
                   {useCustomVenue ? "Chọn quán quen" : "Điền thủ công"}
                 </button>
@@ -907,7 +926,7 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
                   onChange={setRawAmount}
                   placeholder="0 đ"
                   suffix="đ"
-                  className="w-full bg-slate-50 dark:bg-slate-955 border-2 border-slate-900 dark:border-slate-700 rounded-lg px-2 py-1.5 text-xs font-black outline-none focus:border-amber-500 text-left pr-6"
+                  className="w-full bg-slate-50 dark:bg-slate-950 border-2 border-slate-900 dark:border-slate-700 rounded-lg px-2 py-1.5 text-xs font-black outline-none focus:border-amber-500 text-left pr-6"
                 />
               </div>
 
@@ -920,7 +939,7 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
                   onChange={setDrinkAmount}
                   placeholder="0 đ"
                   suffix="đ"
-                  className="w-full bg-slate-50 dark:bg-slate-955 border-2 border-slate-900 dark:border-slate-700 rounded-lg px-2 py-1.5 text-xs font-black outline-none focus:border-amber-500 text-left pr-6"
+                  className="w-full bg-slate-50 dark:bg-slate-950 border-2 border-slate-900 dark:border-slate-700 rounded-lg px-2 py-1.5 text-xs font-black outline-none focus:border-amber-500 text-left pr-6"
                 />
               </div>
 
@@ -933,7 +952,7 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
                   onChange={setOtherAmount}
                   placeholder="0 đ"
                   suffix="đ"
-                  className="w-full bg-slate-50 dark:bg-slate-955 border-2 border-slate-900 dark:border-slate-700 rounded-lg px-2 py-1.5 text-xs font-black outline-none focus:border-amber-500 text-left pr-6"
+                  className="w-full bg-slate-50 dark:bg-slate-950 border-2 border-slate-900 dark:border-slate-700 rounded-lg px-2 py-1.5 text-xs font-black outline-none focus:border-amber-500 text-left pr-6"
                 />
               </div>
             </div>
@@ -948,7 +967,7 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="VD: Không lấy hành, thanh toán bằng Momo..."
-                className="w-full bg-slate-50 dark:bg-slate-955 border-2 border-slate-900 dark:border-slate-700 rounded-xl px-4 py-2 text-xs font-semibold outline-none focus:border-amber-500"
+                className="w-full bg-slate-50 dark:bg-slate-950 border-2 border-slate-900 dark:border-slate-700 rounded-xl px-4 py-2 text-xs font-semibold outline-none focus:border-amber-500"
               />
             </div>
 
@@ -973,7 +992,7 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
         </div>
 
         {/* STATS HISTORY & SPENDING BREAKDOWN LIST */}
-        <div className="lg:col-span-7 bg-white dark:bg-slate-900 border-4 border-slate-900 dark:border-slate-800 rounded-[32px] p-6 shadow-md space-y-6">
+        <div className="lg:col-span-7 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-md space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b pb-4 border-slate-100 dark:border-slate-800">
             <div className="flex items-center gap-2.5">
               <span className="w-3 h-6 bg-purple-600 rounded-full inline-block"></span>
@@ -985,7 +1004,7 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
 
             <div className="flex flex-wrap items-center gap-2">
               {/* Month Selector Filter */}
-              <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl border border-slate-250 dark:border-slate-700">
+              <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700">
                 <Filter className="w-3.5 h-3.5 text-slate-500" />
                 <select
                   value={monthFilter}
@@ -1014,11 +1033,11 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
           </div>
 
           {loading ? (
-            <div className="py-20 text-center text-slate-400 text-xs font-semibold animate-pulse">
+            <div className="py-20 text-center text-slate-400 text-xs font-semibold">
               Đang tải nhật ký bữa ăn cá nhân... 📂
             </div>
           ) : displayedMeals.length === 0 ? (
-            <div className="py-16 text-center border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-2xl bg-slate-50 dark:bg-slate-955 space-y-2">
+            <div className="py-16 text-center border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-2xl bg-slate-50 dark:bg-slate-950 space-y-2">
               <span className="text-3xl">🏜️</span>
               <p className="text-xs font-bold text-slate-500 dark:text-slate-400">Không tìm thấy bữa ăn Solo nào trong dòng thời gian!</p>
               <p className="text-xs text-slate-400 font-medium">Hãy dùng ô Ghi bữa ăn Solo mới bên trái để khởi động hành trình giữ dáng hầu bao cá nhân sòng phẳng.</p>
@@ -1032,7 +1051,7 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
                 return (
                   <div 
                     key={meal.id} 
-                    className="group bg-slate-50 dark:bg-slate-955 hover:bg-yellow-50/40 dark:hover:bg-slate-800/40 border-2 border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all"
+                    className="group bg-slate-50 dark:bg-slate-950 hover:bg-yellow-50/40 dark:hover:bg-slate-800/40 border-2 border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all"
                   >
                     <div className="flex items-start gap-3">
                       <div className="bg-orange-100 dark:bg-amber-950/40 border border-orange-200 p-2.5 rounded-xl text-xs flex flex-col items-center justify-center font-bold text-orange-600 dark:text-amber-400 w-12 shrink-0">
@@ -1073,7 +1092,7 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between sm:justify-end gap-4 border-t sm:border-0 pt-2.5 sm:pt-0 border-slate-150">
+                    <div className="flex items-center justify-between sm:justify-end gap-4 border-t sm:border-0 pt-2.5 sm:pt-0 border-slate-100">
                       <div className="text-left sm:text-right">
                         <span className="text-sm font-black text-slate-900 dark:text-white font-mono block">
                           {meal.totalAmount.toLocaleString('vi-VN')} đ
@@ -1083,9 +1102,10 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
 
                       <button
                         type="button"
-                        onClick={() => handleDeleteMeal(meal.id)}
-                        className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl transition-all border border-transparent hover:border-red-200 cursor-pointer"
+                        onClick={() => setPendingDeleteId(meal.id)}
                         title="Xoá lịch sử bữa ăn"
+                        aria-label={`Xóa bữa ăn ${meal.name}`}
+                        className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl transition-all border border-transparent hover:border-red-200 cursor-pointer min-h-11 min-w-11 flex items-center justify-center"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -1098,7 +1118,20 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
         </div>
 
       </div>
-
+      <DebtActionModal
+        confirmDialog={pendingDeleteId ? {
+          isOpen: true,
+          title: 'Xóa bữa ăn?',
+          tone: 'danger',
+          message: 'Bạn muốn xóa bữa ăn này khỏi lịch sử? Dữ liệu sẽ được đồng bộ xóa khi kết nối đám mây.',
+          onConfirm: () => {
+            const mealId = pendingDeleteId;
+            setPendingDeleteId(null);
+            void handleDeleteMeal(mealId);
+          }
+        } : null}
+        setConfirmDialog={(dialog) => { if (!dialog) setPendingDeleteId(null); }}
+      />
     </div>
   );
 }

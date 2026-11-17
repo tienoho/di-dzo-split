@@ -27,7 +27,9 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
-import { generateShareableBillUrl } from '../utils/shareLink';
+
+import { getActiveDebts } from '../utils/storage';
+import { useDialogA11y } from '../hooks/useDialogA11y';
 
 interface PublicBillViewerModalProps {
   bill: Bill;
@@ -80,15 +82,24 @@ export default function PublicBillViewerModal({ bill, onClose }: PublicBillViewe
   const [copiedText, setCopiedText] = useState<boolean>(false);
   const [activeZoomImage, setActiveZoomImage] = useState<string | null>(null);
   const [selectedMemberForQR, setSelectedMemberForQR] = useState<Member | null>(null);
+  const dialogRef = useDialogA11y<HTMLDivElement>(true, () => {
+    if (selectedMemberForQR) setSelectedMemberForQR(null);
+    else if (activeZoomImage) setActiveZoomImage(null);
+    else onClose();
+  });
 
   // Bank settings from bill payload or local cache
-  const [bankName, setBankName] = useState<string>(() => bill.bankName || localStorage.getItem('nhau_bank_name') || 'mbbank');
-  const [bankNo, setBankNo] = useState<string>(() => bill.bankNo || localStorage.getItem('nhau_bank_no') || '');
-  const [bankAccountName, setBankAccountName] = useState<string>(() => bill.bankAccountName || localStorage.getItem('nhau_bank_account_name') || '');
+  const [bankName, setBankName] = useState<string>(() => bill.bankName || 'mbbank');
+  const [bankNo, setBankNo] = useState<string>(() => bill.bankNo || '');
+  const [bankAccountName, setBankAccountName] = useState<string>(() => bill.bankAccountName || '');
   const [showBankEdit, setShowBankEdit] = useState<boolean>(false);
   
   // Selected debtor for main VietQR panel
-  const debtors = bill.members.filter(m => m.finalShare > m.initialPaid);
+  const transfers = getActiveDebts([bill]);
+  const remainingFor = (member: Member) =>
+    transfers.filter(debt => debt.debtorName === member.name)
+      .reduce((sum, debt) => sum + (debt.remainingAmount ?? debt.amount), 0);
+  const debtors = bill.members.filter(member => remainingFor(member) > 0);
   const [activeDebtorForPanel, setActiveDebtorForPanel] = useState<Member | null>(() => debtors[0] || null);
 
   const dateObj = new Date(bill.date);
@@ -113,10 +124,10 @@ export default function PublicBillViewerModal({ bill, onClose }: PublicBillViewe
 
   const handleCopyLink = async () => {
     try {
-      const shortUrl = await generateShareableBillUrl(bill);
+      const shortUrl = window.location.href; // Viewers share the existing link without rewriting the bill.
       await navigator.clipboard.writeText(shortUrl);
       setCopiedLink(true);
-      toast.success("Đã sao chép Link rút gọn xem hóa đơn! 🔗");
+      toast.success("Đã sao chép liên kết hóa đơn! 🔗");
       setTimeout(() => setCopiedLink(false), 2500);
     } catch (e) {
       toast.error("Không thể sao chép link.");
@@ -124,14 +135,15 @@ export default function PublicBillViewerModal({ bill, onClose }: PublicBillViewe
   };
 
   const handleShareText = async () => {
-    const shortUrl = await generateShareableBillUrl(bill);
+    const shortUrl = window.location.href; // Viewers share the existing link without rewriting the bill.
     let text = `🍻 HÓA ĐƠN CUỘC NHẬU: ${bill.venueName}\n`;
     text += `📅 Thời gian: ${friendlyDate} ${friendlyTime ? `lúc ${friendlyTime}` : ''}\n`;
     text += `💰 Tổng hóa đơn: ${bill.totalAmount.toLocaleString('vi-VN')} đ\n\n`;
     text += `👥 CHI TIẾT CHIA TIỀN TỪNG NGƯỜI:\n`;
     
     bill.members.forEach(m => {
-      const diff = m.finalShare - m.initialPaid;
+      const gross = m.finalShare - m.initialPaid;
+      const diff = gross > 0 ? remainingFor(m) : gross;
       text += `- ${m.name}: Gánh ${m.finalShare.toLocaleString('vi-VN')} đ `;
       if (m.penaltyAmount && m.penaltyAmount > 0) {
         text += `(Phạt ${m.penaltyAmount.toLocaleString('vi-VN')}đ) `;
@@ -177,8 +189,9 @@ export default function PublicBillViewerModal({ bill, onClose }: PublicBillViewe
 
   // Generate VietQR URL for a specific member
   const getMemberVietQRUrl = (member: Member) => {
-    const diff = member.finalShare - member.initialPaid;
-    if (diff <= 0 || !bankNo) return '';
+    const diff = remainingFor(member);
+    const payees = transfers.filter(debt => debt.debtorName === member.name && !debt.isPaid);
+    if (diff <= 0 || !bankNo || payees.length !== 1 || payees[0].creditorName !== primaryPayer.name) return '';
     const formattedAmount = Math.round(diff);
     const debtorTag = removeVietnameseTones(member.name);
     const venueTag = removeVietnameseTones(bill.venueName.substring(0, 8));
@@ -201,13 +214,13 @@ export default function PublicBillViewerModal({ bill, onClose }: PublicBillViewe
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-md overflow-y-auto">
+    <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="public-bill-dialog-title" tabIndex={-1} className="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-md overflow-y-auto">
       <motion.div 
         initial={{ opacity: 0, scale: 0.94, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.94, y: 15 }}
         transition={{ type: "spring", stiffness: 350, damping: 25 }}
-        className="bg-white dark:bg-slate-900 border-4 border-slate-900 dark:border-slate-700 rounded-[32px] max-w-3xl w-full shadow-2xl overflow-hidden my-auto"
+        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-3xl max-w-3xl w-full shadow-2xl overflow-hidden my-auto"
       >
         {/* MODAL HEADER */}
         <div className="bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-400 p-5 sm:p-6 border-b-4 border-slate-900 dark:border-slate-800 text-slate-950 relative">
@@ -216,6 +229,7 @@ export default function PublicBillViewerModal({ bill, onClose }: PublicBillViewe
             onClick={onClose}
             className="absolute top-4 right-4 sm:top-5 sm:right-5 w-9 h-9 sm:w-10 sm:h-10 bg-white hover:bg-slate-100 text-slate-900 rounded-full border-2 border-slate-900 flex items-center justify-center transition-transform hover:scale-110 active:scale-95 shadow-sm cursor-pointer"
             title="Đóng"
+            aria-label="Đóng hóa đơn"
           >
             <X className="w-5 h-5 font-black" />
           </button>
@@ -225,7 +239,7 @@ export default function PublicBillViewerModal({ bill, onClose }: PublicBillViewe
             <span className="text-[10px] font-black uppercase tracking-wider text-white">HÓA ĐƠN XEM TRỰC TIẾP</span>
           </div>
 
-          <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-950 flex items-center gap-2 leading-tight">
+          <h2 id="public-bill-dialog-title" className="text-2xl sm:text-3xl font-black tracking-tight text-slate-950 flex items-center gap-2 leading-tight">
             🍻 {bill.venueName}
           </h2>
 
@@ -296,24 +310,17 @@ export default function PublicBillViewerModal({ bill, onClose }: PublicBillViewe
                     Thanh toán VietQR Chuyển Khoản 24/7
                   </h3>
                   <p className="text-[10px] font-bold text-indigo-700 dark:text-indigo-300">
-                    Quét mã là tự động điền đúng số tiền & nội dung chuyển khoản
+                    Chỉ tạo QR khi xác định được đúng người nhận tiền
                   </p>
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setShowBankEdit(!showBankEdit)}
-                className="text-[11px] font-black text-indigo-700 dark:text-indigo-300 bg-white dark:bg-slate-700 hover:bg-indigo-50 px-2.5 py-1 rounded-xl border border-indigo-300 dark:border-slate-600 flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
-              >
-                <Edit2 className="w-3 h-3" />
-                {bankNo ? 'Sửa thông tin STK' : '+ Nhập STK nhận tiền'}
-              </button>
+
             </div>
 
             {/* Quick Bank Configuration Form (if expanded or missing) */}
             <AnimatePresence>
-              {(showBankEdit || !bankNo) && (
+              {false && (showBankEdit || !bankNo) && (
                 <motion.form 
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
@@ -382,7 +389,7 @@ export default function PublicBillViewerModal({ bill, onClose }: PublicBillViewe
             {/* Display Active QR Code if bankNo is ready */}
             {bankNo ? (
               <div className="flex flex-col sm:flex-row items-center gap-4 bg-white dark:bg-slate-900 p-4 rounded-2xl border-2 border-indigo-200 dark:border-slate-700">
-                {activeDebtorForPanel ? (
+                {activeDebtorForPanel && getMemberVietQRUrl(activeDebtorForPanel) ? (
                   <>
                     <div 
                       onClick={() => setSelectedMemberForQR(activeDebtorForPanel)}
@@ -491,7 +498,8 @@ export default function PublicBillViewerModal({ bill, onClose }: PublicBillViewe
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900 font-bold">
                   {bill.members.map((member, idx) => {
-                    const diff = member.finalShare - member.initialPaid;
+                    const gross = member.finalShare - member.initialPaid;
+                    const diff = gross > 0 ? remainingFor(member) : gross;
                     const isDebtor = diff > 0;
                     const isCreditor = diff < 0;
 
@@ -527,12 +535,11 @@ export default function PublicBillViewerModal({ bill, onClose }: PublicBillViewe
                               <button
                                 type="button"
                                 onClick={() => {
-                                  if (bankNo) {
-                                    setSelectedMemberForQR(member);
-                                  } else {
-                                    setShowBankEdit(true);
-                                    toast("Vui lòng điền số tài khoản ngân hàng để tạo QR!");
-                                  }
+                                  if (getMemberVietQRUrl(member)) {
+                             setSelectedMemberForQR(member);
+                           } else {
+                             toast.error('Không đủ thông tin người nhận để tạo VietQR an toàn.');
+                           }
                                 }}
                                 className="text-[11px] font-black bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 py-1 rounded-lg flex items-center gap-1 cursor-pointer transition-transform active:scale-95 shadow-2xs"
                                 title="Mở mã VietQR chuyển khoản nhanh"
@@ -560,7 +567,8 @@ export default function PublicBillViewerModal({ bill, onClose }: PublicBillViewe
             {/* MOBILE CARD LIST VIEW (sm and below) */}
             <div className="block sm:hidden space-y-2.5">
               {bill.members.map((member, idx) => {
-                const diff = member.finalShare - member.initialPaid;
+                const gross = member.finalShare - member.initialPaid;
+                    const diff = gross > 0 ? remainingFor(member) : gross;
                 const isDebtor = diff > 0;
                 const isCreditor = diff < 0;
 
@@ -608,12 +616,11 @@ export default function PublicBillViewerModal({ bill, onClose }: PublicBillViewe
                       <button
                         type="button"
                         onClick={() => {
-                          if (bankNo) {
-                            setSelectedMemberForQR(member);
-                          } else {
-                            setShowBankEdit(true);
-                            toast("Vui lòng điền số tài khoản ngân hàng để tạo QR!");
-                          }
+                          if (getMemberVietQRUrl(member)) {
+                             setSelectedMemberForQR(member);
+                           } else {
+                             toast.error('Không đủ thông tin người nhận để tạo VietQR an toàn.');
+                           }
                         }}
                         className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs py-2 rounded-xl flex items-center justify-center gap-1.5 transition-transform active:scale-95 shadow-2xs cursor-pointer mt-1"
                       >
@@ -709,18 +716,19 @@ export default function PublicBillViewerModal({ bill, onClose }: PublicBillViewe
         {selectedMemberForQR && (
           <div 
             onClick={() => setSelectedMemberForQR(null)}
-            className="fixed inset-0 z-60 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4"
+            className="fixed inset-0 z-[210] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4"
           >
             <motion.div 
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white dark:bg-slate-900 border-4 border-slate-900 dark:border-slate-700 rounded-[28px] max-w-sm w-full p-6 text-center space-y-4 shadow-2xl relative"
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-[28px] max-w-sm w-full p-6 text-center space-y-4 shadow-2xl relative"
             >
               <button 
                 onClick={() => setSelectedMemberForQR(null)}
-                className="absolute top-4 right-4 w-8 h-8 bg-slate-100 dark:bg-slate-800 rounded-full border border-slate-900 flex items-center justify-center font-black cursor-pointer hover:scale-110 active:scale-95"
+                aria-label="Đóng mã VietQR"
+                className="absolute top-4 right-4 w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-full border border-slate-900 flex items-center justify-center font-black cursor-pointer hover:scale-110 active:scale-95"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -731,7 +739,7 @@ export default function PublicBillViewerModal({ bill, onClose }: PublicBillViewe
                   {selectedMemberForQR.name}
                 </h3>
                 <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mt-0.5">
-                  Số tiền cần chuyển: <strong className="text-red-500 font-black text-base">{(selectedMemberForQR.finalShare - selectedMemberForQR.initialPaid).toLocaleString('vi-VN')} đ</strong>
+                  Số tiền còn phải chuyển: <strong className="text-red-500 font-black text-base">{remainingFor(selectedMemberForQR).toLocaleString('vi-VN')} đ</strong>
                 </p>
               </div>
 
@@ -788,10 +796,11 @@ export default function PublicBillViewerModal({ bill, onClose }: PublicBillViewe
         {activeZoomImage && (
           <div 
             onClick={() => setActiveZoomImage(null)}
-            className="fixed inset-0 z-60 bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-center p-4"
+            className="fixed inset-0 z-[210] bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-center p-4"
           >
             <button 
               onClick={() => setActiveZoomImage(null)}
+              aria-label="Đóng ảnh hóa đơn phóng to"
               className="absolute top-6 right-6 w-12 h-12 bg-white text-slate-950 rounded-full flex items-center justify-center border-2 border-slate-900 shadow-xl cursor-pointer hover:scale-110 active:scale-95 transition-transform"
             >
               <X className="w-6 h-6 font-black" />

@@ -80,12 +80,33 @@ export const saveStoredBills = (bills: Bill[], userId?: string) => {
   }
 };
 
+/**
+ * Payment events are append-only from application actions. Legacy paid flags apply
+ * only to bills that have no recorded event for a transfer.
+ */
+export const paidForTransfer = (
+  bill: Bill,
+  transferId: string,
+  debtorPaidFlag: boolean,
+  principal: number
+): number => {
+  const events = bill.payments?.[transferId];
+  if (!events?.length) {
+    return (bill.settledTransfers?.[transferId] ?? debtorPaidFlag) ? principal : 0;
+  }
+  const total = events.reduce((amount, event) => {
+    if (event.type === 'reset') return 0;
+    return amount + event.amount;
+  }, 0);
+  return Math.max(0, Math.min(principal, total));
+};
+
 // Compute dynamic Debts from pending bills using Multi-Payer Greedy Debt Settlement
 export const getActiveDebts = (bills: Bill[]): Debt[] => {
   const debts: Debt[] = [];
   
   // Filter out archived bills from active debt calculations
-  const activeBills = bills.filter(b => !b.isArchived);
+  const activeBills = bills.filter(b => !b.isArchived && !b.deletedAt);
   
   activeBills.forEach((bill) => {
     // Calculate net balance for each member: balance = initialPaid - finalShare
@@ -103,15 +124,20 @@ export const getActiveDebts = (bills: Bill[]): Debt[] => {
     if (creditors.length === 0 && debtors.length > 0 && bill.members.length > 0) {
       const defaultHost = bill.members[0];
       debtors.forEach(debtor => {
+        const transferId = `${bill.id}-${debtor.name}-${defaultHost.name}`;
+        const principal = Math.round(debtor.remaining);
+        const paidAmount = paidForTransfer(bill, transferId, !!debtor.hasPaidDebt, principal);
         debts.push({
-          id: `${bill.id}-${debtor.name}-${defaultHost.name}`,
+          id: transferId,
           billId: bill.id,
           billDate: bill.date,
           venueName: bill.venueName,
           debtorName: debtor.name,
           creditorName: defaultHost.name,
-          amount: Math.round(debtor.remaining),
-          isPaid: !!debtor.hasPaidDebt,
+          amount: principal,
+          paidAmount,
+          remainingAmount: principal - paidAmount,
+          isPaid: paidAmount >= principal,
         });
       });
       return;
@@ -128,15 +154,20 @@ export const getActiveDebts = (bills: Bill[]): Debt[] => {
       const settleAmount = Math.min(creditor.remaining, debtor.remaining);
 
       if (settleAmount > 0) {
+        const transferId = `${bill.id}-${debtor.name}-${creditor.name}`;
+        const principal = Math.round(settleAmount);
+        const paidAmount = paidForTransfer(bill, transferId, !!debtor.hasPaidDebt, principal);
         debts.push({
-          id: `${bill.id}-${debtor.name}-${creditor.name}`,
+          id: transferId,
           billId: bill.id,
           billDate: bill.date,
           venueName: bill.venueName,
           debtorName: debtor.name,
           creditorName: creditor.name,
-          amount: Math.round(settleAmount),
-          isPaid: !!debtor.hasPaidDebt,
+          amount: principal,
+          paidAmount,
+          remainingAmount: principal - paidAmount,
+          isPaid: paidAmount >= principal,
         });
 
         creditor.remaining -= settleAmount;

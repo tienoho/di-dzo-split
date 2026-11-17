@@ -1,5 +1,5 @@
 import { Bill } from '../types';
-import { savePublicBillToCloud, fetchPublicBillFromCloud } from '../lib/firebase';
+import { auth, savePublicBillToCloud, fetchPublicBillFromCloud } from '../lib/firebase';
 
 /**
  * Encode compact bill details into a base64 string safe for URLs (legacy/offline fallback)
@@ -16,9 +16,9 @@ export function compressBillForUrl(bill: Bill): string {
       d: bill.discountAmount,
       dt: bill.date,
       n: bill.note || '',
-      bn: bill.bankName || localStorage.getItem('nhau_bank_name') || 'mbbank',
-      bno: bill.bankNo || localStorage.getItem('nhau_bank_no') || '',
-      ba: bill.bankAccountName || localStorage.getItem('nhau_bank_account_name') || '',
+      bn: bill.bankName || 'mbbank',
+      bno: bill.bankNo || '',
+      ba: bill.bankAccountName || '',
       m: bill.members.map(m => ({
         n: m.name,
         p: m.initialPaid,
@@ -104,15 +104,22 @@ export async function generateShareableBillUrl(bill: Bill): Promise<string> {
     bankAccountName: bill.bankAccountName || localStorage.getItem('nhau_bank_account_name') || ''
   };
 
-  // Asynchronously save to public collection on Firebase for 100% cloud availability
+  // A short link is valid only after Firestore acknowledges the write.
   try {
     await savePublicBillToCloud(enrichedBill);
-  } catch (e) {
-    console.warn("Public cloud save skipped, falling back:", e);
+    return `${origin}?b=${encodeURIComponent(enrichedBill.id)}`;
+  } catch (error) {
+    // Guests and offline users can still share a self-contained legacy URL.
+    // Do not claim that a short cloud link exists when the write failed.
+    // Signed-in owners should not silently bypass revocation with a public portable link.
+    if (auth.currentUser) throw error;
+    console.warn('[Share link] Cloud unavailable; using portable URL fallback:', error);
+    const encoded = compressBillForUrl(enrichedBill);
+    if (!encoded) {
+      throw new Error('Không thể tạo liên kết hóa đơn. Vui lòng thử lại.');
+    }
+    return `${origin}?bill=${encoded}`;
   }
-
-  // Return clean, short link
-  return `${origin}?b=${enrichedBill.id}`;
 }
 
 /**
@@ -123,35 +130,17 @@ export async function resolveBillFromUrl(search: string): Promise<Bill | null> {
   const paramVal = params.get('b') || params.get('bill') || params.get('billId');
   if (!paramVal) return null;
 
-  // 1. If it's a short ID (clean short link), fetch from Firestore public_bills
-  if (paramVal.length < 80) {
-    try {
-      const cloudBill = await fetchPublicBillFromCloud(paramVal);
-      if (cloudBill) return cloudBill;
-    } catch (e) {
-      console.warn("[Short Link] Cloud fetch failed, trying local fallbacks:", e);
-    }
+  // A revoked or expired short link must never fall back to local cache.
+  if (params.has('b') || params.has('billId')) {
+    if (paramVal.length > 128 || paramVal.includes('/')) return null;
+    return fetchPublicBillFromCloud(paramVal);
   }
 
-  // 2. Try decompressing base64 payload (for legacy long links)
-  try {
-    const decoded = decompressBillFromUrl(paramVal);
-    if (decoded) return decoded;
-  } catch (e) {}
-
-  // 3. Fallback: check local storage cache if available on this browser
-  try {
-    const { getStoredBills } = await import('./storage');
-    const localBills = getStoredBills();
-    const found = localBills.find(b => b.id === paramVal);
-    if (found) return found;
-  } catch (e) {}
-
-  // 4. Last try fetch from cloud in case it was a long ID
-  try {
-    const cloudBill = await fetchPublicBillFromCloud(paramVal);
-    if (cloudBill) return cloudBill;
-  } catch (e) {}
+  // Legacy portable links are self-contained and cannot be remotely revoked.
+  if (params.has('bill')) {
+    if (paramVal.length > 12000) return null;
+    return decompressBillFromUrl(paramVal);
+  }
 
   return null;
 }
