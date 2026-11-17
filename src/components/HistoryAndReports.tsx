@@ -982,9 +982,20 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
                   className={`border-3 border-slate-900 rounded-[24px] overflow-hidden transition-all duration-300 ${isExpanded ? 'bg-orange-50/15 shadow-sm' : 'bg-slate-50/30'}`}
                 >
                   {/* Collapsible Trigger Row */}
-                  <div 
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    aria-expanded={isExpanded}
+                    aria-controls={`bill-details-${bill.id}`}
+                    aria-label={`Chi tiết hóa đơn ${bill.venueName}`}
                     onClick={() => toggleExpand(bill.id)}
-                    className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 cursor-pointer select-none hover:bg-yellow-50/20"
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        toggleExpand(bill.id);
+                      }
+                    }}
+                    className="p-4 min-h-16 flex flex-col md:flex-row md:items-center justify-between gap-3 cursor-pointer select-none hover:bg-yellow-50/20 dark:hover:bg-slate-800/60 focus-visible:outline-3 focus-visible:outline-orange-500"
                   >
                     <div className="flex items-start space-x-3">
                       <div className="bg-orange-100 text-orange-600 p-2.5 rounded-xl border-2 border-slate-900 self-center">
@@ -1005,7 +1016,7 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
                     <div className="flex items-center space-x-4 self-end md:self-auto">
                       <div className="text-right">
                         <span className="text-xs text-slate-400 font-extrabold block">TỔNG HÓA ĐƠN</span>
-                        <span className="text-sm font-black text-slate-900 bg-yellow-100 bg-yellow-100 border-2 border-slate-900 px-2.5 py-0.5 rounded-lg inline-block shadow-sm dark:text-slate-100 dark:border-slate-700">
+                        <span className="text-sm font-black text-slate-900 bg-amber-100 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 px-2.5 py-0.5 rounded-lg inline-block dark:text-amber-200">
                           {bill.totalAmount.toLocaleString('vi-VN')} đ
                         </span>
                       </div>
@@ -1016,7 +1027,7 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
 
                   {/* Expanded Breakdown Accordion Body */}
                   {isExpanded && (
-                    <div className="bg-slate-50 dark:bg-slate-900 border-t-2 border-slate-900 dark:border-slate-700 px-5 py-5 space-y-4 animate-slideIn">
+                    <div id={`bill-details-${bill.id}`} className="bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 px-4 sm:px-5 py-5 space-y-4 animate-slideIn">
                       {/* Financial statistics detail logs */}
                       <details className="group">
                         <summary className="text-xs font-bold text-slate-500 dark:text-slate-400 cursor-pointer list-none flex items-center gap-2 hover:text-slate-800 dark:hover:text-slate-200 transition-colors">
