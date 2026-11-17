@@ -164,7 +164,9 @@ export const fetchVenuesFromCloud = async (userId: string): Promise<Venue[]> => 
         address: data.address || '',
         notes: data.notes || '',
         rating: data.rating || 0,
-        visitsCount: data.visitsCount || 0
+        visitsCount: data.visitsCount || 0,
+        updatedAt: data.updatedAt || undefined,
+        deletedAt: data.deletedAt || undefined
       });
     });
     return venues;
@@ -195,7 +197,14 @@ export const fetchBillsFromCloud = async (userId: string): Promise<Bill[]> => {
         note: data.note || '',
         members: data.members || [],
         receiptImage: data.receiptImage || undefined,
-        isArchived: data.isArchived || false
+        isArchived: data.isArchived || false,
+        updatedAt: data.updatedAt || undefined,
+        deletedAt: data.deletedAt || undefined,
+        settledTransfers: data.settledTransfers || undefined,
+        payments: data.payments || undefined,
+        bankName: data.bankName || undefined,
+        bankNo: data.bankNo || undefined,
+        bankAccountName: data.bankAccountName || undefined
       });
     });
     return bills;
@@ -225,7 +234,8 @@ export const saveBillToCloud = async (userId: string, bill: Bill) => {
 export const deleteVenueFromCloud = async (userId: string, venueId: string) => {
   try {
     const venueRef = doc(db, 'users', userId, 'venues', venueId);
-    await deleteDoc(venueRef);
+    const deletedAt = new Date().toISOString();
+    await setDoc(venueRef, { id: venueId, deletedAt, updatedAt: deletedAt, userId });
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, `users/${userId}/venues/${venueId}`);
   }
@@ -234,7 +244,8 @@ export const deleteVenueFromCloud = async (userId: string, venueId: string) => {
 export const deleteBillFromCloud = async (userId: string, billId: string) => {
   try {
     const billRef = doc(db, 'users', userId, 'bills', billId);
-    await deleteDoc(billRef);
+    const deletedAt = new Date().toISOString();
+    await setDoc(billRef, { id: billId, deletedAt, updatedAt: deletedAt, userId });
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, `users/${userId}/bills/${billId}`);
   }
