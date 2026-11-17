@@ -114,7 +114,7 @@ export default function AuthModal({ currentUser, onClose, onSuccess }: AuthModal
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
       {/* Backdrop */}
       <motion.div 
         initial={{ opacity: 0 }}
@@ -135,7 +135,7 @@ export default function AuthModal({ currentUser, onClose, onSuccess }: AuthModal
         aria-modal="true"
         aria-labelledby="auth-dialog-title"
         tabIndex={-1}
-        className="relative bg-white dark:bg-slate-900 w-full max-w-md border-4 border-slate-900 dark:border-slate-700 rounded-[32px] shadow-2xl p-6 md:p-8 overflow-hidden z-10 text-slate-800 dark:text-slate-100"
+        className="relative bg-white dark:bg-slate-900 w-full max-w-md border-4 border-slate-900 dark:border-slate-700 rounded-[28px] sm:rounded-[32px] shadow-2xl p-5 sm:p-6 md:p-8 max-h-[calc(100dvh-2rem)] overflow-y-auto z-10 text-slate-800 dark:text-slate-100"
       >
         {/* Close Button */}
         <button
