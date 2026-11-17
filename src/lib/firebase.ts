@@ -341,7 +341,17 @@ export const fetchPublicVenuesFromCloud = async (): Promise<PublicVenue[]> => {
         createdAt: data.createdAt || new Date().toISOString()
       });
     });
-    return venues;
+    // Recalculate from owner-scoped reviews; do not trust writable venue scores.
+    return Promise.all(venues.map(async venue => {
+      try {
+        const reviews = await fetchPublicVenueReviewsFromCloud(venue.id);
+        if (!reviews.length) return { ...venue, rating: 0, ratingsCount: 0 };
+        const rating = reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length;
+        return { ...venue, rating, ratingsCount: reviews.length };
+      } catch (error) {
+        return venue;
+      }
+    }));
   } catch (error) {
     handleFirestoreError(error, OperationType.LIST, 'public_venues');
   }
@@ -371,7 +381,7 @@ export const shareVenueToCommunityCloud = async (
     await setDoc(docRef, sanitizeFirestoreData(pubVenue));
     
     // Auto populate first rating review
-    const reviewRef = doc(collection(db, 'public_venues', docRef.id, 'reviews'));
+    const reviewRef = doc(db, 'public_venues', docRef.id, 'reviews', currentUserId);
     const initialReview: PublicVenueReview = {
       id: reviewRef.id,
       authorId: currentUserId,
@@ -421,7 +431,7 @@ export const addPublicVenueReviewCloud = async (
   currentUserName: string
 ): Promise<PublicVenueReview> => {
   const reviewCollectionRef = collection(db, 'public_venues', venueId, 'reviews');
-  const reviewDocRef = doc(reviewCollectionRef);
+  const reviewDocRef = doc(reviewCollectionRef, currentUserId);
   try {
     const newReview: PublicVenueReview = {
       id: reviewDocRef.id,
@@ -433,19 +443,7 @@ export const addPublicVenueReviewCloud = async (
     };
     
     await setDoc(reviewDocRef, sanitizeFirestoreData(newReview));
-    
-    // Calculate new averages
-    const reviews = await fetchPublicVenueReviewsFromCloud(venueId);
-    const ratingsCount = reviews.length;
-    const totalSum = reviews.reduce((sum, r) => sum + r.rating, 0);
-    const avgRating = ratingsCount > 0 ? Number((totalSum / ratingsCount).toFixed(1)) : rating;
-    
-    const venueRef = doc(db, 'public_venues', venueId);
-    await updateDoc(venueRef, {
-      rating: avgRating,
-      ratingsCount: ratingsCount
-    });
-    
+    // Never allow a review author to modify public aggregate scores.
     return newReview;
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, `public_venues/${venueId}/reviews/${reviewDocRef.id}`);
