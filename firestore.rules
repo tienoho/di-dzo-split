@@ -49,27 +49,33 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // Public Bills shared via Web links (direct bill link sharing)
+    // Link possession only grants a single-document lookup, never collection listing.
     match /public_bills/{billId} {
-      // Public link viewers need read access, including guests.
-      allow read: if true;
-      // An owner must be signed in and cannot impersonate another account.
+      allow get: if !('revokedAt' in resource.data)
+        && (!('expiresAt' in resource.data) || resource.data.expiresAt > request.time);
+      allow list: if false;
       allow create: if request.auth != null
         && request.resource.data.ownerUid == request.auth.uid
         && request.resource.data.id == billId
         && request.resource.data.members is list
         && request.resource.data.members.size() <= 100
-        && request.resource.data.totalAmount is number;
-      // Existing legacy records (without ownerUid) remain read-only.
+        && request.resource.data.totalAmount is number
+        && request.resource.data.expiresAt is timestamp;
       allow update: if request.auth != null
         && resource.data.ownerUid == request.auth.uid
         && request.resource.data.ownerUid == resource.data.ownerUid
         && request.resource.data.id == billId
-        && request.resource.data.members is list
-        && request.resource.data.members.size() <= 100
-        && request.resource.data.totalAmount is number;
-      allow delete: if request.auth != null
-        && resource.data.ownerUid == request.auth.uid;
+        && !('revokedAt' in resource.data)
+        && (
+          // Only owner can transition link to revoked status.
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['revokedAt'])
+          ||
+          (request.resource.data.members is list
+            && request.resource.data.members.size() <= 100
+            && request.resource.data.expiresAt is timestamp)
+        );
+      // Never delete a tombstone: a deleted document could be recreated at the same ID.
+      allow delete: if false;
     }
   }
 }
