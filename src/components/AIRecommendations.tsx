@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Venue } from '../types';
 import toast from 'react-hot-toast';
 import { 
@@ -59,11 +59,26 @@ export default function AIRecommendations({ savedVenues, onAddVenue }: AIRecomme
   const [isSystemMocked, setIsSystemMocked] = useState<boolean>(false);
   const [savedStatus, setSavedStatus] = useState<Record<string, boolean>>({});
   const [aiProvider, setAiProvider] = useState<'gemini' | 'deepseek'>(() => (localStorage.getItem('recommendation_ai_provider') as 'gemini' | 'deepseek') || 'gemini');
+  const requestRef = useRef<AbortController | null>(null);
+  useEffect(() => () => requestRef.current?.abort(), []);
+
+  const safeReferenceUrl = (value: string): string | null => {
+    try {
+      const url = new URL(value);
+      const allowed = ['google.com', 'www.google.com', 'maps.google.com', 'maps.app.goo.gl'];
+      return url.protocol === 'https:' && allowed.includes(url.hostname) ? url.href : null;
+    } catch {
+      return null;
+    }
+  };
 
   // Get highly-rated saved venues to showcase the personalization
   const highRatedSaved = savedVenues.filter(v => (v.rating || 0) >= 4);
 
   const fetchRecommendations = async (customQuery?: string) => {
+    requestRef.current?.abort();
+    const controller = new AbortController();
+    requestRef.current = controller;
     setLoading(true);
     setErrorMsg(null);
     setRecommendations([]);
@@ -86,7 +101,8 @@ export default function AIRecommendations({ savedVenues, onAddVenue }: AIRecomme
           category: categoryText,
           savedVenues: sampleSaved,
           provider: aiProvider
-        })
+        }),
+        signal: controller.signal
       });
 
       if (!response.ok) {
@@ -95,17 +111,35 @@ export default function AIRecommendations({ savedVenues, onAddVenue }: AIRecomme
 
       const data = await response.json();
 
-      if (data.success && data.recommendations) {
-        setRecommendations(data.recommendations);
+      if (data.success && Array.isArray(data.recommendations)) {
+        const results = data.recommendations
+          .filter((rec: any) => rec && typeof rec.name === 'string' && typeof rec.address === 'string')
+          .slice(0, 12)
+          .map((rec: any): RecommendedVenue => ({
+            name: rec.name.slice(0, 150),
+            address: rec.address.slice(0, 300),
+            rating: Number.isFinite(rec.rating) && rec.rating >= 1 && rec.rating <= 5 ? rec.rating : 0,
+            highlights: typeof rec.highlights === 'string' ? rec.highlights.slice(0, 500) : '',
+            priceRange: typeof rec.priceRange === 'string' ? rec.priceRange.slice(0, 150) : '',
+            sourceUrl: typeof rec.sourceUrl === 'string' ? rec.sourceUrl : ''
+          }));
+        if (controller.signal.aborted) return;
+        if (!results.length) throw new Error('Chưa tìm được địa điểm phù hợp.');
+        setRecommendations(results);
+        setSavedStatus({});
         setIsSystemMocked(!!data.isMock);
       } else {
         throw new Error(data.error || 'Máy chủ trả về kết quả rỗng.');
       }
     } catch (err: any) {
+      if (controller.signal.aborted) return;
       console.error('Failure fetching recommendations client-side:', err);
-      setErrorMsg(err.message || 'Không thể liên hệ dịch vụ AI để tìm quán nhậu. Vui lòng thử lại sau.');
+      setErrorMsg(err.message || 'Không thể tải gợi ý địa điểm. Vui lòng thử lại.');
     } finally {
-      setLoading(false);
+      if (requestRef.current === controller) {
+        requestRef.current = null;
+        setLoading(false);
+      }
     }
   };
 
@@ -120,8 +154,8 @@ export default function AIRecommendations({ savedVenues, onAddVenue }: AIRecomme
       onAddVenue({
         name: rec.name,
         address: rec.address,
-        rating: Math.round(rec.rating) || 5,
-        notes: `🤖 Gợi ý chuẩn AI: ${rec.highlights} (${rec.priceRange})`
+        rating: rec.rating >= 1 && rec.rating <= 5 ? rec.rating : undefined,
+        notes: `Địa điểm gợi ý từ AI, cần xác minh: ${rec.highlights} (${rec.priceRange})`
       });
 
       // Mark as saved
@@ -349,7 +383,7 @@ export default function AIRecommendations({ savedVenues, onAddVenue }: AIRecomme
               style={{ backgroundColor: selectedCategory === 'all' ? '#1e293b' : undefined }}
             >
               <Search className="w-4 h-4" />
-              {loading ? 'Đang truy lùng địa điểm nhậu...' : 'Tìm tụ điểm bằng Google Search'}
+              {loading ? 'Đang truy lùng địa điểm nhậu...' : 'Tìm gợi ý địa điểm'}
             </button>
           </div>
         </div>
@@ -388,7 +422,7 @@ export default function AIRecommendations({ savedVenues, onAddVenue }: AIRecomme
               <div className="space-y-1.5 max-w-sm mx-auto">
                 <h4 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-tight">Sẵn sàng định vị quán tủ</h4>
                 <p className="text-xs font-bold text-slate-500 leading-normal">
-                  Điền địa phương mong muốn và click nút để kích hoạt Gemini truy xuất thông tin địa chỉ từ những cuộc thảo luận, review thời gian thực gần đây nhất.
+                  Chọn khu vực và nhấn tìm kiếm. Các gợi ý AI chỉ mang tính tham khảo; hãy kiểm tra địa chỉ, giờ mở cửa và đánh giá trước khi đến.
                 </p>
               </div>
             </div>
@@ -413,7 +447,7 @@ export default function AIRecommendations({ savedVenues, onAddVenue }: AIRecomme
                   <span className="text-xs font-black text-rose-500 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/25 px-3 py-1 rounded-full border border-rose-200">
                     Tìm thấy {recommendations.length} tụ điểm cực khét
                   </span>
-                  <span className="text-[10px] text-slate-400 uppercase font-black font-mono">Grounding Level: High</span>
+                  <span className="text-[10px] text-slate-400 uppercase font-black font-mono">{isSystemMocked ? 'Danh sách dự phòng • Chưa xác minh' : 'Kết quả AI • Cần kiểm tra nguồn'}</span>
                 </div>
 
                 <div className="grid grid-cols-1 gap-4">
@@ -428,7 +462,7 @@ export default function AIRecommendations({ savedVenues, onAddVenue }: AIRecomme
                             <h4 className="text-base font-black text-slate-900 dark:text-orange-300 leading-tight">🍢 {rec.name}</h4>
                             <div className="flex items-center gap-0.5 bg-amber-50 dark:bg-amber-950/30 px-1.5 py-0.5 rounded border border-amber-200 text-[10px] font-black text-amber-600 dark:text-amber-300">
                               <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                              <span>{rec.rating ? rec.rating.toFixed(1) : '4.5'}</span>
+                              <span>{rec.rating ? rec.rating.toFixed(1) : 'Chưa có đánh giá'}</span>
                             </div>
                           </div>
                           
@@ -455,14 +489,18 @@ export default function AIRecommendations({ savedVenues, onAddVenue }: AIRecomme
                       </div>
 
                       <div className="sm:border-l sm:border-slate-200 sm:dark:border-slate-800 sm:pl-4 flex sm:flex-col justify-end sm:justify-center gap-2 flex-shrink-0 min-w-[130px]">
-                        <a 
-                          href={rec.sourceUrl || "https://www.google.com"}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center justify-center gap-1.5 text-[10.5px] font-black text-slate-700 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 flex-1 sm:flex-initial text-center cursor-pointer"
-                        >
-                          Xem Bản Đồ <ExternalLink className="w-3.5 h-3.5" />
-                        </a>
+                        {safeReferenceUrl(rec.sourceUrl) ? (
+                          <a
+                            href={safeReferenceUrl(rec.sourceUrl)!}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="min-h-11 flex items-center justify-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 flex-1 sm:flex-initial text-center"
+                          >
+                            Xem nguồn tham khảo <ExternalLink className="w-4 h-4" />
+                          </a>
+                        ) : (
+                          <span className="min-h-11 flex items-center justify-center text-xs text-slate-500 dark:text-slate-400 px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl">Chưa có nguồn xác minh</span>
+                        )}
 
                         {savedStatus[idx] ? (
                           <div className="flex items-center justify-center gap-1.5 text-[10.5px] font-black text-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 border-2 border-emerald-500 p-2 rounded-xl flex-1 sm:flex-initial">
@@ -483,7 +521,7 @@ export default function AIRecommendations({ savedVenues, onAddVenue }: AIRecomme
               </div>
 
               <div className="pt-4 border-t-2 border-dashed border-slate-100 dark:border-slate-800 text-center text-[10px] text-slate-400">
-                Lưu ý: Mọi đánh giá phản hồi mang tính khách quan từ kết quả tìm kiếm Google Search và được phân tích qua mô hình AI tốt nhất.
+                Các kết quả có thể sai hoặc đã thay đổi. Xác minh địa điểm thực tế, giá, giờ mở cửa và chất lượng trước khi lựa chọn.
               </div>
             </div>
           )}
