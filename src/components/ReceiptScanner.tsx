@@ -302,8 +302,8 @@ export default function ReceiptScanner({ onScanComplete, onClose }: ReceiptScann
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xs flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="scanner-title" tabIndex={-1} className="bg-white dark:bg-slate-900 border-4 border-slate-900 rounded-[32px] w-full max-w-lg shadow-2xl relative overflow-hidden flex flex-col my-auto max-h-[90vh]">
+    <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xs flex items-center justify-center z-[200] p-3 sm:p-4 overflow-y-auto">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="scanner-title" tabIndex={-1} className="bg-white dark:bg-slate-900 border-4 border-slate-900 rounded-[32px] w-full max-w-lg shadow-2xl relative overflow-hidden flex flex-col my-auto max-h-[calc(100dvh-1.5rem)]">
         
         {/* Modal Header */}
         <div className="bg-gradient-to-r from-orange-500 to-amber-500 p-5 text-slate-950 border-b-4 border-slate-900 flex items-center justify-between">
