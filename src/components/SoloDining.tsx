@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Venue, Bill, SoloMeal } from '../types';
 import { mergeVersioned, visibleEntities } from '../utils/syncMerge';
+import DebtActionModal from './DebtReminders/DebtActionModal';
 import toast from 'react-hot-toast';
 import MoneyInput from './common/MoneyInput';
 import { 
@@ -30,7 +31,8 @@ import {
   saveSoloMealToCloud,
   deleteSoloMealFromCloud,
   saveSoloBudgetToCloud,
-  fetchSoloBudgetFromCloud
+  fetchSoloBudgetFromCloud,
+  getUserResetEpoch
 } from '../lib/firebase';
 
 interface SoloDiningProps {
@@ -70,6 +72,7 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
   
   // Alerts / Success feedbacks
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   // Search & Filter
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -110,11 +113,20 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
     const loadCloudData = async () => {
       setLoading(true);
       try {
-        const [cloudMeals, cloudBudget] = await Promise.all([
+        const [cloudMeals, cloudBudget, resetEpoch] = await Promise.all([
           fetchSoloMealsFromCloud(uid),
-          fetchSoloBudgetFromCloud(uid)
+          fetchSoloBudgetFromCloud(uid),
+          getUserResetEpoch(uid)
         ]);
         if (cancelled) return;
+        // Full-account reset fences stale solo records on devices that were offline.
+        const epochKey = `nhau_seen_solo_reset_${uid}`;
+        const seenEpoch = Number(localStorage.getItem(epochKey) || '0');
+        if (resetEpoch > seenEpoch) {
+          localStorage.removeItem(`nhau_solo_meals_${uid}`);
+          localStorage.removeItem(`nhau_solo_budget_${uid}`);
+          localStorage.setItem(epochKey, String(resetEpoch));
+        }
         // Re-read cache after I/O to capture offline edits made during fetch.
         const merged = mergeVersioned(cloudMeals, readSoloCache(uid));
         localStorage.setItem(`nhau_solo_meals_${uid}`, JSON.stringify(merged.entities));
@@ -124,6 +136,9 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
           setMonthlyBudget(cloudBudget);
           setBudgetInput(String(cloudBudget));
           localStorage.setItem(`nhau_solo_budget_${uid}`, String(cloudBudget));
+        } else if (resetEpoch > seenEpoch) {
+          setMonthlyBudget(3_000_000);
+          setBudgetInput('3000000');
         }
         if (merged.toUpload.length) {
           const results = await Promise.allSettled(merged.toUpload.map(meal => saveSoloMealToCloud(uid, meal)));
@@ -272,15 +287,12 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
   // Look at bills in the current month where the current user name or (Bạn) is in bill members
   // Sum finalShare
   const currentMonthGroupTotal = React.useMemo(() => bills
-    .filter(b => b.date.startsWith(currentYearMonth) && !b.isArchived)
+    .filter(b => b.date.startsWith(currentYearMonth) && !b.isArchived && !b.deletedAt)
     .reduce((sum, bill) => {
       const userMember = bill.members.find(m => {
         const cleanName = m.name.toLowerCase().trim();
         const cleanActive = activeCreatorName.toLowerCase().trim();
-        return cleanName.includes(cleanActive) || 
-               cleanActive.includes(cleanName) ||
-               cleanName.includes('(bạn)') || 
-               cleanName.includes('bạn');
+        return cleanName === cleanActive;
       });
       return sum + (userMember ? userMember.finalShare : 0);
     }, 0), [bills, currentYearMonth, activeCreatorName]);
@@ -1079,9 +1091,10 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
 
                       <button
                         type="button"
-                        onClick={() => handleDeleteMeal(meal.id)}
-                        className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl transition-all border border-transparent hover:border-red-200 cursor-pointer"
+                        onClick={() => setPendingDeleteId(meal.id)}
                         title="Xoá lịch sử bữa ăn"
+                        aria-label={`Xóa bữa ăn ${meal.name}`}
+                        className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl transition-all border border-transparent hover:border-red-200 cursor-pointer min-h-11 min-w-11 flex items-center justify-center"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -1094,7 +1107,19 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
         </div>
 
       </div>
-
+      <DebtActionModal
+        confirmDialog={pendingDeleteId ? {
+          isOpen: true,
+          title: 'Xóa bữa ăn?',
+          message: 'Bạn muốn xóa bữa ăn này khỏi lịch sử? Dữ liệu sẽ được đồng bộ xóa khi kết nối đám mây.',
+          onConfirm: () => {
+            const mealId = pendingDeleteId;
+            setPendingDeleteId(null);
+            void handleDeleteMeal(mealId);
+          }
+        } : null}
+        setConfirmDialog={(dialog) => { if (!dialog) setPendingDeleteId(null); }}
+      />
     </div>
   );
 }
