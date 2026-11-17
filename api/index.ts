@@ -4,6 +4,9 @@ import dotenv from 'dotenv';
 import { GoogleGenAI } from '@google/genai';
 import admin from 'firebase-admin';
 import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
+import { getApp as getAdminApp } from 'firebase-admin/app';
+import { getAuth as getAdminAuth } from 'firebase-admin/auth';
+import { getMessaging as getAdminMessaging } from 'firebase-admin/messaging';
 import fs from 'fs';
 
 dotenv.config();
@@ -786,7 +789,7 @@ app.post('/api/send-fcm', async (req, res) => {
 
   let uid: string;
   try {
-    const decoded = await admin.auth().verifyIdToken(match[1], true);
+    const decoded = await getAdminAuth(getAdminApp()).verifyIdToken(match[1], true);
     uid = decoded.uid;
   } catch (err) {
     return res.status(401).json({ success: false, error: 'Phiên xác thực không hợp lệ hoặc đã hết hạn.' });
@@ -801,7 +804,7 @@ app.post('/api/send-fcm', async (req, res) => {
   try {
     const databaseId = process.env.FIRESTORE_DATABASE_ID ||
       process.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID || '(default)';
-    const database = getAdminFirestore(admin.app(), databaseId);
+    const database = getAdminFirestore(getAdminApp(), databaseId);
     const userTokens = await database.doc(`users/${uid}/fcm/tokens`).get();
     const registered = userTokens.data()?.tokens;
     if (!Array.isArray(registered) || !registered.includes(tokens[0])) {
@@ -826,7 +829,7 @@ app.post('/api/send-fcm', async (req, res) => {
     });
     if (!allowed) return res.status(429).json({ success: false, error: 'Vượt hạn mức 3 lần kiểm thử mỗi phút.' });
 
-    const result = await admin.messaging().sendEachForMulticast({
+    const result = await getAdminMessaging(getAdminApp()).sendEachForMulticast({
       tokens: [tokens[0]],
       notification: {
         title: 'Dzô! Split — Kiểm thử thông báo',
