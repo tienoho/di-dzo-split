@@ -29,6 +29,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 
 import { getActiveDebts } from '../utils/storage';
+import { useDialogA11y } from '../hooks/useDialogA11y';
 
 interface PublicBillViewerModalProps {
   bill: Bill;
@@ -81,6 +82,11 @@ export default function PublicBillViewerModal({ bill, onClose }: PublicBillViewe
   const [copiedText, setCopiedText] = useState<boolean>(false);
   const [activeZoomImage, setActiveZoomImage] = useState<string | null>(null);
   const [selectedMemberForQR, setSelectedMemberForQR] = useState<Member | null>(null);
+  const dialogRef = useDialogA11y<HTMLDivElement>(true, () => {
+    if (selectedMemberForQR) setSelectedMemberForQR(null);
+    else if (activeZoomImage) setActiveZoomImage(null);
+    else onClose();
+  });
 
   // Bank settings from bill payload or local cache
   const [bankName, setBankName] = useState<string>(() => bill.bankName || 'mbbank');
@@ -208,7 +214,7 @@ export default function PublicBillViewerModal({ bill, onClose }: PublicBillViewe
   };
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-md overflow-y-auto">
+    <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="public-bill-dialog-title" tabIndex={-1} className="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-md overflow-y-auto">
       <motion.div 
         initial={{ opacity: 0, scale: 0.94, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -223,6 +229,7 @@ export default function PublicBillViewerModal({ bill, onClose }: PublicBillViewe
             onClick={onClose}
             className="absolute top-4 right-4 sm:top-5 sm:right-5 w-9 h-9 sm:w-10 sm:h-10 bg-white hover:bg-slate-100 text-slate-900 rounded-full border-2 border-slate-900 flex items-center justify-center transition-transform hover:scale-110 active:scale-95 shadow-sm cursor-pointer"
             title="Đóng"
+            aria-label="Đóng hóa đơn"
           >
             <X className="w-5 h-5 font-black" />
           </button>
@@ -232,7 +239,7 @@ export default function PublicBillViewerModal({ bill, onClose }: PublicBillViewe
             <span className="text-[10px] font-black uppercase tracking-wider text-white">HÓA ĐƠN XEM TRỰC TIẾP</span>
           </div>
 
-          <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-950 flex items-center gap-2 leading-tight">
+          <h2 id="public-bill-dialog-title" className="text-2xl sm:text-3xl font-black tracking-tight text-slate-950 flex items-center gap-2 leading-tight">
             🍻 {bill.venueName}
           </h2>
 
@@ -720,7 +727,8 @@ export default function PublicBillViewerModal({ bill, onClose }: PublicBillViewe
             >
               <button 
                 onClick={() => setSelectedMemberForQR(null)}
-                className="absolute top-4 right-4 w-8 h-8 bg-slate-100 dark:bg-slate-800 rounded-full border border-slate-900 flex items-center justify-center font-black cursor-pointer hover:scale-110 active:scale-95"
+                aria-label="Đóng mã VietQR"
+                className="absolute top-4 right-4 w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-full border border-slate-900 flex items-center justify-center font-black cursor-pointer hover:scale-110 active:scale-95"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -731,7 +739,7 @@ export default function PublicBillViewerModal({ bill, onClose }: PublicBillViewe
                   {selectedMemberForQR.name}
                 </h3>
                 <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mt-0.5">
-                  Số tiền cần chuyển: <strong className="text-red-500 font-black text-base">{(selectedMemberForQR.finalShare - selectedMemberForQR.initialPaid).toLocaleString('vi-VN')} đ</strong>
+                  Số tiền còn phải chuyển: <strong className="text-red-500 font-black text-base">{remainingFor(selectedMemberForQR).toLocaleString('vi-VN')} đ</strong>
                 </p>
               </div>
 
@@ -792,6 +800,7 @@ export default function PublicBillViewerModal({ bill, onClose }: PublicBillViewe
           >
             <button 
               onClick={() => setActiveZoomImage(null)}
+              aria-label="Đóng ảnh hóa đơn phóng to"
               className="absolute top-6 right-6 w-12 h-12 bg-white text-slate-950 rounded-full flex items-center justify-center border-2 border-slate-900 shadow-xl cursor-pointer hover:scale-110 active:scale-95 transition-transform"
             >
               <X className="w-6 h-6 font-black" />
