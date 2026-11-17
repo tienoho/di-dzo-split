@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getStoredVenues, saveStoredVenues, getStoredBills, saveStoredBills, getActiveDebts } from './utils/storage';
-import { Bill, Venue, Debt } from './types';
+import { Bill, Venue, Debt, ContactEntry } from './types';
 import BillSplitter from './components/BillSplitter';
 import VenueManager from './components/VenueManager';
 import HistoryAndReports from './components/HistoryAndReports';
@@ -54,7 +54,7 @@ export default function App() {
   };
 
   // Contacts State
-  const [contacts, setContacts] = useState<Record<string, { phone?: string; messenger?: string }>>(() => {
+  const [contacts, setContacts] = useState<Record<string, ContactEntry>>(() => {
     const local = localStorage.getItem('nhau_contacts_guest') || localStorage.getItem('nhau_contacts');
     if (local) {
       try { return JSON.parse(local); } catch (e) { return {}; }
@@ -69,7 +69,7 @@ export default function App() {
     setContacts(prev => {
       const updated = {
         ...prev,
-        [name]: { phone: phone.trim(), messenger: messenger.trim() }
+        [name]: { phone: phone.trim(), messenger: messenger.trim(), updatedAt: new Date().toISOString() }
       };
       try {
         localStorage.setItem(key, JSON.stringify(updated));
@@ -91,8 +91,8 @@ export default function App() {
     const key = activeUser ? `nhau_contacts_${activeUser.uid}` : 'nhau_contacts_guest';
 
     setContacts(prev => {
-      const updated = { ...prev };
-      delete updated[name];
+      const deletedAt = new Date().toISOString();
+      const updated = { ...prev, [name]: { updatedAt: deletedAt, deletedAt } };
       try {
         localStorage.setItem(key, JSON.stringify(updated));
       } catch (e) {}
@@ -616,6 +616,7 @@ export default function App() {
   // Do not render or count retained tombstones. They remain in cache solely for sync safety.
   const visibleBills = bills.filter(b => !b.deletedAt);
   const visibleVenues = venues.filter(v => !v.deletedAt);
+  const visibleContacts = Object.fromEntries(Object.entries(contacts).filter(([, entry]) => !entry.deletedAt));
 
   // Quick stats panel
   const totalAmountSplitted = visibleBills.reduce((acc, b) => acc + b.totalAmount, 0);
@@ -970,7 +971,7 @@ export default function App() {
                 onAddVenue={handleAddVenue} 
                 onSaveBill={handleSaveBill} 
                 activeCreatorName={activeCreatorName}
-                contacts={contacts}
+                contacts={visibleContacts}
               />
             )}
 
@@ -999,14 +1000,14 @@ export default function App() {
                 onRecordPartialPayment={handleRecordPartialPayment} 
                 activeCreatorName={activeCreatorName}
                 currentUser={currentUser}
-                contacts={contacts}
+                contacts={visibleContacts}
                 onSaveContact={handleSaveContact}
               />
             )}
 
             {activeTab === 'contacts' && (
               <ContactManager 
-                contacts={contacts} 
+                contacts={visibleContacts} 
                 onSaveContact={handleSaveContact} 
                 onDeleteContact={handleDeleteContact} 
                 currentUser={currentUser}
