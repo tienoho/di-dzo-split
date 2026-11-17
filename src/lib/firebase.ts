@@ -458,6 +458,17 @@ export const savePublicBillToCloud = async (bill: Bill, existingExpiry?: Timesta
     throw new Error('Đăng nhập Google để tạo liên kết ngắn trên đám mây');
   }
   const docRef = doc(db, 'public_bills', bill.id);
+  let expiry = existingExpiry;
+  if (!expiry) {
+    // Keep the original expiry when an owner re-shares an existing bill.
+    // An expired/revoked entry cannot be read, and its write remains denied.
+    try {
+      const current = await getDoc(docRef);
+      if (current.exists()) expiry = current.data().expiresAt as Timestamp | undefined;
+    } catch (error) {
+      console.info('[Share] No readable existing link; attempting a new authorized create.');
+    }
+  }
   const balances = getActiveDebts([{ ...bill, isArchived: false }]);
   const publicMembers = bill.members.map(({ name, initialPaid, finalShare, penaltyAmount, hasPaidDebt }) => ({
     name,
@@ -487,7 +498,7 @@ export const savePublicBillToCloud = async (bill: Bill, existingExpiry?: Timesta
     payments: bill.payments || {},
     settledTransfers: bill.settledTransfers || {},
     sharedAt: new Date().toISOString()
-  }), expiresAt: existingExpiry || Timestamp.fromDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)) });
+  }), expiresAt: expiry || Timestamp.fromDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)) });
 };
 
 /**
