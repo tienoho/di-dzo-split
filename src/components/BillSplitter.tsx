@@ -443,7 +443,7 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         {/* LEFT COLUMN: Input Details */}
-        <div className="lg:col-span-7 bg-white dark:bg-slate-900 border-4 border-slate-900 dark:border-slate-700 rounded-[32px] shadow-lg p-6 space-y-6">
+        <div className="lg:col-span-7 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-3xl shadow-sm p-6 space-y-6">
           <div className="space-y-1.5 border-b-2 border-dashed border-slate-100 pb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <div className="flex items-center gap-3">
@@ -715,7 +715,7 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
         </div>
         
         {/* RIGHT COLUMN: Member Setup & Contribution split */}
-        <div className="lg:col-span-5 bg-white dark:bg-slate-900 border-4 border-slate-900 dark:border-slate-700 rounded-[32px] shadow-lg p-6 flex flex-col justify-between space-y-6">
+        <div className="lg:col-span-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-3xl shadow-sm p-6 flex flex-col justify-between space-y-6">
           <div className="space-y-4">
             <div className="space-y-1.5 border-b-2 border-dashed border-slate-100 pb-4">
               <div className="flex items-center gap-3">
@@ -732,7 +732,7 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
             <div id="quick-split-board" className="bg-orange-50 border-3 border-orange-500 p-4.5 rounded-3xl space-y-3 shadow-xs">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-orange-600 animate-pulse" />
+                  <Sparkles className="w-5 h-5 text-orange-600" />
                   <span className="text-xs font-black text-orange-950 uppercase tracking-wider">⚡ Chia Nhanh Nhóm Bạn Thân (Quick Split)</span>
                 </div>
                 <span className="bg-orange-200 text-orange-900 text-xs font-black px-2 py-0.5 rounded-full border border-orange-400">Có sẵn {presetNames.length + 1} người</span>
@@ -852,7 +852,7 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
                     >
                       🎲
                     </motion.div>
-                    <div className="mt-4 text-sm font-black animate-pulse text-orange-600">Đang chọn người xui xẻo...</div>
+                    <div className="mt-4 text-sm font-black text-orange-600">Đang chọn người xui xẻo...</div>
                   </div>
                 ) : (
                   <button 
