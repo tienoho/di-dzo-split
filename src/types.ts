@@ -74,6 +74,8 @@ export interface Debt {
 
 export interface SoloMeal {
   id: string;
+  updatedAt?: string;
+  deletedAt?: string;
   name: string;
   venueName?: string;
   date: string; // YYYY-MM-DD or ISO
