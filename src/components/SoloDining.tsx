@@ -1122,6 +1122,7 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
         confirmDialog={pendingDeleteId ? {
           isOpen: true,
           title: 'Xóa bữa ăn?',
+          tone: 'danger',
           message: 'Bạn muốn xóa bữa ăn này khỏi lịch sử? Dữ liệu sẽ được đồng bộ xóa khi kết nối đám mây.',
           onConfirm: () => {
             const mealId = pendingDeleteId;
