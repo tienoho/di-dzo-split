@@ -43,11 +43,10 @@ service cloud.firestore {
       }
     }
     
-    // FCM Push Notification Tokens mapping
+    // Legacy public token directory is permanently closed.
+    // Owner-scoped records now live under users/{uid}/fcm/tokens.
     match /user_fcm_tokens/{tokenDoc} {
-      allow read: if true;
-      allow create, update: if request.resource.data.tokens is list 
-                            && request.resource.data.tokens.size() <= 20;
+      allow read, write: if false;
     }
 
     // Public Bills shared via Web links (direct bill link sharing)
