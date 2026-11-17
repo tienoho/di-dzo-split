@@ -21,10 +21,10 @@ export function useDialogA11y<T extends HTMLElement>(
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
-    const focusables = () => Array.from(
-      panel.querySelectorAll<HTMLElement>(
+    const focusables = (): HTMLElement[] => (
+      Array.from(panel.querySelectorAll<HTMLElement>(
         'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
-      )
+      )) as HTMLElement[]
     ).filter(el => el.getClientRects().length > 0 && !el.hasAttribute('aria-hidden'));
 
     // Focus the modal heading/panel instead of unexpectedly submitting a form.
