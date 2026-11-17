@@ -82,9 +82,9 @@ export default function PublicBillViewerModal({ bill, onClose }: PublicBillViewe
   const [selectedMemberForQR, setSelectedMemberForQR] = useState<Member | null>(null);
 
   // Bank settings from bill payload or local cache
-  const [bankName, setBankName] = useState<string>(() => bill.bankName || localStorage.getItem('nhau_bank_name') || 'mbbank');
-  const [bankNo, setBankNo] = useState<string>(() => bill.bankNo || localStorage.getItem('nhau_bank_no') || '');
-  const [bankAccountName, setBankAccountName] = useState<string>(() => bill.bankAccountName || localStorage.getItem('nhau_bank_account_name') || '');
+  const [bankName, setBankName] = useState<string>(() => bill.bankName || 'mbbank');
+  const [bankNo, setBankNo] = useState<string>(() => bill.bankNo || '');
+  const [bankAccountName, setBankAccountName] = useState<string>(() => bill.bankAccountName || '');
   const [showBankEdit, setShowBankEdit] = useState<boolean>(false);
   
   // Selected debtor for main VietQR panel
