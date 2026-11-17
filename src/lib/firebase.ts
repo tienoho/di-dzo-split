@@ -253,19 +253,32 @@ export const deleteBillFromCloud = async (userId: string, billId: string) => {
   }
 };
 
-export const clearUserCloudData = async (userId: string) => {
+export const clearUserCloudData = async (userId: string): Promise<void> => {
+  if (auth.currentUser?.uid !== userId) {
+    throw new Error('Chỉ được xóa dữ liệu của tài khoản đang đăng nhập.');
+  }
   try {
-    const subcollections = ['bills', 'venues', 'solo_meals', 'contacts', 'solo_settings'];
-    for (const subcol of subcollections) {
-      const q = query(collection(db, 'users', userId, subcol));
-      const snap = await getDocs(q);
-      const batch = writeBatch(db);
-      snap.forEach((d) => {
-        batch.delete(d.ref);
-      });
-      await batch.commit();
+    // Revoke public links before deleting the private source of their IDs.
+    const privateBills = await getDocs(collection(db, 'users', userId, 'bills'));
+    for (const billDoc of privateBills.docs) {
+      try {
+        await revokePublicBillFromCloud(billDoc.id);
+      } catch (error) {
+        // A bill may never have been shared or its link may already be revoked.
+        console.warn('[Reset] Public link revocation skipped:', billDoc.id);
+      }
     }
-    console.log(`[Firestore] Successfully cleared cloud data for user ${userId}`);
+
+    const subcollections = ['bills', 'venues', 'solo_meals', 'contacts', 'solo_settings', 'fcm'];
+    for (const subcol of subcollections) {
+      const snapshot = await getDocs(collection(db, 'users', userId, subcol));
+      // Firestore commits permit at most 500 writes. Leave headroom for safety.
+      for (let offset = 0; offset < snapshot.docs.length; offset += 400) {
+        const batch = writeBatch(db);
+        snapshot.docs.slice(offset, offset + 400).forEach(item => batch.delete(item.ref));
+        await batch.commit();
+      }
+    }
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, `users/${userId}/[all]`);
   }
