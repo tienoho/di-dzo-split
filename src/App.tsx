@@ -295,7 +295,7 @@ export default function App() {
       const twentyFourHours = 24 * 60 * 60 * 1000; // 24 hours threshold
 
       // Filter active (unarchived) bills
-      const activeUnpaidBills = bills.filter(b => !b.isArchived);
+      const activeUnpaidBills = bills.filter(b => !b.isArchived && !b.deletedAt);
 
       activeUnpaidBills.forEach((bill) => {
         const billTime = new Date(bill.date).getTime();
@@ -415,8 +415,9 @@ export default function App() {
   const handleAddVenue = (newVenue: Omit<Venue, 'id' | 'visitsCount'>): Venue => {
     const freshVenue: Venue = {
       ...newVenue,
-      id: `venue-${Date.now()}`,
-      visitsCount: 0
+      id: `venue-${crypto.randomUUID()}`,
+      visitsCount: 0,
+      updatedAt: new Date().toISOString()
     };
 
     const activeUser = currentUser || auth.currentUser;
@@ -439,7 +440,8 @@ export default function App() {
     const userKey = activeUser ? activeUser.uid : 'guest';
 
     setVenues(prev => {
-      const updated = prev.filter(v => v.id !== id);
+      const deletedAt = new Date().toISOString();
+      const updated = prev.map(v => v.id === id ? { ...v, deletedAt, updatedAt: deletedAt } : v);
       saveStoredVenues(updated, userKey);
       return updated;
     });
@@ -452,7 +454,8 @@ export default function App() {
   const handleSaveBill = (newBill: Omit<Bill, 'id'>) => {
     const freshBill: Bill = {
       ...newBill,
-      id: `bill-${crypto.randomUUID()}`
+      id: `bill-${crypto.randomUUID()}`,
+      updatedAt: new Date().toISOString()
     };
 
     const activeUser = currentUser || auth.currentUser;
@@ -463,7 +466,7 @@ export default function App() {
       setVenues(prevVenues => {
         const updatedVenues = prevVenues.map(v => {
           if (v.id === freshBill.venueId) {
-            const updatedVisits = { ...v, visitsCount: v.visitsCount + 1 };
+            const updatedVisits = { ...v, visitsCount: v.visitsCount + 1, updatedAt: new Date().toISOString() };
             if (activeUser) {
               saveVenueToCloud(activeUser.uid, updatedVisits).catch(console.error);
             }
@@ -499,7 +502,7 @@ export default function App() {
         setVenues(prevVenues => {
           const updatedVenues = prevVenues.map(v => {
             if (v.id === targetBill.venueId) {
-              const updatedVisits = { ...v, visitsCount: Math.max(0, v.visitsCount - 1) };
+              const updatedVisits = { ...v, visitsCount: Math.max(0, v.visitsCount - 1), updatedAt: new Date().toISOString() };
               if (activeUser) {
                 saveVenueToCloud(activeUser.uid, updatedVisits).catch(console.error);
               }
@@ -512,7 +515,8 @@ export default function App() {
         });
       }
 
-      const updatedBills = prevBills.filter(b => b.id !== id);
+      const deletedAt = new Date().toISOString();
+      const updatedBills = prevBills.map(b => b.id === id ? { ...b, deletedAt, updatedAt: deletedAt } : b);
       saveStoredBills(updatedBills, userKey);
       setDebts(getActiveDebts(updatedBills));
       return updatedBills;
@@ -530,7 +534,7 @@ export default function App() {
     setBills(prevBills => {
       const updatedBills = prevBills.map(b => {
         if (b.id === id) {
-          const updatedBill = { ...b, isArchived };
+          const updatedBill = { ...b, isArchived, updatedAt: new Date().toISOString() };
           if (activeUser) {
             saveBillToCloud(activeUser.uid, updatedBill).catch(console.error);
           }
@@ -560,6 +564,7 @@ export default function App() {
 
         const nextBill: Bill = {
           ...bill,
+          updatedAt: new Date().toISOString(),
           settledTransfers: {
             ...bill.settledTransfers,
             [transfer.id]: !transfer.isPaid
@@ -587,8 +592,12 @@ export default function App() {
     });
   };
 
+  // Do not render or count retained tombstones. They remain in cache solely for sync safety.
+  const visibleBills = bills.filter(b => !b.deletedAt);
+  const visibleVenues = venues.filter(v => !v.deletedAt);
+
   // Quick stats panel
-  const totalAmountSplitted = bills.reduce((acc, b) => acc + b.totalAmount, 0);
+  const totalAmountSplitted = visibleBills.reduce((acc, b) => acc + b.totalAmount, 0);
   const unpaidDebtsLength = debts.filter(d => !d.isPaid).length;
   const totalUnpaidDebtsAmount = debts.filter(d => !d.isPaid).reduce((acc, d) => acc + d.amount, 0);
 
@@ -750,14 +759,14 @@ export default function App() {
               <span className="text-[10px] uppercase font-black text-slate-400 tracking-widest block">Tổng cuộc quây</span>
               <div className="flex items-center gap-2">
                 <Wine className="w-4 h-4 text-amber-400" />
-                <span className="text-lg font-black text-white">{bills.length} cuộc nhậu</span>
+                <span className="text-lg font-black text-white">{visibleBills.length} cuộc nhậu</span>
               </div>
             </div>
             <div className="space-y-1">
               <span className="text-[10px] uppercase font-black text-slate-400 tracking-widest block">Địa bàn quán ngon</span>
               <div className="flex items-center gap-2">
                 <Store className="w-4 h-4 text-teal-400" />
-                <span className="text-lg font-black text-white">{venues.length} quán tủ</span>
+                <span className="text-lg font-black text-white">{visibleVenues.length} quán tủ</span>
               </div>
             </div>
             <div className="space-y-1">
@@ -936,7 +945,7 @@ export default function App() {
           >
             {activeTab === 'split' && (
               <BillSplitter 
-                venues={venues} 
+                venues={visibleVenues} 
                 onAddVenue={handleAddVenue} 
                 onSaveBill={handleSaveBill} 
                 activeCreatorName={activeCreatorName}
@@ -946,7 +955,7 @@ export default function App() {
 
             {activeTab === 'venues' && (
               <VenueManager 
-                venues={venues} 
+                venues={visibleVenues} 
                 onAddVenue={handleAddVenue} 
                 onDeleteVenue={handleDeleteVenue} 
                 currentUser={currentUser}
@@ -956,7 +965,7 @@ export default function App() {
 
             {activeTab === 'history' && (
               <HistoryAndReports 
-                bills={bills} 
+                bills={visibleBills} 
                 onDeleteBill={handleDeleteBill} 
                 onArchiveBill={handleArchiveBill}
               />
@@ -991,10 +1000,10 @@ export default function App() {
 
             {activeTab === 'solo' && (
               <SoloDining 
-                venues={venues} 
+                venues={visibleVenues} 
                 currentUser={currentUser} 
                 activeCreatorName={activeCreatorName}
-                bills={bills}
+                bills={visibleBills}
               />
             )}
           </motion.div>
