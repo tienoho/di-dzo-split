@@ -414,18 +414,41 @@ export const addPublicVenueReviewCloud = async (
   }
 };
 
-// Save a bill to public_bills collection for shareable web links
+// Shared bills are intentionally public-read, but writes require an authenticated owner.
+// Do not leak receipt images or member contact details to the shared collection.
 export const savePublicBillToCloud = async (bill: Bill): Promise<void> => {
-  try {
-    const docRef = doc(db, 'public_bills', bill.id);
-    const sanitized = sanitizeFirestoreData(bill);
-    await setDoc(docRef, {
-      ...sanitized,
-      sharedAt: new Date().toISOString()
-    });
-  } catch (error) {
-    console.warn("Could not save bill to public cloud, relying on URL encoding fallback:", error);
+  const ownerUid = auth.currentUser?.uid;
+  if (!ownerUid) {
+    throw new Error('Đăng nhập Google để tạo liên kết ngắn trên đám mây');
   }
+  const docRef = doc(db, 'public_bills', bill.id);
+  const publicMembers = bill.members.map(({ name, initialPaid, finalShare, penaltyAmount, hasPaidDebt }) => ({
+    name,
+    initialPaid,
+    finalShare,
+    penaltyAmount: penaltyAmount || 0,
+    hasPaidDebt
+  }));
+  await setDoc(docRef, sanitizeFirestoreData({
+    id: bill.id,
+    ownerUid,
+    venueId: bill.venueId,
+    venueName: bill.venueName,
+    totalAmount: bill.totalAmount,
+    rawAmount: bill.rawAmount,
+    tipPercent: bill.tipPercent,
+    tipAmount: bill.tipAmount,
+    additionalFee: bill.additionalFee,
+    discountAmount: bill.discountAmount,
+    splitType: bill.splitType,
+    date: bill.date,
+    note: bill.note || '',
+    bankName: bill.bankName || '',
+    bankNo: bill.bankNo || '',
+    bankAccountName: bill.bankAccountName || '',
+    members: publicMembers,
+    sharedAt: new Date().toISOString()
+  }));
 };
 
 // Fetch a public bill by ID from public_bills collection
