@@ -7,6 +7,19 @@ for (const width of sizes) {
     await page.setViewportSize({ width, height: 800 });
     await page.goto('/');
     await expect(page.getByText('Dzô!', { exact: false }).first()).toBeVisible();
+    if (width === 320) {
+      console.log('MOBILE_NAV', JSON.stringify(await page.evaluate(() => {
+        const nav = document.querySelector('nav[aria-label="Điều hướng điện thoại"]');
+        const button = nav?.querySelector('button[aria-label="Thêm phân hệ"]');
+        const box = button?.getBoundingClientRect();
+        return {
+          computedZ: nav ? getComputedStyle(nav).zIndex : null,
+          position: nav ? getComputedStyle(nav).position : null,
+          button: box ? {x: box.x,y:box.y,width:box.width,height:box.height} : null,
+          hit: box ? document.elementFromPoint(box.x + box.width/2, box.y + box.height/2)?.outerHTML.slice(0,180) : null
+        };
+      })));
+    }
     if (width < 768) {
       const navigation = page.getByRole('navigation', { name: 'Điều hướng điện thoại' });
       await expect(navigation).toBeVisible();
