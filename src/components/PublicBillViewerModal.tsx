@@ -208,7 +208,7 @@ export default function PublicBillViewerModal({ bill, onClose }: PublicBillViewe
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-md overflow-y-auto">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-md overflow-y-auto">
       <motion.div 
         initial={{ opacity: 0, scale: 0.94, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -709,7 +709,7 @@ export default function PublicBillViewerModal({ bill, onClose }: PublicBillViewe
         {selectedMemberForQR && (
           <div 
             onClick={() => setSelectedMemberForQR(null)}
-            className="fixed inset-0 z-60 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4"
+            className="fixed inset-0 z-[210] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4"
           >
             <motion.div 
               initial={{ scale: 0.9, opacity: 0 }}
@@ -788,7 +788,7 @@ export default function PublicBillViewerModal({ bill, onClose }: PublicBillViewe
         {activeZoomImage && (
           <div 
             onClick={() => setActiveZoomImage(null)}
-            className="fixed inset-0 z-60 bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-center p-4"
+            className="fixed inset-0 z-[210] bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-center p-4"
           >
             <button 
               onClick={() => setActiveZoomImage(null)}
