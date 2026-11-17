@@ -141,7 +141,7 @@ export default function DebtSettingsPanel({
           Nhắc Nợ Trình Duyệt Tự Động
         </h3>
         <p className="text-[10px] text-slate-500 font-extrabold leading-relaxed">
-          Trình duyệt sẽ tự động phát thông báo đẩy (Push Notification) định kỳ khi có cuộc vui trễ hạn quá 24h chưa được thanh toán dứt điểm.
+          Khi bật và đang mở ứng dụng, bạn có thể nhận nhắc nợ định kỳ cho hóa đơn quá 24 giờ. Thông báo hệ thống cần được cấp quyền riêng trong trình duyệt.
         </p>
 
         <div className="space-y-3 pt-1">
