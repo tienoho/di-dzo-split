@@ -103,15 +103,16 @@ export const getActiveDebts = (bills: Bill[]): Debt[] => {
     if (creditors.length === 0 && debtors.length > 0 && bill.members.length > 0) {
       const defaultHost = bill.members[0];
       debtors.forEach(debtor => {
+        const transferId = `${bill.id}-${debtor.name}-${defaultHost.name}`;
         debts.push({
-          id: `${bill.id}-${debtor.name}-${defaultHost.name}`,
+          id: transferId,
           billId: bill.id,
           billDate: bill.date,
           venueName: bill.venueName,
           debtorName: debtor.name,
           creditorName: defaultHost.name,
           amount: Math.round(debtor.remaining),
-          isPaid: !!debtor.hasPaidDebt,
+          isPaid: bill.settledTransfers?.[transferId] ?? !!debtor.hasPaidDebt,
         });
       });
       return;
@@ -128,15 +129,16 @@ export const getActiveDebts = (bills: Bill[]): Debt[] => {
       const settleAmount = Math.min(creditor.remaining, debtor.remaining);
 
       if (settleAmount > 0) {
+        const transferId = `${bill.id}-${debtor.name}-${creditor.name}`;
         debts.push({
-          id: `${bill.id}-${debtor.name}-${creditor.name}`,
+          id: transferId,
           billId: bill.id,
           billDate: bill.date,
           venueName: bill.venueName,
           debtorName: debtor.name,
           creditorName: creditor.name,
           amount: Math.round(settleAmount),
-          isPaid: !!debtor.hasPaidDebt,
+          isPaid: bill.settledTransfers?.[transferId] ?? !!debtor.hasPaidDebt,
         });
 
         creditor.remaining -= settleAmount;
