@@ -1180,7 +1180,7 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
       {/* Enlarged Receipt Image Lightbox Zoom Modal */}
       {activeZoomImage && (
         <div 
-          className="fixed inset-0 bg-slate-950/85 backdrop-blur-xs flex items-center justify-center z-50 p-4 transition-all"
+          className="fixed inset-0 bg-slate-950/85 backdrop-blur-xs flex items-center justify-center z-[200] p-4 transition-all"
           onClick={() => setActiveZoomImage(null)}
         >
           <div 
@@ -1217,7 +1217,7 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
       {/* CUSTOM CONFIRMATION DIALOG MODAL */}
       <AnimatePresence>
         {confirmDialog && confirmDialog.isOpen && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-[200]">
             <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
