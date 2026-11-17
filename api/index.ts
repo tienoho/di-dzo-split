@@ -507,25 +507,12 @@ Bắt buộc trả về DUY NHẤT một chuỗi JSON sạch để hệ thống 
       throw new Error('Sai định dạng phản hồi JSON của Gemini Vision.');
     }
   } catch (apiError: any) {
-    console.log('OCR processing failed, calling fallback mockup/offline sandbox engine:', apiError?.message);
-    const sampleNames = ['Lẩu nướng ngói tươi 79', 'Bia hơi Hải Xồm', 'Hẻm Ốc Sài thành', 'Lẩu bò súng sính Đống Đa'];
-    const randomName = sampleNames[Math.floor(Math.random() * sampleNames.length)];
-    const randomTotal = Math.floor(Math.random() * 4 + 2) * 250000 + 45000;
-
-    return res.json({
-      success: true,
-      data: {
-        venueName: randomName,
-        totalAmount: randomTotal,
-        note: `Hóa đơn quét giả lập (Gặp sự cố kết nối: ${apiError?.message || 'Thiếu API Key'})`,
-        items: [
-          { name: 'Nồi lẩu bò thập cẩm lớn', quantity: 1, price: 380000 },
-          { name: 'Đĩa bò nướng bản gang', quantity: 1, price: 180000 },
-          { name: 'Vỉ bia sảng khoái', quantity: 12, price: 180000 }
-        ]
-      },
-      isMock: true,
-      warning: `LƯU Ý: Không thể kết nối AI (${isDeepSeek ? 'DeepSeek' : 'Gemini'}). Hệ thống đã dùng giả lập hóa đơn ngoại tuyến.`
+    console.error('[OCR] Receipt analysis failed:', apiError?.message);
+    // Financial amounts must never be fabricated, even when AI is unavailable.
+    return res.status(502).json({
+      success: false,
+      isMock: false,
+      error: 'Không thể nhận diện hóa đơn. Hãy thử lại hoặc nhập số tiền thủ công.'
     });
   }
 });
@@ -804,14 +791,13 @@ app.post('/api/send-fcm', async (req, res) => {
 
     const isReady = initFirebaseAdmin();
     if (!isReady) {
-      console.log('[FCM Backend Fallback] FCM is not active. Message logged:', { title, body, cleanTokens });
-      return res.json({
-        success: true,
-        isSimulated: true,
-        message: 'Ứng dụng đang giả lập FCM Push (Chế độ Sandbox). Gửi thông báo hoàn thành.',
-        results: cleanTokens.map(t => ({ token: t, success: true }))
+      return res.status(503).json({
+        success: false,
+        isSimulated: false,
+        error: 'FCM chưa được cấu hình hoặc chưa sẵn sàng. Chưa gửi thông báo.'
       });
     }
+
 
     const payload = {
       notification: {
@@ -841,12 +827,11 @@ app.post('/api/send-fcm', async (req, res) => {
         results: responsesParsed
       });
     } catch (sendErr: any) {
-      console.warn('[FCM Backend] Real FCM dispatch failed (missing server-side credentials/private keys). Falling back to simulated successful delivery.', sendErr.message || sendErr);
-      return res.json({
-        success: true,
-        isSimulated: true,
-        message: `Đã giả lập thông báo thành công. (Gặp lỗi khi gửi FCM thực tế: ${sendErr.message || 'Lỗi xác thực/Quyền hạn'})`,
-        results: cleanTokens.map(t => ({ token: t, success: true }))
+      console.error('[FCM Backend] Delivery failed:', sendErr);
+      return res.status(502).json({
+        success: false,
+        isSimulated: false,
+        error: 'Không gửi được thông báo FCM. Vui lòng thử lại.'
       });
     }
 
