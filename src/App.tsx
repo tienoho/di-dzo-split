@@ -117,6 +117,7 @@ export default function App() {
         await saveContactToCloud(activeUser.uid, name, phone, messenger);
       } catch (e) {
         console.error("Failed to sync contact to cloud:", e);
+        throw new Error('Đã lưu liên hệ trên thiết bị, nhưng chưa thể đồng bộ lên đám mây.');
       }
     }
   };
@@ -139,6 +140,7 @@ export default function App() {
         await deleteContactFromCloud(activeUser.uid, name);
       } catch (e) {
         console.error("Failed to delete contact from cloud:", e);
+        throw new Error('Đã xóa liên hệ trên thiết bị, nhưng chưa thể đồng bộ thao tác xóa lên đám mây.');
       }
     }
   };
