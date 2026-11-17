@@ -254,6 +254,12 @@ export const deleteBillFromCloud = async (userId: string, billId: string) => {
   }
 };
 
+export const getUserResetEpoch = async (userId: string): Promise<number> => {
+  const snap = await getDoc(doc(db, 'users', userId, 'account', 'reset'));
+  const epoch = snap.data()?.resetAt;
+  return typeof epoch === 'number' && Number.isFinite(epoch) ? epoch : 0;
+};
+
 export const clearUserCloudData = async (userId: string): Promise<void> => {
   if (auth.currentUser?.uid !== userId) {
     throw new Error('Chỉ được xóa dữ liệu của tài khoản đang đăng nhập.');
@@ -280,6 +286,11 @@ export const clearUserCloudData = async (userId: string): Promise<void> => {
         await batch.commit();
       }
     }
+    // Durable reset fence: a returning device must not replay stale offline records.
+    await setDoc(doc(db, 'users', userId, 'account', 'reset'), {
+      resetAt: Date.now(),
+      updatedAt: new Date().toISOString()
+    });
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, `users/${userId}/[all]`);
   }
