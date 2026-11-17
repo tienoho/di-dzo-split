@@ -149,6 +149,10 @@ export default function DebtReminders({ debts, onMarkDebtAsPaid, activeCreatorNa
   };
 
   const handleTestFCMRegister = async () => {
+    if (!currentUser) {
+      toast.error('Đăng nhập để liên kết FCM với tài khoản của bạn.');
+      return;
+    }
     if (!('Notification' in window)) {
       toast.error("Trình duyệt không hỗ trợ push notifications.");
       return;
@@ -223,9 +227,11 @@ export default function DebtReminders({ debts, onMarkDebtAsPaid, activeCreatorNa
       return;
     }
     try {
+      if (!currentUser) throw new Error('Đăng nhập để xác thực thiết bị.');
+      const idToken = await currentUser.getIdToken();
       const response = await fetch('/api/send-fcm', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
         body: JSON.stringify({
           tokens: [localFcmToken],
           title: "Bia ơi dứt khoát! 🍻",
@@ -347,70 +353,12 @@ export default function DebtReminders({ debts, onMarkDebtAsPaid, activeCreatorNa
   };
 
   // Trigger actual cloud or simulated mobile deep push notice
-  const handleTriggerVirtualPush = async (debt: Debt) => {
-    try {
-      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const oscillator = audioCtx.createOscillator();
-      const gainNode = audioCtx.createGain();
-      oscillator.connect(gainNode);
-      gainNode.connect(audioCtx.destination);
-      oscillator.type = 'sine';
-      oscillator.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
-      gainNode.gain.setValueAtTime(0.08, audioCtx.currentTime);
-      oscillator.start();
-      oscillator.stop(audioCtx.currentTime + 0.15);
-    } catch (e) {}
-
-    setPushNotificationText(`⏳ Đang tìm kiếm thiết bị của chiến hữu ${debt.debtorName} trên đám mây...`);
-
-    try {
-      const { getFCMTokensByUserName } = await import('../lib/firebase');
-      const tokens = await getFCMTokensByUserName(debt.debtorName);
-
-      if (tokens && tokens.length > 0) {
-        const title = `⚠️ Nhắc Nợ: Cuộc Vui "${debt.venueName}"`;
-        const body = `Chiến hữu ${activeCreatorName || 'Cầm Quỹ'} nhắc bạn thanh toán ${debt.amount.toLocaleString('vi-VN')}đ tiền nhậu còn thiếu. Click để thanh toán!`;
-
-        const response = await fetch('/api/send-fcm', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            tokens,
-            title,
-            body,
-            data: {
-              billId: debt.billId,
-              debtId: debt.id,
-              type: 'debt_reminder'
-            }
-          })
-        });
-
-        if (!response.ok) {
-          throw new Error(`Máy chủ trả về mã (${response.status})`);
-        }
-
-        const data = await response.json();
-        if (data.success) {
-          if (data.isSimulated) {
-            setPushNotificationText(`📬 CHẾ ĐỘ GIẢ LẬP: Máy chủ đã ghi nợ tới ${debt.debtorName} (Tìm thấy ${tokens.length} thiết bị).`);
-          } else {
-            setPushNotificationText(`🚀 HOÀN THÀNH: Đã bắn 1 thông báo đẩy REAL-TIME cực dứt khoát tới ${tokens.length} thiết bị của chiến hữu ${debt.debtorName}!`);
-          }
-        } else {
-          setPushNotificationText(`❌ Gửi PUSH lỗi trên server: ${data.error}`);
-        }
-      } else {
-        setPushNotificationText(`📢 Thiết bị của ${debt.debtorName} chưa đăng ký PUSH. Nhắc đối phương bấm "Cấp quyền thông báo đẩy" ở cài đặt bên phải.`);
-      }
-    } catch (err: any) {
-      console.error(err);
-      setPushNotificationText(`❌ Không thể kết nối quét thiết bị: ${err.message || err}`);
-    }
-
-    setTimeout(() => {
-      setPushNotificationText(null);
-    }, 8500);
+  // A display name is NOT sufficient to authorize access to another user's device.
+  // Until recipients explicitly bind a verified account to a bill, direct push is disabled.
+  const handleTriggerVirtualPush = async (_debt: Debt) => {
+    setPushNotificationText(
+      'Thông báo FCM trực tiếp cần người nhận liên kết tài khoản đã xác thực và đồng ý nhận nhắc nợ. Hãy gửi lời nhắc qua Zalo/Messenger thay thế.'
+    );
   };
 
   // Generate payment reminder messages
