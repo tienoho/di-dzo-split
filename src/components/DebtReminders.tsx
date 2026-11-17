@@ -502,11 +502,11 @@ Xin chân thành cảm ơn!`;
         />
 
         {/* RIGHT COLUMN: Outstanding Balances List */}
-        <div className="lg:col-span-8 bg-white border-4 border-slate-900 rounded-[32px] shadow-lg p-6 space-y-6 dark:bg-slate-900 dark:border-slate-700">
+        <div className="lg:col-span-8 bg-white border border-slate-200 rounded-3xl shadow-sm p-6 space-y-6 dark:bg-slate-900 dark:border-slate-700">
           
           {(!bankNo || !bankAccountName) && (
             <div className="bg-orange-50 border-4 border-orange-500 rounded-[28px] p-5 flex items-start gap-3.5 shadow-sm">
-              <span className="text-2xl animate-pulse">⚠️</span>
+              <span className="text-2xl">⚠️</span>
               <div className="flex-1 space-y-1">
                 <h3 className="text-sm font-black text-orange-950 uppercase tracking-wide">Bạn Chưa Thiết Lập Tài Khoản Thụ Hưởng!</h3>
                 <p className="text-xs font-bold text-orange-900 leading-relaxed">
@@ -521,7 +521,7 @@ Xin chân thành cảm ơn!`;
             const myDebts = debts.filter(d => d.debtorName.toLowerCase().trim() === activeCreatorName.toLowerCase().trim() && !d.isPaid);
             if (myDebts.length === 0) return null;
             return (
-              <div className="bg-red-50 border-4 border-red-500 rounded-[28px] p-5 space-y-4 shadow-sm animate-pulse">
+              <div className="bg-red-50 border-4 border-red-500 rounded-[28px] p-5 space-y-4 shadow-sm">
                 <div className="flex items-center gap-2">
                   <span className="text-xl">🚨</span>
                   <h3 className="text-sm font-black text-red-900 uppercase tracking-wide">Bạn Có {myDebts.length} Khoản Nợ Chưa Trả!</h3>
@@ -547,7 +547,7 @@ Xin chân thành cảm ơn!`;
                               "Xác nhận chuyển khoản"
                             );
                           }}
-                          className="bg-red-500 hover:bg-emerald-500 text-white font-black text-xs px-3.5 py-2 rounded-xl border-2 border-slate-900 hover:text-white transition-colors cursor-pointer shadow-sm animate-pulse"
+                          className="bg-red-500 hover:bg-emerald-500 text-white font-black text-xs px-3.5 py-2 rounded-xl border-2 border-slate-900 hover:text-white transition-colors cursor-pointer shadow-sm"
                         >
                           Đã CK Trả Xong
                         </button>
@@ -733,7 +733,7 @@ Xin chân thành cảm ơn!`;
                           {!debt.isPaid && (
                             <div className="bg-white dark:bg-slate-900 border-2 border-slate-900 dark:border-slate-800 p-3 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-5xs text-xs">
                               <div className="flex flex-wrap items-center gap-2">
-                                <span className="text-xs uppercase font-black text-indigo-500 bg-indigo-50 dark:bg-indigo-950/40 dark:text-indigo-400 px-2.5 py-1 rounded-md animate-pulse">STK Thụ hưởng</span>
+                                <span className="text-xs uppercase font-black text-indigo-500 bg-indigo-50 dark:bg-indigo-950/40 dark:text-indigo-400 px-2.5 py-1 rounded-md">STK Thụ hưởng</span>
                                 <span className="font-extrabold text-slate-700 dark:text-slate-300">
                                   {mappedBankCode.toUpperCase()}:
                                 </span>
