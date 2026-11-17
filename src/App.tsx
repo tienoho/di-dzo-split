@@ -918,7 +918,7 @@ export default function App() {
       </nav>
 
       {/* Compact, reachable thumb navigation on phones; all seven destinations remain accessible. */}
-      <nav aria-label="Điều hướng điện thoại" className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200 dark:border-slate-700 shadow-2xl pb-[env(safe-area-inset-bottom)]">
+      <nav aria-label="Điều hướng điện thoại" className="md:hidden fixed bottom-0 inset-x-0 z-[100] isolate bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200 dark:border-slate-700 shadow-2xl pb-[env(safe-area-inset-bottom)]">
         {showMoreNav && (
           <div role="menu" aria-label="Phân hệ khác" className="absolute bottom-full inset-x-3 mb-2 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 shadow-xl rounded-2xl p-2 grid grid-cols-1 gap-1">
             <button role="menuitem" onClick={() => navigateTo('venues')} className="min-h-11 flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl hover:bg-orange-50 dark:hover:bg-slate-800 text-slate-900 dark:text-slate-100"><Store className="w-5 h-5" /> Quán quen</button>
