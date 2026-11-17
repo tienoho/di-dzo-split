@@ -583,7 +583,7 @@ Xin chân thành cảm ơn!`;
                         <p className="text-xs text-slate-500 font-bold mt-0.5 mt-1">Tại cuộc nhậu {debt.venueName} • {new Date(debt.billDate).toLocaleDateString('vi-VN')}</p>
                       </div>
                       <div className="flex items-center gap-2 self-stretch sm:self-auto justify-between sm:justify-end">
-                        <span className="text-xs font-black text-red-600 bg-red-105 bg-red-100 border border-red-200 px-3 py-1.5 rounded-xl">
+                        <span className="text-xs font-black text-red-600 bg-red-100 bg-red-100 border border-red-200 px-3 py-1.5 rounded-xl">
                           {debt.amount.toLocaleString('vi-VN')} đ
                         </span>
                         <button
@@ -658,7 +658,7 @@ Xin chân thành cảm ơn!`;
                           <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
                             <div>
                               <div className="flex flex-wrap items-center gap-2">
-                                <span className={`text-sm font-black ${debt.isPaid ? 'text-slate-500 line-through' : 'text-slate-900 dark:text-slate-550'}`}>👤 {debt.debtorName}</span>
+                                <span className={`text-sm font-black ${debt.isPaid ? 'text-slate-500 line-through' : 'text-slate-900 dark:text-slate-500'}`}>👤 {debt.debtorName}</span>
                                 {debt.isPaid ? (
                                   <span className="text-xs bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-400 border border-emerald-300 px-2.5 py-0.5 rounded-full font-black flex items-center gap-1">
                                     <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> Đã Trả Xong
@@ -670,7 +670,7 @@ Xin chân thành cảm ơn!`;
                                 )}
                               </div>
                               <p className="text-sm font-bold text-slate-400 mt-1">
-                                Sản phẩm tại <strong className="text-slate-705 text-slate-700">{debt.venueName}</strong> • {new Date(debt.billDate).toLocaleDateString('vi-VN')}
+                                Sản phẩm tại <strong className="text-slate-700 text-slate-700">{debt.venueName}</strong> • {new Date(debt.billDate).toLocaleDateString('vi-VN')}
                               </p>
                               {/* Display filled contact indications */}
                               <div className="flex items-center gap-2 mt-1">
@@ -730,7 +730,7 @@ Xin chân thành cảm ơn!`;
                                       const text = getReminderMessage(debt, 'friendly');
                                       copyToClipboard(text, `quick-copy-${debt.id}`);
                                     }}
-                                    className="bg-indigo-600 hover:bg-indigo-750 text-white text-xs font-black px-3 py-2.5 rounded-xl transition-all hover:-translate-y-0.5 shadow-sm cursor-pointer flex items-center justify-center gap-1 w-full sm:w-auto text-center"
+                                    className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black px-3 py-2.5 rounded-xl transition-all hover:-translate-y-0.5 shadow-sm cursor-pointer flex items-center justify-center gap-1 w-full sm:w-auto text-center"
                                     title="Sao chép nhanh lời nhắc nợ kèm mã QR sòng phẳng vào bộ nhớ tạm"
                                   >
                                     {copiedNotification === `quick-copy-${debt.id}` ? (
@@ -758,7 +758,7 @@ Xin chân thành cảm ơn!`;
                                   {/* Open customized message templates panel */}
                                   <button
                                     onClick={() => setSelectedDebt(isSelected ? null : debt)}
-                                    className="bg-slate-900 hover:bg-slate-850 text-white text-xs font-black px-3 py-2.5 rounded-xl transition-all hover:-translate-y-0.5 shadow-sm cursor-pointer flex items-center justify-center gap-1 w-full sm:w-auto text-center"
+                                    className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-black px-3 py-2.5 rounded-xl transition-all hover:-translate-y-0.5 shadow-sm cursor-pointer flex items-center justify-center gap-1 w-full sm:w-auto text-center"
                                   >
                                     <MessageSquare className="w-3.5 h-3.5 text-orange-400 shrink-0" /> <span className="truncate">Đòi Zalo / FB</span>
                                   </button>
@@ -786,7 +786,7 @@ Xin chân thành cảm ơn!`;
                                   {copiedNotification === `stk-${debt.id}` ? (
                                     <Check className="w-3.5 h-3.5 text-emerald-500" />
                                   ) : (
-                                    <Copy className="w-3.5 h-3.5 text-slate-450 text-slate-400 hover:text-slate-850 dark:hover:text-white" />
+                                    <Copy className="w-3.5 h-3.5 text-slate-400 text-slate-400 hover:text-slate-800 dark:hover:text-white" />
                                   )}
                                 </button>
                               </div>
@@ -809,7 +809,7 @@ Xin chân thành cảm ơn!`;
                                   onClick={() => {
                                     copyToClipboard(vietQrUrl, `link-${debt.id}`);
                                   }}
-                                  className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-150 font-extrabold text-xs border-2 border-slate-900 dark:border-slate-705 px-3.5 py-1.5 rounded-xl cursor-pointer transition-all shadow-5xs"
+                                  className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-100 font-extrabold text-xs border-2 border-slate-900 dark:border-slate-700 px-3.5 py-1.5 rounded-xl cursor-pointer transition-all shadow-5xs"
                                   title="Sao chép đường dẫn ảnh mã QR này để gửi nhanh khắp nơi!"
                                 >
                                   {copiedNotification === `link-${debt.id}` ? (
@@ -837,7 +837,7 @@ Xin chân thành cảm ơn!`;
                                 <div className="flex items-center gap-2 self-start sm:self-auto">
                                   <span className="text-xl">⚙️</span>
                                   <div>
-                                    <h5 className="text-sm font-black text-slate-850">Liên kết nhanh</h5>
+                                    <h5 className="text-sm font-black text-slate-800">Liên kết nhanh</h5>
                                     <p className="text-xs text-slate-500 font-bold">Lưu thông tin liên hệ giúp nhảy thẳng tới ứng dụng nhắn tin đòi nợ!</p>
                                   </div>
                                 </div>
@@ -903,7 +903,7 @@ Xin chân thành cảm ơn!`;
 
                                    {/* Sticker & Emoji library section */}
                                    <div className="bg-white dark:bg-slate-950 p-2.5 rounded-xl border-2 border-slate-900/40 space-y-2">
-                                     <div className="flex items-center gap-1.5 text-xs uppercase font-black text-rose-600 dark:text-rose-450 border-b pb-1.5 border-slate-100 dark:border-slate-800">
+                                     <div className="flex items-center gap-1.5 text-xs uppercase font-black text-rose-600 dark:text-rose-400 border-b pb-1.5 border-slate-100 dark:border-slate-800">
                                        <span>🎨 Thư viện Sticker & Emoji nịnh bợ:</span>
                                      </div>
                                      
@@ -916,7 +916,7 @@ Xin chân thành cảm ơn!`;
                                            onClick={() => setActiveStickerTab(idx)}
                                            className={`px-2 py-1 rounded-md text-xs font-black transition-all cursor-pointer ${
                                              activeStickerTab === idx
-                                               ? 'bg-rose-550 bg-rose-500 text-white border border-rose-600 shadow-4xs'
+                                               ? 'bg-rose-500 bg-rose-500 text-white border border-rose-600 shadow-4xs'
                                                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
                                            }`}
                                          >
