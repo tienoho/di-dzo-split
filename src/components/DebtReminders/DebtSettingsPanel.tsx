@@ -62,11 +62,11 @@ export default function DebtSettingsPanel({
   };
 
   return (
-    <div className="lg:col-span-4 bg-white border-4 border-slate-900 rounded-[32px] shadow-lg p-6 h-fit space-y-5">
+    <div className="lg:col-span-4 bg-white border-4 border-slate-900 rounded-[32px] shadow-lg p-6 h-fit space-y-5 dark:bg-slate-900 dark:border-slate-700">
       <div className="space-y-1.5 border-b-2 border-dashed border-slate-100 pb-4">
         <div className="flex items-center gap-2">
           <span className="w-3 h-6 bg-teal-400 rounded-full inline-block"></span>
-          <h2 className="text-lg font-black text-slate-900 flex items-center gap-2 tracking-tight">
+          <h2 className="text-lg font-black text-slate-900 flex items-center gap-2 tracking-tight dark:text-slate-100">
             <CreditCard className="w-5 h-5 text-teal-500" />
             Thụ Hưởng Của Bạn
           </h2>
@@ -80,7 +80,7 @@ export default function DebtSettingsPanel({
           <select
             value={bankName}
             onChange={(e) => setBankName(e.target.value)}
-            className="w-full text-xs font-black bg-yellow-50/30 border-2 border-slate-900 focus:border-orange-500 rounded-xl p-3 text-slate-800"
+            className="w-full text-xs font-black bg-yellow-50/30 border-2 border-slate-900 focus:border-orange-500 rounded-xl p-3 text-slate-800 dark:text-slate-100 dark:border-slate-700"
           >
             <option value="mbbank">MB Bank (Quân Đội)</option>
             <option value="vcb">Vietcombank (VCB)</option>
@@ -104,7 +104,7 @@ export default function DebtSettingsPanel({
             placeholder="Nhập số tài khoản..."
             value={bankNo}
             onChange={(e) => setBankNo(e.target.value)}
-            className="w-full text-xs bg-yellow-50/30 border-2 border-slate-900 p-3 rounded-xl font-mono text-slate-900 font-extrabold focus:border-orange-500 outline-none"
+            className="w-full text-xs bg-yellow-50/30 border-2 border-slate-900 p-3 rounded-xl font-mono text-slate-900 font-extrabold focus:border-orange-500 outline-none dark:text-slate-100 dark:border-slate-700"
           />
         </div>
 
@@ -116,7 +116,7 @@ export default function DebtSettingsPanel({
             placeholder="Ví dụ: NGUYEN VAN TUAN ANH"
             value={bankAccountName}
             onChange={(e) => setBankAccountName(e.target.value.toUpperCase())}
-            className="w-full text-xs bg-yellow-50/30 border-2 border-slate-900 p-3 rounded-xl text-slate-900 font-black focus:border-orange-500 outline-none"
+            className="w-full text-xs bg-yellow-50/30 border-2 border-slate-900 p-3 rounded-xl text-slate-900 font-black focus:border-orange-500 outline-none dark:text-slate-100 dark:border-slate-700"
           />
         </div>
 
@@ -128,7 +128,7 @@ export default function DebtSettingsPanel({
 
         <button
           type="submit"
-          className="w-full bg-slate-900 hover:bg-orange-500 text-white hover:text-slate-900 rounded-2xl py-3 text-xs font-black border-2 border-slate-900 hover:-translate-y-0.5 shadow-sm transition-all cursor-pointer"
+          className="w-full bg-slate-900 hover:bg-orange-500 text-white hover:text-slate-900 rounded-2xl py-3 text-xs font-black border-2 border-slate-900 hover:-translate-y-0.5 shadow-sm transition-all cursor-pointer dark:border-slate-700"
         >
           Cập Nhật Thẻ Chuyển Khoản
         </button>
@@ -136,7 +136,7 @@ export default function DebtSettingsPanel({
 
       {/* Automatic Reminder Setup Card */}
       <div className="bg-orange-50/40 border-2 border-slate-900 rounded-[24px] p-4.5 space-y-3.5 mt-4">
-        <h3 className="text-xs font-black text-slate-950 uppercase tracking-widest flex items-center gap-1.5">
+        <h3 className="text-xs font-black text-slate-950 uppercase tracking-widest flex items-center gap-1.5 dark:text-slate-100">
           <Sparkles className="w-4 h-4 text-orange-500 animate-pulse animate-spin" />
           Nhắc Nợ Trình Duyệt Tự Động
         </h3>
@@ -150,9 +150,9 @@ export default function DebtSettingsPanel({
               type="checkbox"
               checked={pushEnabled}
               onChange={(e) => handleTogglePush(e.target.checked)}
-              className="w-4 h-4 rounded text-orange-500 border-slate-900 focus:ring-orange-500 accent-orange-500 cursor-pointer"
+              className="w-4 h-4 rounded text-orange-500 border-slate-900 focus:ring-orange-500 accent-orange-500 cursor-pointer dark:border-slate-700"
             />
-            <span className="text-xs font-black text-slate-800">Bật nhắc nợ tự động đẩy</span>
+            <span className="text-xs font-black text-slate-800 dark:text-slate-100">Bật nhắc nợ tự động đẩy</span>
           </label>
 
           {pushEnabled && (
@@ -161,7 +161,7 @@ export default function DebtSettingsPanel({
               <select
                 value={pushInterval}
                 onChange={(e) => handleIntervalChange(e.target.value)}
-                className="w-full text-xs font-black bg-white border-2 border-slate-900 rounded-xl p-2.5 text-slate-800 cursor-pointer"
+                className="w-full text-xs font-black bg-white border-2 border-slate-900 rounded-xl p-2.5 text-slate-800 cursor-pointer dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700"
               >
                 <option value="24h">Lặp lại mỗi 24 giờ (Tiêu chuẩn)</option>
                 <option value="12h">Lặp lại mỗi 12 giờ</option>
