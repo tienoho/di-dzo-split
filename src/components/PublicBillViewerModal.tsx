@@ -303,7 +303,7 @@ export default function PublicBillViewerModal({ bill, onClose }: PublicBillViewe
                     Thanh toán VietQR Chuyển Khoản 24/7
                   </h3>
                   <p className="text-[10px] font-bold text-indigo-700 dark:text-indigo-300">
-                    Quét mã là tự động điền đúng số tiền & nội dung chuyển khoản
+                    Chỉ tạo QR khi xác định được đúng người nhận tiền
                   </p>
                 </div>
               </div>
@@ -528,12 +528,11 @@ export default function PublicBillViewerModal({ bill, onClose }: PublicBillViewe
                               <button
                                 type="button"
                                 onClick={() => {
-                                  if (bankNo) {
-                                    setSelectedMemberForQR(member);
-                                  } else {
-                                    setShowBankEdit(true);
-                                    toast("Vui lòng điền số tài khoản ngân hàng để tạo QR!");
-                                  }
+                                  if (getMemberVietQRUrl(member)) {
+                             setSelectedMemberForQR(member);
+                           } else {
+                             toast.error('Không đủ thông tin người nhận để tạo VietQR an toàn.');
+                           }
                                 }}
                                 className="text-[11px] font-black bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 py-1 rounded-lg flex items-center gap-1 cursor-pointer transition-transform active:scale-95 shadow-2xs"
                                 title="Mở mã VietQR chuyển khoản nhanh"
@@ -610,12 +609,11 @@ export default function PublicBillViewerModal({ bill, onClose }: PublicBillViewe
                       <button
                         type="button"
                         onClick={() => {
-                          if (bankNo) {
-                            setSelectedMemberForQR(member);
-                          } else {
-                            setShowBankEdit(true);
-                            toast("Vui lòng điền số tài khoản ngân hàng để tạo QR!");
-                          }
+                          if (getMemberVietQRUrl(member)) {
+                             setSelectedMemberForQR(member);
+                           } else {
+                             toast.error('Không đủ thông tin người nhận để tạo VietQR an toàn.');
+                           }
                         }}
                         className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs py-2 rounded-xl flex items-center justify-center gap-1.5 transition-transform active:scale-95 shadow-2xs cursor-pointer mt-1"
                       >
