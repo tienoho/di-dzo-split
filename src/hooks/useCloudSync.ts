@@ -7,6 +7,7 @@ import {
   fetchContactsFromCloud,
   saveBillToCloud,
   saveVenueToCloud,
+  refreshPublicBillIfShared,
   saveContactToCloud,
   deleteContactFromCloud,
   FirebaseUser
@@ -107,7 +108,10 @@ export function useCloudSync({
         localStorage.setItem(`nhau_contacts_${user.uid}`, JSON.stringify(contacts));
 
         const operations = [
-          ...mergedBills.toUpload.map(b => saveBillToCloud(user.uid, b)),
+          ...mergedBills.toUpload.map(async b => {
+            await saveBillToCloud(user.uid, b);
+            if (!b.deletedAt) await refreshPublicBillIfShared(b);
+          }),
           ...mergedVenues.toUpload.map(v => saveVenueToCloud(user.uid, v)),
           ...mergedContacts.toUpload.map(entry => entry.deletedAt
             ? deleteContactFromCloud(user.uid, entry.id, entry.deletedAt)
