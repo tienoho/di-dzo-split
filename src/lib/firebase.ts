@@ -523,75 +523,26 @@ export const getFirebaseMessaging = async () => {
   return null;
 };
 
-export const saveFCMTokenToCloud = async (userName: string, token: string) => {
-  const cleanName = userName.trim();
-  if (!cleanName) return;
-
-  // Detect if we have an active logged-in user at the moment
-  const currentUser = auth.currentUser;
-  const authMetadata = currentUser ? {
-    userId: currentUser.uid,
-    email: currentUser.email || null,
-    isGuest: false
-  } : {
-    userId: null,
-    email: null,
-    isGuest: true
-  };
-
-  const lowerName = cleanName.toLowerCase();
-  const tokenLowerRef = doc(db, 'user_fcm_tokens', lowerName);
-
-  try {
-    // Save with case-insensitive normalized document ID
-    await setDoc(tokenLowerRef, {
-      name: cleanName,
-      tokens: arrayUnion(token),
-      updatedAt: new Date().toISOString(),
-      ...authMetadata
-    }, { merge: true });
-
-    // Also register under original name for complete redundancy
-    if (cleanName !== lowerName) {
-      const tokenOriginalRef = doc(db, 'user_fcm_tokens', cleanName);
-      await setDoc(tokenOriginalRef, {
-        name: cleanName,
-        tokens: arrayUnion(token),
-        updatedAt: new Date().toISOString(),
-        ...authMetadata
-      }, { merge: true });
-    }
-
-    console.log(`[FCM] Registered token for name: ${cleanName} | Status: ${currentUser ? 'Logged-In' : 'Guest'}`);
-  } catch (error) {
-    handleFirestoreError(error, OperationType.WRITE, `user_fcm_tokens/${lowerName}`);
-  }
+/**
+ * Device tokens are private to a verified Firebase account.
+ * An arbitrary display name must NEVER be used to locate FCM devices.
+ */
+export const saveFCMTokenToCloud = async (_displayName: string, token: string) => {
+  const user = auth.currentUser;
+  if (!user) throw new Error('Đăng nhập để đăng ký thông báo đẩy an toàn.');
+  if (!token || token.length > 4096) throw new Error('FCM token không hợp lệ.');
+  const tokenRef = doc(db, 'users', user.uid, 'fcm', 'tokens');
+  await setDoc(tokenRef, {
+    tokens: arrayUnion(token),
+    updatedAt: new Date().toISOString()
+  }, { merge: true });
 };
 
-export const getFCMTokensByUserName = async (userName: string): Promise<string[]> => {
-  const cleanName = userName.trim();
-  if (!cleanName) return [];
-
-  const lowerName = cleanName.toLowerCase();
-  
-  try {
-    // 1. Try lowercase matching (the default normalized approach)
-    const lowerRef = doc(db, 'user_fcm_tokens', lowerName);
-    const snapLower = await getDoc(lowerRef);
-    if (snapLower.exists()) {
-      const tokens = snapLower.data().tokens || [];
-      if (tokens.length > 0) return tokens;
-    }
-
-    // 2. Fallback to exact casing match
-    const origRef = doc(db, 'user_fcm_tokens', cleanName);
-    const snapOrig = await getDoc(origRef);
-    if (snapOrig.exists()) {
-      return snapOrig.data().tokens || [];
-    }
-  } catch (error) {
-    handleFirestoreError(error, OperationType.GET, `user_fcm_tokens/${lowerName}`);
-  }
+/**
+ * The client cannot enumerate other people's push devices.
+ * Cross-account pushes require an identity-bound consent flow on the server.
+ */
+export const getFCMTokensByUserName = async (_userName: string): Promise<string[]> => {
   return [];
 };
 
