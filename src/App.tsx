@@ -445,7 +445,7 @@ export default function App() {
   const handleSaveBill = (newBill: Omit<Bill, 'id'>) => {
     const freshBill: Bill = {
       ...newBill,
-      id: `bill-${Date.now()}`
+      id: `bill-${crypto.randomUUID()}`
     };
 
     const activeUser = currentUser || auth.currentUser;
