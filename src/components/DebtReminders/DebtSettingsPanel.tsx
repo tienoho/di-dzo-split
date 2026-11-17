@@ -62,7 +62,7 @@ export default function DebtSettingsPanel({
   };
 
   return (
-    <div className="lg:col-span-4 bg-white border-4 border-slate-900 rounded-[32px] shadow-lg p-6 h-fit space-y-5 dark:bg-slate-900 dark:border-slate-700">
+    <div className="lg:col-span-4 bg-white border border-slate-200 rounded-3xl shadow-sm p-6 h-fit space-y-5 dark:bg-slate-900 dark:border-slate-700">
       <div className="space-y-1.5 border-b-2 border-dashed border-slate-100 pb-4">
         <div className="flex items-center gap-2">
           <span className="w-3 h-6 bg-teal-400 rounded-full inline-block"></span>
