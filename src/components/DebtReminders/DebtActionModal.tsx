@@ -20,7 +20,7 @@ export default function DebtActionModal({ confirmDialog, setConfirmDialog }: Deb
   return (
     <AnimatePresence>
       {confirmDialog && confirmDialog.isOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[200]">
           <motion.div
             initial={{ opacity: 0, scale: 0.9, y: 15 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
