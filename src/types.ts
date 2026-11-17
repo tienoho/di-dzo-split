@@ -16,6 +16,13 @@ export interface SettlementEvent {
   note?: string;
 }
 
+export interface ContactEntry {
+  phone?: string;
+  messenger?: string;
+  updatedAt?: string;
+  deletedAt?: string;
+}
+
 export interface Venue {
   id: string;
   name: string;
