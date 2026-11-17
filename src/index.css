@@ -68,3 +68,34 @@ button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
     transition-duration: 0.01ms !important;
   }
 }
+
+
+/* Consistent platform behavior across small touch screens and long reports. */
+:root {
+  font-synthesis: none;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+body {
+  overscroll-behavior-x: none;
+  text-rendering: optimizeLegibility;
+}
+#root { min-height: 100dvh; }
+:where(main, section, article) { min-width: 0; }
+:where(button, [role="button"]) { touch-action: manipulation; }
+:where(button, input, select, textarea):disabled {
+  cursor: not-allowed;
+}
+:where(button, a, input, select, textarea):focus-visible {
+  outline-offset: 3px;
+}
+@media (hover: none) {
+  /* Hover-only animations should never trigger a stuck raised state on mobile. */
+  :where(button, a) { -webkit-tap-highlight-color: transparent; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-swing,
+  .animate-slide-in {
+    animation: none !important;
+  }
+}
