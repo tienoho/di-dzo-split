@@ -52,8 +52,25 @@ service cloud.firestore {
 
     // Public Bills shared via Web links (direct bill link sharing)
     match /public_bills/{billId} {
+      // Public link viewers need read access, including guests.
       allow read: if true;
-      allow create, update: if true;
+      // An owner must be signed in and cannot impersonate another account.
+      allow create: if request.auth != null
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.id == billId
+        && request.resource.data.members is list
+        && request.resource.data.members.size() <= 100
+        && request.resource.data.totalAmount is number;
+      // Existing legacy records (without ownerUid) remain read-only.
+      allow update: if request.auth != null
+        && resource.data.ownerUid == request.auth.uid
+        && request.resource.data.ownerUid == resource.data.ownerUid
+        && request.resource.data.id == billId
+        && request.resource.data.members is list
+        && request.resource.data.members.size() <= 100
+        && request.resource.data.totalAmount is number;
+      allow delete: if request.auth != null
+        && resource.data.ownerUid == request.auth.uid;
     }
   }
 }
