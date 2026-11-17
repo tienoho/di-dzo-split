@@ -4,6 +4,7 @@ import { Calendar, Search, FileDown, TrendingUp, DollarSign, Users, Store, Trash
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { generateShareableBillUrl } from '../utils/shareLink';
+import { csvRow } from '../utils/csv';
 import { auth, revokePublicBillFromCloud } from '../lib/firebase';
 
 interface HistoryAndReportsProps {
@@ -192,29 +193,34 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
       return;
     }
 
-    // UTF-8 BOM to display Vietnamese accents correctly in MS Excel
+    // Preserve Vietnamese accents and prevent spreadsheet formula injection.
     let csvContent = '\uFEFF';
-    
-    // Header Info
-    csvContent += `BÁO CÁO CHI TIẾT CHI PHÍ CUỘC NHẬU\n`;
-    csvContent += `Thời gian báo cáo: ${selectedMonth === 'all' ? 'Tất cả các tháng' : `Tháng ${selectedMonth}`}\n`;
-    csvContent += `Tổng cộng chi:; ${totalSpendInPeriod.toLocaleString('vi-VN')} đ\n`;
-    csvContent += `Số cuộc họp mặt:; ${totalBillsCount} cuộc nhậu\n`;
-    csvContent += `Chi trung bình mỗi cuộc nhậu:; ${avgBillInPeriod.toLocaleString('vi-VN')} đ\n\n`;
+    csvContent += csvRow(['BÁO CÁO CHI TIẾT CHI PHÍ CUỘC NHẬU']);
+    csvContent += csvRow(['Thời gian báo cáo', selectedMonth === 'all' ? 'Tất cả các tháng' : `Tháng ${selectedMonth}`]);
+    csvContent += csvRow(['Tổng cộng chi', totalSpendInPeriod]);
+    csvContent += csvRow(['Số cuộc họp mặt', totalBillsCount]);
+    csvContent += csvRow(['Chi trung bình mỗi cuộc nhậu', avgBillInPeriod]);
+    csvContent += '\n';
+    csvContent += csvRow([
+      'Mã hóa đơn', 'Ngày', 'Thời gian', 'Địa điểm', 'Tổng hóa đơn (đ)',
+      'Tiền gốc (đ)', 'Tip (đ)', 'Thuế/VAT (đ)', 'Voucher (đ)',
+      'Người trả chính', 'Thành viên tham gia', 'Ghi chú'
+    ]);
 
-    // Table Header
-    csvContent += `Mã hóa đơn;Ngày nhậu;Thời gian;Địa điểm;Tổng hóa đơn (đ);Tiền mồi gốc (đ);Tiền Tip (đ);Thuế/VAT (đ.v);Voucher giảm (đ);Người trả chính;Thành viên tham gia;Mô tả cuộc vui\n`;
-
-    filteredBills.forEach((bill) => {
-      const bDate = new Date(bill.date);
-      const friendlyDate = `${bDate.getDate()}/${bDate.getMonth() + 1}/${bDate.getFullYear()}`;
-      const friendlyTime = `${String(bDate.getHours()).padStart(2, '0')}:${String(bDate.getMinutes()).padStart(2, '0')}`;
-      
-      const host = bill.members.find(m => m.initialPaid > m.finalShare)?.name || 'Nhiều người đóng';
-      const membersStr = bill.members.map(m => `${m.name} (${m.finalShare.toLocaleString('vi-VN')}đ)`).join(' | ');
-      const cleanNote = (bill.note || '').replace(/;/g, ',');
-
-      csvContent += `${bill.id};${friendlyDate};${friendlyTime};${bill.venueName.replace(/;/g, ',')};${bill.totalAmount};${bill.rawAmount};${bill.tipAmount};${bill.additionalFee};${bill.discountAmount};${host};${membersStr};${cleanNote}\n`;
+    filteredBills.forEach(bill => {
+      const date = new Date(bill.date);
+      const valid = !Number.isNaN(date.getTime());
+      const friendlyDate = valid ? date.toLocaleDateString('vi-VN') : '';
+      const friendlyTime = valid ? date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '';
+      const host = bill.members.find(member => member.initialPaid > member.finalShare)?.name || 'Nhiều người đóng';
+      const membersStr = bill.members.map(member =>
+        `${member.name} (${member.finalShare.toLocaleString('vi-VN')}đ)`
+      ).join(' | ');
+      csvContent += csvRow([
+        bill.id, friendlyDate, friendlyTime, bill.venueName, bill.totalAmount,
+        bill.rawAmount, bill.tipAmount, bill.additionalFee, bill.discountAmount,
+        host, membersStr, bill.note || ''
+      ]);
     });
 
     // Download linkage
@@ -226,6 +232,7 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
   // Share a bill detail
@@ -233,7 +240,13 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
     const dateObj = new Date(bill.date);
     const friendlyDate = `${dateObj.getDate()} Thg ${dateObj.getMonth() + 1}, ${dateObj.getFullYear()}`;
     const formattedTime = `${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
-    const shareUrl = await generateShareableBillUrl(bill);
+    let shareUrl: string;
+    try {
+      shareUrl = await generateShareableBillUrl(bill);
+    } catch (error) {
+      toast.error('Không thể chia sẻ hóa đơn lúc này. Vui lòng kiểm tra kết nối và quyền tài khoản.');
+      return;
+    }
 
     let text = `🍻 Hóa đơn: ${bill.venueName}\n`;
     text += `📅 Ngày: ${friendlyDate} lúc ${formattedTime}\n`;
