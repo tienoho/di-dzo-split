@@ -59,7 +59,9 @@ service cloud.firestore {
     // Link possession only grants a single-document lookup, never collection listing.
     match /public_bills/{billId} {
       allow get: if !('revokedAt' in resource.data)
-        && (!('expiresAt' in resource.data) || resource.data.expiresAt > request.time);
+        && ('expiresAt' in resource.data)
+        && resource.data.expiresAt is timestamp
+        && resource.data.expiresAt > request.time;
       allow list: if false;
       allow create: if request.auth != null
         && request.resource.data.ownerUid == request.auth.uid
@@ -67,12 +69,18 @@ service cloud.firestore {
         && request.resource.data.members is list
         && request.resource.data.members.size() <= 100
         && request.resource.data.totalAmount is number
-        && request.resource.data.expiresAt is timestamp;
+        && request.resource.data.expiresAt is timestamp
+        && request.resource.data.expiresAt > request.time
+        && request.resource.data.expiresAt <= request.time + duration.value(30, 'd');
       allow update: if request.auth != null
         && resource.data.ownerUid == request.auth.uid
         && request.resource.data.ownerUid == resource.data.ownerUid
         && request.resource.data.id == billId
         && !('revokedAt' in resource.data)
+        && ('expiresAt' in resource.data)
+        && resource.data.expiresAt is timestamp
+        && resource.data.expiresAt > request.time
+        && request.resource.data.expiresAt == resource.data.expiresAt
         && (
           // Only owner can transition link to revoked status.
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['revokedAt'])
