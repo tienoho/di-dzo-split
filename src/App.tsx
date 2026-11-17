@@ -549,47 +549,68 @@ export default function App() {
     });
   };
 
-  // A debtor may owe multiple creditors; toggle only the selected transfer.
-  const handleMarkDebtAsPaid = (billId: string, debtorName: string, creditorName: string) => {
+  // Payment actions append events rather than mutating paid amounts in place.
+  const appendSettlement = (
+    billId: string,
+    debtorName: string,
+    creditorName: string,
+    amount: number | null
+  ) => {
     const activeUser = currentUser || auth.currentUser;
     const userKey = activeUser ? activeUser.uid : 'guest';
+    const eventId = crypto.randomUUID();
 
-    setBills(prevBills => {
-      const updatedBills = prevBills.map(bill => {
-        if (bill.id !== billId) return bill;
+    setBills(prev => {
+      const updated = prev.map(bill => {
+        if (bill.id !== billId || bill.deletedAt) return bill;
         const transfer = getActiveDebts([bill]).find(debt =>
           debt.debtorName === debtorName && debt.creditorName === creditorName
         );
         if (!transfer) return bill;
 
+        const remaining = transfer.remainingAmount ?? transfer.amount;
+        const isReset = amount === null && transfer.isPaid;
+        const effectiveAmount = amount === null ? remaining : amount;
+        if (!isReset && (!Number.isSafeInteger(effectiveAmount) ||
+            effectiveAmount <= 0 || effectiveAmount > remaining)) {
+          return bill;
+        }
+
+        const event = {
+          id: eventId,
+          type: isReset ? 'reset' as const : 'payment' as const,
+          amount: isReset ? 0 : effectiveAmount,
+          createdAt: new Date().toISOString()
+        };
         const nextBill: Bill = {
           ...bill,
-          updatedAt: new Date().toISOString(),
-          settledTransfers: {
-            ...bill.settledTransfers,
-            [transfer.id]: !transfer.isPaid
+          updatedAt: event.createdAt,
+          payments: {
+            ...bill.payments,
+            [transfer.id]: [...(bill.payments?.[transfer.id] || []), event]
           }
         };
-        const calculatedTransfers = getActiveDebts([nextBill]);
-        nextBill.members = nextBill.members.map(member => {
-          const memberDebts = calculatedTransfers.filter(debt => debt.debtorName === member.name);
-          return {
-            ...member,
-            hasPaidDebt: memberDebts.length
-              ? memberDebts.every(debt => debt.isPaid)
-              : member.initialPaid >= member.finalShare
-          };
-        });
-
+        // The existing hasPaidDebt flag is a legacy snapshot, not a source of truth
+        // after per-transfer payment events have been written.
         if (activeUser) {
           saveBillToCloud(activeUser.uid, nextBill).catch(console.error);
         }
         return nextBill;
       });
-      saveStoredBills(updatedBills, userKey);
-      setDebts(getActiveDebts(updatedBills));
-      return updatedBills;
+      saveStoredBills(updated, userKey);
+      setDebts(getActiveDebts(updated));
+      return updated;
     });
+  };
+
+  const handleMarkDebtAsPaid = (billId: string, debtorName: string, creditorName: string) => {
+    appendSettlement(billId, debtorName, creditorName, null);
+  };
+
+  const handleRecordPartialPayment = (
+    billId: string, debtorName: string, creditorName: string, amount: number
+  ) => {
+    appendSettlement(billId, debtorName, creditorName, amount);
   };
 
   // Do not render or count retained tombstones. They remain in cache solely for sync safety.
@@ -599,7 +620,7 @@ export default function App() {
   // Quick stats panel
   const totalAmountSplitted = visibleBills.reduce((acc, b) => acc + b.totalAmount, 0);
   const unpaidDebtsLength = debts.filter(d => !d.isPaid).length;
-  const totalUnpaidDebtsAmount = debts.filter(d => !d.isPaid).reduce((acc, d) => acc + d.amount, 0);
+  const totalUnpaidDebtsAmount = debts.filter(d => !d.isPaid).reduce((acc, d) => acc + (d.remainingAmount ?? d.amount), 0);
 
   return (
     <div className={`min-h-screen ${isDarkMode ? 'dark bg-slate-950 text-slate-100' : 'bg-yellow-50 text-slate-800'} antialiased font-sans pb-12 transition-colors duration-300`}>
@@ -975,6 +996,7 @@ export default function App() {
               <DebtReminders 
                 debts={debts} 
                 onMarkDebtAsPaid={handleMarkDebtAsPaid} 
+                onRecordPartialPayment={handleRecordPartialPayment} 
                 activeCreatorName={activeCreatorName}
                 currentUser={currentUser}
                 contacts={contacts}
