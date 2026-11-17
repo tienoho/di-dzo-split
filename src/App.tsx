@@ -29,7 +29,9 @@ import {
   fetchContactsFromCloud,
   saveContactToCloud,
   deleteContactFromCloud,
-  syncContactsToCloud
+  syncContactsToCloud,
+  refreshPublicBillIfShared,
+  revokePublicBillFromCloud
 } from './lib/firebase';
 import AuthModal from './components/AuthModal';
 
@@ -524,6 +526,7 @@ export default function App() {
 
     if (activeUser) {
       deleteBillFromCloud(activeUser.uid, id).catch(console.error);
+      revokePublicBillFromCloud(id).catch(() => {});
     }
   };
 
@@ -537,6 +540,7 @@ export default function App() {
           const updatedBill = { ...b, isArchived, updatedAt: new Date().toISOString() };
           if (activeUser) {
             saveBillToCloud(activeUser.uid, updatedBill).catch(console.error);
+            refreshPublicBillIfShared(updatedBill).catch(console.error);
           }
           return updatedBill;
         }
@@ -594,6 +598,7 @@ export default function App() {
         // after per-transfer payment events have been written.
         if (activeUser) {
           saveBillToCloud(activeUser.uid, nextBill).catch(console.error);
+          refreshPublicBillIfShared(nextBill).catch(console.error);
         }
         return nextBill;
       });
