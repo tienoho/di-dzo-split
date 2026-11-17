@@ -12,6 +12,7 @@ import {
   Tv 
 } from 'lucide-react';
 import MoneyInput from './common/MoneyInput';
+import { useDialogA11y } from '../hooks/useDialogA11y';
 
 interface ReceiptScannerProps {
   onScanComplete: (data: { venueName: string; totalAmount: number; note: string; imageBase64?: string }) => void;
@@ -39,6 +40,7 @@ export default function ReceiptScanner({ onScanComplete, onClose }: ReceiptScann
   const streamRef = useRef<MediaStream | null>(null);
   const [cameraActive, setCameraActive] = useState<boolean>(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const dialogRef = useDialogA11y<HTMLDivElement>(true, () => { stopCamera(); onClose(); });
 
   // Stop camera stream on unmount
   useEffect(() => {
@@ -267,14 +269,14 @@ export default function ReceiptScanner({ onScanComplete, onClose }: ReceiptScann
 
   return (
     <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xs flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-white dark:bg-slate-900 border-4 border-slate-900 rounded-[32px] w-full max-w-lg shadow-2xl relative overflow-hidden flex flex-col my-auto max-h-[90vh]">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="scanner-title" tabIndex={-1} className="bg-white dark:bg-slate-900 border-4 border-slate-900 rounded-[32px] w-full max-w-lg shadow-2xl relative overflow-hidden flex flex-col my-auto max-h-[90vh]">
         
         {/* Modal Header */}
         <div className="bg-gradient-to-r from-orange-500 to-amber-500 p-5 text-slate-950 border-b-4 border-slate-900 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 animate-bounce text-slate-900" />
             <div>
-              <h3 className="text-lg font-black tracking-tight text-white leading-tight">
+              <h3 id="scanner-title" className="text-lg font-black tracking-tight text-slate-950 leading-tight">
                 {isReviewMode ? "Xác Nhận Hóa Đơn AI 🧾" : "Quét Hóa Đơn AI 🤖"}
               </h3>
               <p className="text-[10px] font-bold text-orange-100">
@@ -288,7 +290,8 @@ export default function ReceiptScanner({ onScanComplete, onClose }: ReceiptScann
               stopCamera();
               onClose();
             }}
-            className="p-1 px-1.5 bg-slate-950/20 hover:bg-slate-950/40 rounded-full text-slate-900 transition-colors cursor-pointer"
+            aria-label="Đóng trình quét hóa đơn"
+            className="min-w-11 min-h-11 flex items-center justify-center p-1 px-1.5 bg-slate-950/20 hover:bg-slate-950/40 rounded-full text-slate-900 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5 text-white" />
           </button>
@@ -297,7 +300,7 @@ export default function ReceiptScanner({ onScanComplete, onClose }: ReceiptScann
         {/* Modal body */}
         <div className="p-6 space-y-5 overflow-y-auto flex-1">
           {errorMsg && (
-            <div className="bg-red-50 dark:bg-red-950/20 border-2 border-red-400 p-3 rounded-2xl flex items-start gap-2 text-xs text-red-750 font-bold">
+            <div role="alert" className="bg-red-50 dark:bg-red-950/20 border-2 border-red-400 p-3 rounded-2xl flex items-start gap-2 text-xs text-red-750 font-bold">
               <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
               <span>{errorMsg}</span>
             </div>
