@@ -41,6 +41,7 @@ export default function ContactManager({ contacts, onSaveContact, onDeleteContac
   // Feedbacks
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Custom confirmation dialog state
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -63,6 +64,7 @@ export default function ContactManager({ contacts, onSaveContact, onDeleteContac
 
   const handleAddContact = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSaving) return;
     setErrorMsg(null);
     setSuccessMsg(null);
 
@@ -87,6 +89,14 @@ export default function ContactManager({ contacts, onSaveContact, onDeleteContac
       return;
     }
 
+    if (cleanName.length > 80) { setErrorMsg('Tên dài quá 80 ký tự.'); return; }
+    if (phone.trim() && !/^\+?[0-9]{9,15}$/.test(phone.replace(/[\s().-]/g, ''))) {
+      setErrorMsg('Số điện thoại phải có 9–15 chữ số.'); return;
+    }
+    if (messenger.trim() && !/^[a-zA-Z0-9._-]{3,80}$/.test(messenger.trim())) {
+      setErrorMsg('Messenger chỉ nhận username 3–80 ký tự.'); return;
+    }
+    setIsSaving(true);
     try {
       await onSaveContact(cleanName, phone.trim(), messenger.trim());
       setSuccessMsg(`✓ Đã thêm "${cleanName}" vào danh bạ.`);
@@ -96,7 +106,7 @@ export default function ContactManager({ contacts, onSaveContact, onDeleteContac
       setTimeout(() => setSuccessMsg(null), 3000);
     } catch (err: any) {
       setErrorMsg(err.message || 'Lỗi thêm liên hệ.');
-    }
+    } finally { setIsSaving(false); }
   };
 
   const handleStartEdit = (contactName: string) => {
@@ -113,7 +123,15 @@ export default function ContactManager({ contacts, onSaveContact, onDeleteContac
   };
 
   const handleUpdateContact = async (contactName: string) => {
+    if (isSaving) return;
     setErrorMsg(null);
+    if (editPhone.trim() && !/^\+?[0-9]{9,15}$/.test(editPhone.replace(/[\s().-]/g, ''))) {
+      setErrorMsg('Số điện thoại phải có 9–15 chữ số.'); return;
+    }
+    if (editMessenger.trim() && !/^[a-zA-Z0-9._-]{3,80}$/.test(editMessenger.trim())) {
+      setErrorMsg('Messenger username không hợp lệ.'); return;
+    }
+    setIsSaving(true);
     try {
       await onSaveContact(contactName, editPhone.trim(), editMessenger.trim());
       setSuccessMsg(`✓ Đã cập nhật thông tin của "${contactName}".`);
@@ -121,7 +139,7 @@ export default function ContactManager({ contacts, onSaveContact, onDeleteContac
       setTimeout(() => setSuccessMsg(null), 3000);
     } catch (err: any) {
       setErrorMsg(err.message || 'Lỗi cập nhật liên hệ.');
-    }
+    } finally { setIsSaving(false); }
   };
 
   const handleDelete = (contactName: string) => {
@@ -169,7 +187,8 @@ export default function ContactManager({ contacts, onSaveContact, onDeleteContac
         <motion.div 
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-emerald-50 border-4 border-emerald-500 rounded-2xl p-4 text-emerald-950 font-black text-xs shadow-sm flex items-center gap-2.5"
+          role="status" aria-live="polite"
+          className="bg-emerald-50 border border-emerald-300 rounded-2xl p-4 text-emerald-950 font-black text-xs shadow-sm flex items-center gap-2.5"
         >
           <span>🎉</span> {successMsg}
         </motion.div>
@@ -179,7 +198,8 @@ export default function ContactManager({ contacts, onSaveContact, onDeleteContac
         <motion.div 
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-red-50 border-4 border-red-500 rounded-2xl p-4 text-red-950 font-black text-xs shadow-sm flex items-center gap-2.5"
+          role="alert"
+          className="bg-red-50 border border-red-300 rounded-2xl p-4 text-red-950 font-black text-xs shadow-sm flex items-center gap-2.5"
         >
           <AlertCircle className="w-4 h-4 text-red-500 shrink-0" /> {errorMsg}
         </motion.div>
@@ -201,11 +221,14 @@ export default function ContactManager({ contacts, onSaveContact, onDeleteContac
 
           <form onSubmit={handleAddContact} className="space-y-4">
             <div className="space-y-1">
-              <label className="text-xs font-black text-slate-600 block uppercase tracking-wide">
+              <label htmlFor="contact-new-name" className="text-xs font-black text-slate-600 dark:text-slate-300 block uppercase tracking-wide">
                 Tên Chiến Hữu <span className="text-red-500">*</span>
               </label>
               <input
+                id="contact-new-name"
                 type="text"
+                autoComplete="name"
+                maxLength={80}
                 required
                 placeholder="Nhập tên ví dụ: Minh Quân..."
                 value={name}
@@ -215,11 +238,14 @@ export default function ContactManager({ contacts, onSaveContact, onDeleteContac
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-black text-slate-600 block uppercase tracking-wide">
+              <label htmlFor="contact-new-phone" className="text-xs font-black text-slate-600 dark:text-slate-300 block uppercase tracking-wide">
                 Số Điện Thoại Zalo
               </label>
               <input
-                type="text"
+                id="contact-new-phone"
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
                 placeholder="Ví dụ: 0988888888..."
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
@@ -229,11 +255,13 @@ export default function ContactManager({ contacts, onSaveContact, onDeleteContac
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-black text-slate-600 block uppercase tracking-wide">
+              <label htmlFor="contact-new-messenger" className="text-xs font-black text-slate-600 dark:text-slate-300 block uppercase tracking-wide">
                 Messenger Username
               </label>
               <input
+                id="contact-new-messenger"
                 type="text"
+                maxLength={80}
                 placeholder="Ví dụ: quan.minh.99..."
                 value={messenger}
                 onChange={(e) => setMessenger(e.target.value)}
@@ -244,9 +272,11 @@ export default function ContactManager({ contacts, onSaveContact, onDeleteContac
 
             <button
               type="submit"
-              className="w-full bg-slate-900 hover:bg-indigo-600 text-white rounded-2xl py-3 text-xs font-black border-2 border-slate-900 hover:-translate-y-0.5 shadow-sm transition-all cursor-pointer dark:border-slate-700"
+              disabled={isSaving}
+              aria-busy={isSaving}
+              className="w-full disabled:opacity-50 disabled:cursor-wait bg-slate-900 hover:bg-indigo-600 text-white rounded-2xl py-3 text-xs font-black border-2 border-slate-900 hover:-translate-y-0.5 shadow-sm transition-all cursor-pointer dark:border-slate-700"
             >
-              Lưu Vào Danh Bạ
+              {isSaving ? 'Đang lưu…' : 'Lưu vào danh bạ'}
             </button>
           </form>
         </div>
@@ -275,8 +305,8 @@ export default function ContactManager({ contacts, onSaveContact, onDeleteContac
             {filteredContacts.length === 0 ? (
               <div className="text-center py-12 bg-slate-50 dark:bg-slate-800 dark:bg-slate-800 rounded-2xl border-2 border-dashed border-slate-200">
                 <Users className="w-10 h-10 text-slate-300 mx-auto mb-2.5" />
-                <p className="text-xs font-black text-slate-400">Không tìm thấy chiến hữu nào.</p>
-                <p className="text-xs font-bold text-slate-400 mt-1">Hãy nhập thông tin ở cột trái để thêm mới danh bạ nhậu!</p>
+                <p className="text-xs font-black text-slate-400">{searchTerm.trim() ? 'Không tìm thấy liên hệ phù hợp.' : 'Chưa có liên hệ trong danh bạ.'}</p>
+                <p className="text-xs font-bold text-slate-400 mt-1">{searchTerm.trim() ? 'Hãy thử từ khóa khác.' : 'Thêm liên hệ mới bằng biểu mẫu phía trên.'}</p>
               </div>
             ) : (
               filteredContacts.map(([contactName, data]) => {
@@ -342,15 +372,15 @@ export default function ContactManager({ contacts, onSaveContact, onDeleteContac
                         <>
                           <button
                             onClick={() => handleUpdateContact(contactName)}
-                            className="bg-indigo-500 hover:bg-indigo-600 text-white p-2 rounded-xl border-2 border-slate-900 cursor-pointer shadow-3xs hover:-translate-y-0.5 transition-all"
-                            title="Lưu cập nhật"
+                            className="bg-indigo-500 hover:bg-indigo-600 text-white p-2 rounded-xl border-2 border-slate-900 cursor-pointer shadow-3xs hover:-translate-y-0.5 transition-all min-h-11 min-w-11 flex items-center justify-center"
+                            title="Lưu cập nhật" aria-label="Lưu cập nhật liên hệ"
                           >
                             <Check className="w-4 h-4" />
                           </button>
                           <button
                             onClick={handleCancelEdit}
-                            className="bg-white hover:bg-slate-100 text-slate-700 p-2 rounded-xl border-2 border-slate-900 cursor-pointer shadow-3xs hover:-translate-y-0.5 transition-all dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700"
-                            title="Hủy"
+                            className="bg-white hover:bg-slate-100 text-slate-700 p-2 rounded-xl border-2 border-slate-900 cursor-pointer shadow-3xs hover:-translate-y-0.5 transition-all dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700 min-h-11 min-w-11 flex items-center justify-center"
+                            title="Hủy" aria-label="Hủy chỉnh sửa liên hệ"
                           >
                             <X className="w-4 h-4" />
                           </button>
@@ -359,15 +389,15 @@ export default function ContactManager({ contacts, onSaveContact, onDeleteContac
                         <>
                           <button
                             onClick={() => handleStartEdit(contactName)}
-                            className="bg-white hover:bg-indigo-50 text-slate-700 hover:text-indigo-600 p-2 rounded-xl border-2 border-slate-900 cursor-pointer shadow-3xs hover:-translate-y-0.5 transition-all dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700"
-                            title="Sửa thông tin liên hệ"
+                            className="bg-white hover:bg-indigo-50 text-slate-700 hover:text-indigo-600 p-2 rounded-xl border-2 border-slate-900 cursor-pointer shadow-3xs hover:-translate-y-0.5 transition-all dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700 min-h-11 min-w-11 flex items-center justify-center"
+                            title="Sửa thông tin liên hệ" aria-label="Sửa thông tin liên hệ"
                           >
                             <Edit3 className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => handleDelete(contactName)}
-                            className="bg-white hover:bg-red-50 text-slate-700 hover:text-red-600 p-2 rounded-xl border-2 border-slate-900 cursor-pointer shadow-3xs hover:-translate-y-0.5 transition-all dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700"
-                            title="Xóa khỏi danh bạ"
+                            className="bg-white hover:bg-red-50 text-slate-700 hover:text-red-600 p-2 rounded-xl border-2 border-slate-900 cursor-pointer shadow-3xs hover:-translate-y-0.5 transition-all dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700 min-h-11 min-w-11 flex items-center justify-center"
+                            title="Xóa khỏi danh bạ" aria-label="Xóa liên hệ"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
