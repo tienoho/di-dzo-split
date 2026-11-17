@@ -15,6 +15,8 @@ export interface Venue {
   notes?: string;
   rating?: number;
   visitsCount: number;
+  updatedAt?: string;
+  deletedAt?: string;
 }
 
 export interface Bill {
@@ -33,6 +35,8 @@ export interface Bill {
   note?: string;
   receiptImage?: string; // Base64 compressed invoice proof
   isArchived?: boolean; // True if the bill has been archived to tidy up history
+  updatedAt?: string;
+  deletedAt?: string;
   settledTransfers?: Record<string, boolean>; // Per-recipient debt settlement; legacy bills use member.hasPaidDebt
   bankName?: string; // e.g. 'mbbank', 'vcb'
   bankNo?: string; // Bank account number of the host
