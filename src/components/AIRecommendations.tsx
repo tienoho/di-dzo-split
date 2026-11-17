@@ -168,7 +168,7 @@ export default function AIRecommendations({ savedVenues, onAddVenue }: AIRecomme
         <div className="flex flex-col md:flex-row items-center justify-between gap-6 relative z-10">
           <div className="space-y-2 text-left">
             <div className="flex items-center gap-2 bg-slate-950/20 w-fit px-3 py-1.5 rounded-full border border-white/20">
-              <Sparkles className="w-4 h-4 text-white animate-pulse" />
+              <Sparkles className="w-4 h-4 text-white" />
               <span className="text-[10px] font-black uppercase tracking-wider text-white leading-none">CỦNG CỐ BỞI GOOGLE SEARCH GROUNDING AI</span>
             </div>
             <h2 className="text-2xl md:text-3xl font-black tracking-tight text-white leading-tight">
@@ -187,7 +187,7 @@ export default function AIRecommendations({ savedVenues, onAddVenue }: AIRecomme
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* FILTERS AND CONTROLS */}
-        <div className="lg:col-span-5 bg-white dark:bg-slate-900 border-4 border-slate-900 rounded-[32px] p-6 shadow-lg h-fit space-y-5">
+        <div className="lg:col-span-5 bg-white dark:bg-slate-900 border border-slate-200 rounded-3xl p-6 shadow-sm h-fit space-y-5">
           <div className="space-y-1.5 border-b-2 border-dashed border-slate-100 dark:border-slate-800 pb-4">
             <h3 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
               <Compass className="w-5 h-5 text-orange-500" />
@@ -355,7 +355,7 @@ export default function AIRecommendations({ savedVenues, onAddVenue }: AIRecomme
         </div>
 
         {/* RESULTS FEED VIEWPORT */}
-        <div className="lg:col-span-7 bg-white dark:bg-slate-900 border-4 border-slate-900 rounded-[32px] p-6 shadow-lg min-h-[400px] flex flex-col">
+        <div className="lg:col-span-7 bg-white dark:bg-slate-900 border border-slate-200 rounded-3xl p-6 shadow-sm min-h-[400px] flex flex-col">
           {errorMsg && (
             <div className="bg-red-50 dark:bg-red-950/30 border-3 border-red-500 rounded-2xl p-4 flex items-start gap-3 my-auto">
               <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
@@ -371,11 +371,11 @@ export default function AIRecommendations({ savedVenues, onAddVenue }: AIRecomme
               <div className="relative w-20 h-20 mx-auto">
                 {/* Visual pulsating search waves */}
                 <span className="absolute top-0 left-0 w-20 h-20 border-4 border-dashed border-orange-500 rounded-full animate-spin"></span>
-                <span className="absolute top-2.5 left-2.5 w-15 h-15 bg-yellow-100 rounded-full flex items-center justify-center font-bold text-3xl animate-pulse">🍻</span>
+                <span className="absolute top-2.5 left-2.5 w-15 h-15 bg-yellow-100 rounded-full flex items-center justify-center font-bold text-3xl">🍻</span>
               </div>
               <div className="space-y-1">
                 <h4 className="text-sm font-black text-slate-800 dark:text-white">Đang tổng hợp dữ liệu Google Search...</h4>
-                <p className="text-[10px] uppercase font-black tracking-widest text-slate-400 font-mono animate-pulse">
+                <p className="text-[10px] uppercase font-black tracking-widest text-slate-400 font-mono">
                   {selectedCategory === 'bia-hoi' ? '🍺 Tìm nguồn mồi ngon bia bọt chất lượng tốt...' : '🍢 Đang bới tìm quán chuẩn vị mồi sòng phẳng...'}
                 </p>
               </div>
