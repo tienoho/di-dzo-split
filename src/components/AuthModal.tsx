@@ -55,11 +55,7 @@ export default function AuthModal({ currentUser, onClose, onSuccess }: AuthModal
           displayName: displayName.trim()
         });
         
-        setSuccessMsg(`Chào mừng ${displayName.trim()} đến với bàn nhậu! 🍻`);
-        setTimeout(() => {
-          onSuccess(userCredential.user, displayName.trim());
-          onClose();
-        }, 1500);
+        onSuccess(userCredential.user, displayName.trim());
 
       } else {
         // Sign in
@@ -70,11 +66,7 @@ export default function AuthModal({ currentUser, onClose, onSuccess }: AuthModal
         );
         
         const nameToUse = userCredential.user.displayName || email.split('@')[0];
-        setSuccessMsg(`Đã đăng nhập thành công. Chào mừng trở lại, ${nameToUse}! 🥂`);
-        setTimeout(() => {
-          onSuccess(userCredential.user, nameToUse);
-          onClose();
-        }, 1500);
+        onSuccess(userCredential.user, nameToUse);
       }
     } catch (err: any) {
       console.error(err);
@@ -98,11 +90,7 @@ export default function AuthModal({ currentUser, onClose, onSuccess }: AuthModal
     try {
       const user = await signInWithGoogle();
       const nameToUse = user.displayName || user.email?.split('@')[0] || 'Chiến hữu';
-      setSuccessMsg(`Chào mừng bạng ${nameToUse} đã tham gia bàn nhậu thành công! 🍻`);
-      setTimeout(() => {
-        onSuccess(user, nameToUse);
-        onClose();
-      }, 1500);
+      onSuccess(user, nameToUse);
     } catch (err: any) {
       console.error(err);
       if (err.code !== 'auth/popup-closed-by-user') {
@@ -206,7 +194,8 @@ export default function AuthModal({ currentUser, onClose, onSuccess }: AuthModal
               </span>
               <input
                 type="email"
-                required
+                  autoComplete="email"
+                  required
                 placeholder="lapke_hoadon@gmail.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -223,7 +212,9 @@ export default function AuthModal({ currentUser, onClose, onSuccess }: AuthModal
               </span>
               <input
                 type="password"
-                required
+                  autoComplete={isSignUp ? 'new-password' : 'current-password'}
+                  minLength={6}
+                  required
                 placeholder="••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
