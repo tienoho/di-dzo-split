@@ -404,12 +404,12 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         {/* FIELD A: SƠ ĐỒ CHI PHÍ 6 THÁNG QUA */}
-        <div className="lg:col-span-7 bg-white border-4 border-slate-900 rounded-[32px] shadow-lg p-6 space-y-4 flex flex-col justify-between">
+        <div className="lg:col-span-7 bg-white border-4 border-slate-900 rounded-[32px] shadow-lg p-6 space-y-4 flex flex-col justify-between dark:bg-slate-900 dark:border-slate-700">
           <div className="space-y-4">
-            <div className="flex justify-between items-center border-b-2 border-slate-900 pb-3">
+            <div className="flex justify-between items-center border-b-2 border-slate-900 pb-3 dark:border-slate-700">
               <div className="flex items-center gap-2">
                 <span className="w-3.5 h-7 bg-orange-500 rounded-full inline-block"></span>
-                <h3 className="text-xl font-black text-slate-900 flex items-center gap-2 tracking-tight">
+                <h3 className="text-xl font-black text-slate-900 flex items-center gap-2 tracking-tight dark:text-slate-100">
                   <TrendingUp className="w-6 h-6 text-orange-500" />
                   Sơ Đồ Chi Phí Nhậu 6 Tháng Qua
                 </h3>
@@ -418,7 +418,7 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
 
             {/* Dynamic Pure SVG-Tailwind Chart Element */}
             <div className="pt-4">
-              <div className="grid grid-cols-6 gap-2 md:gap-4 h-48 items-end border-b-4 border-slate-900 pb-1">
+              <div className="grid grid-cols-6 gap-2 md:gap-4 h-48 items-end border-b-4 border-slate-900 pb-1 dark:border-slate-700">
                 {last6MonthsData.map((data) => {
                   const heightPercent = `${(data.amount / maxMonthlyAmount) * 100}%`;
                   const isSelected = timeFilterType === 'specific-month' && selectedMonth === data.key;
@@ -472,12 +472,12 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
         </div>
 
         {/* FIELD B: BIỂU ĐỒ TRÒN TỶ LỆ THEO ĐỊA ĐIỂM (PIE CHART) */}
-        <div className="lg:col-span-5 bg-white border-4 border-slate-900 rounded-[32px] shadow-lg p-6 space-y-4 flex flex-col justify-between">
+        <div className="lg:col-span-5 bg-white border-4 border-slate-900 rounded-[32px] shadow-lg p-6 space-y-4 flex flex-col justify-between dark:bg-slate-900 dark:border-slate-700">
           <div>
-            <div className="flex justify-between items-center border-b-2 border-slate-900 pb-3">
+            <div className="flex justify-between items-center border-b-2 border-slate-900 pb-3 dark:border-slate-700">
               <div className="flex items-center gap-2">
                 <span className="w-3.5 h-7 bg-purple-500 rounded-full inline-block"></span>
-                <h3 className="text-xl font-black text-slate-900 flex items-center gap-2 tracking-tight">
+                <h3 className="text-xl font-black text-slate-900 flex items-center gap-2 tracking-tight dark:text-slate-100">
                   <PieChart className="w-6 h-6 text-purple-500" />
                   Cơ Cấu Địa Điểm Ăn Nhậu
                 </h3>
@@ -527,7 +527,7 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
                   {/* Center Text displaying location counts */}
                   <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                     <span className="text-xs font-black uppercase text-slate-400 leading-none">Tổng cộng</span>
-                    <span className="text-sm font-black text-slate-900 font-mono mt-0.5">
+                    <span className="text-sm font-black text-slate-900 font-mono mt-0.5 dark:text-slate-100">
                       {processedPieData.length} nơi
                     </span>
                   </div>
@@ -540,14 +540,14 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
                       <div className="flex items-center gap-1.5 min-w-0">
                         <span 
                           style={{ backgroundColor: data.color }} 
-                          className="w-2.5 h-2.5 rounded-full border border-slate-900 shrink-0 inline-block" 
+                          className="w-2.5 h-2.5 rounded-full border border-slate-900 shrink-0 inline-block dark:border-slate-700" 
                         />
-                        <span className="font-extrabold text-slate-800 text-sm truncate" title={data.name}>
+                        <span className="font-extrabold text-slate-800 text-sm truncate dark:text-slate-100" title={data.name}>
                           {data.name}
                         </span>
                       </div>
                       <div className="text-right shrink-0 font-mono text-xs font-black text-slate-500">
-                        <span className="text-slate-900 font-bold block">{data.amount.toLocaleString('vi-VN')}đ</span>
+                        <span className="text-slate-900 font-bold block dark:text-slate-100">{data.amount.toLocaleString('vi-VN')}đ</span>
                         <span className="bg-slate-100 text-xs px-1 py-0.2 rounded-sm border border-slate-200">{data.percentage.toFixed(1)}%</span>
                       </div>
                     </div>
@@ -560,7 +560,7 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
                   <PieChart className="w-8 h-8 animate-pulse" />
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs font-black text-slate-700">Chưa có quán nhậu nào được lọc</p>
+                  <p className="text-xs font-black text-slate-700 dark:text-slate-100">Chưa có quán nhậu nào được lọc</p>
                   <p className="text-xs text-slate-400 leading-relaxed max-w-[240px] mx-auto">
                     Gầy độ hoặc đổi bộ lọc thời gian để phân tích các quán ăn được chi nhiều tiền nhất cực kỳ trực quan!
                   </p>
@@ -577,13 +577,13 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
       </div>
 
       {/* AI WEEKEND BUDGET PREDICTOR MODULE */}
-      <div className="bg-slate-50 dark:bg-slate-950 border-4 border-slate-900 rounded-[32px] p-6 space-y-4 shadow-lg relative overflow-hidden">
+      <div className="bg-slate-50 dark:bg-slate-950 border-4 border-slate-900 rounded-[32px] p-6 space-y-4 shadow-lg relative overflow-hidden dark:border-slate-700">
         {/* Decorative badge */}
         <div className="absolute top-0 right-0 bg-orange-500 text-slate-950 font-black text-xs uppercase px-4 py-1.5 rounded-bl-2xl border-l-2 border-b-2 border-slate-900 tracking-wider">
           AI Smart Predictor
         </div>
 
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b-2 border-slate-900 pb-3">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b-2 border-slate-900 pb-3 dark:border-slate-700">
           <div className="space-y-1">
             <h3 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
               <Sparkles className="w-6 h-6 text-orange-500 animate-pulse" />
@@ -595,7 +595,7 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
           </div>
 
           {/* Engine Selector */}
-          <div className="flex items-center gap-2 bg-white dark:bg-slate-900 p-1.5 rounded-xl border-2 border-slate-900 shrink-0">
+          <div className="flex items-center gap-2 bg-white dark:bg-slate-900 p-1.5 rounded-xl border-2 border-slate-900 shrink-0 dark:border-slate-700">
             <button
               type="button"
               onClick={() => {
@@ -648,12 +648,12 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
             >
               {predicting ? (
                 <>
-                  <Brain className="w-4 h-4 animate-spin text-slate-900" />
+                  <Brain className="w-4 h-4 animate-spin text-slate-900 dark:text-slate-100" />
                   Đang phân tích thói quen ăn nhậu...
                 </>
               ) : (
                 <>
-                  <Sparkles className="w-4 h-4 text-slate-950" />
+                  <Sparkles className="w-4 h-4 text-slate-950 dark:text-slate-100" />
                   Tính toán và phân bổ ngân sách
                 </>
               )}
@@ -664,8 +664,8 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
             {/* KPI GRID OF BUDGETS */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Card 1: Expected Sessions */}
-              <div className="bg-white dark:bg-slate-900 border-2 border-slate-900 rounded-2xl p-4 flex items-center gap-4 shadow-[3px_3px_0px_0px_rgba(15,23,42,1)]">
-                <div className="p-3 bg-purple-100 bg-purple-100 dark:bg-purple-950/40 text-purple-600 rounded-xl border border-slate-900">
+              <div className="bg-white dark:bg-slate-900 border-2 border-slate-900 rounded-2xl p-4 flex items-center gap-4 shadow-[3px_3px_0px_0px_rgba(15,23,42,1)] dark:border-slate-700">
+                <div className="p-3 bg-purple-100 bg-purple-100 dark:bg-purple-950/40 text-purple-600 rounded-xl border border-slate-900 dark:border-slate-700">
                   <Calendar className="w-5 h-5" />
                 </div>
                 <div>
@@ -705,7 +705,7 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
 
             {/* Analysis & Explanations */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-              <div className="bg-white dark:bg-slate-900 border-2 border-slate-900 rounded-2xl p-4 space-y-3 shadow-sm">
+              <div className="bg-white dark:bg-slate-900 border-2 border-slate-900 rounded-2xl p-4 space-y-3 shadow-sm dark:border-slate-700">
                 <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
                   <span className="w-2.5 h-5 bg-orange-500 rounded-full inline-block"></span>
                   <h4 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wider">Hành Vi & Tần Suất Chi Tiêu</h4>
@@ -719,7 +719,7 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
                 </div>
               </div>
 
-              <div className="bg-white dark:bg-slate-900 border-2 border-slate-900 rounded-2xl p-4 space-y-3 shadow-sm">
+              <div className="bg-white dark:bg-slate-900 border-2 border-slate-900 rounded-2xl p-4 space-y-3 shadow-sm dark:border-slate-700">
                 <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
                   <span className="w-2.5 h-5 bg-purple-500 rounded-full inline-block"></span>
                   <h4 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wider">Cơ Sở Tính Ngân Sách</h4>
@@ -780,25 +780,25 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
       </div>
 
       {/* FILTER CONTROLS & THREE-WAY STAT BANNER */}
-      <div className="bg-yellow-50/20 border-4 border-slate-900 rounded-[32px] p-5 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-center">
+      <div className="bg-yellow-50/20 border-4 border-slate-900 rounded-[32px] p-5 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-center dark:border-slate-700">
         {/* KPI: Spend */}
-        <div className="p-3.5 bg-white border-2 border-slate-900 rounded-2xl shadow-sm text-center">
+        <div className="p-3.5 bg-white border-2 border-slate-900 rounded-2xl shadow-sm text-center dark:bg-slate-900 dark:border-slate-700">
           <span className="text-xs font-black text-slate-500 uppercase tracking-wider block">THỜI KỲ TỔNG CHI</span>
-          <span className="text-xl font-black text-slate-900 block mt-1">
+          <span className="text-xl font-black text-slate-900 block mt-1 dark:text-slate-100">
             {totalSpendInPeriod.toLocaleString('vi-VN')} đ
           </span>
         </div>
         {/* KPI: Meetings count */}
-        <div className="p-3.5 bg-white border-2 border-slate-900 rounded-2xl shadow-sm text-center">
+        <div className="p-3.5 bg-white border-2 border-slate-900 rounded-2xl shadow-sm text-center dark:bg-slate-900 dark:border-slate-700">
           <span className="text-xs font-black text-slate-500 uppercase tracking-wider block">SỐ CUỘC GẦY ĐỘ</span>
-          <span className="text-xl font-black text-slate-900 block mt-1">
+          <span className="text-xl font-black text-slate-900 block mt-1 dark:text-slate-100">
             {totalBillsCount} cuộc nhậu
           </span>
         </div>
         {/* KPI: Average spending */}
-        <div className="p-3.5 bg-white border-2 border-slate-900 rounded-2xl shadow-sm text-center">
+        <div className="p-3.5 bg-white border-2 border-slate-900 rounded-2xl shadow-sm text-center dark:bg-slate-900 dark:border-slate-700">
           <span className="text-xs font-black text-slate-500 uppercase tracking-wider block">PHÍ TRUNG BÌNH</span>
-          <span className="text-xl font-black text-slate-900 block mt-1">
+          <span className="text-xl font-black text-slate-900 block mt-1 dark:text-slate-100">
             {avgBillInPeriod.toLocaleString('vi-VN')} đ
           </span>
         </div>
@@ -806,7 +806,7 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
         {/* Indicator for current time filter */}
         <div className="p-1 space-y-1">
           <label className="text-xs font-black text-slate-600 uppercase tracking-wide">Thời Gian Đang Lọc</label>
-          <div className="w-full text-xs font-black bg-white border-2 border-slate-900 p-2.5 rounded-xl text-slate-800 flex items-center justify-between shadow-xs">
+          <div className="w-full text-xs font-black bg-white border-2 border-slate-900 p-2.5 rounded-xl text-slate-800 flex items-center justify-between shadow-xs dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700">
             <span className="text-orange-600 truncate mr-1">
               {timeFilterType === 'all' && 'Tất cả thời gian'}
               {timeFilterType === 'week' && 'Tuần này'}
@@ -822,7 +822,7 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
       </div>
 
       {/* SEARCH AND BILL DETAILS CONTAINER */}
-      <div className="bg-white border-4 border-slate-900 rounded-[32px] p-6 space-y-5 shadow-lg">
+      <div className="bg-white border-4 border-slate-900 rounded-[32px] p-6 space-y-5 shadow-lg dark:bg-slate-900 dark:border-slate-700">
         {/* TAB CHOOSER: HOẠT ĐỘNG / LƯU TRỮ */}
         <div className="flex flex-wrap gap-3 border-b-2 border-slate-100 pb-4">
           <button
@@ -858,7 +858,7 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
         </div>
 
         {/* QUICK TIME FILTER BAR */}
-        <div className="flex flex-wrap items-center gap-2 bg-slate-50/70 p-3 rounded-[20px] border-2 border-slate-900 shadow-5xs">
+        <div className="flex flex-wrap items-center gap-2 bg-slate-50/70 p-3 rounded-[20px] border-2 border-slate-900 shadow-5xs dark:border-slate-700">
           <span className="text-xs uppercase font-black text-slate-500 px-1 flex items-center gap-1.5 shrink-0">
             <Filter className="w-3.5 h-3.5 text-orange-500" /> Bộ lọc thời gian:
           </span>
@@ -902,7 +902,7 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
               <select
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(e.target.value)}
-                className="text-sm font-black bg-white border-2 border-slate-900 px-2.5 py-1.5 rounded-xl text-slate-800 focus:border-orange-500 outline-hidden cursor-pointer"
+                className="text-sm font-black bg-white border-2 border-slate-900 px-2.5 py-1.5 rounded-xl text-slate-800 focus:border-orange-500 outline-hidden cursor-pointer dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700"
               >
                 <option value="all">Tất cả các tháng</option>
                 {availableMonths.map(month => (
@@ -920,14 +920,14 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
               placeholder="Tìm theo quán nhậu, người tham gia hoặc ghi chú..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full text-xs bg-yellow-50/15 border-2 border-slate-900 pl-9 pr-4 py-3 rounded-2xl outline-hidden focus:border-orange-500 text-slate-900 font-extrabold"
+              className="w-full text-xs bg-yellow-50/15 border-2 border-slate-900 pl-9 pr-4 py-3 rounded-2xl outline-hidden focus:border-orange-500 text-slate-900 font-extrabold dark:text-slate-100 dark:border-slate-700"
             />
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-500" />
           </div>
 
           <button
             onClick={handleExportCSV}
-            className="px-5 py-3 bg-slate-900 hover:bg-orange-500 text-white hover:text-slate-900 rounded-2xl text-xs font-black flex items-center justify-center gap-1.5 border-2 border-slate-900 transition-all hover:scale-[1.01] active:translate-y-0.5 cursor-pointer"
+            className="px-5 py-3 bg-slate-900 hover:bg-orange-500 text-white hover:text-slate-900 rounded-2xl text-xs font-black flex items-center justify-center gap-1.5 border-2 border-slate-900 transition-all hover:scale-[1.01] active:translate-y-0.5 cursor-pointer dark:border-slate-700"
           >
             <FileDown className="w-4 h-4" /> Xuất File Chi Tiết (.CSV)
           </button>
@@ -972,7 +972,7 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
                         <Calendar className="w-4 h-4" />
                       </div>
                       <div>
-                        <h4 className="text-sm font-black text-slate-900 line-clamp-1">🍻 {bill.venueName}</h4>
+                        <h4 className="text-sm font-black text-slate-900 line-clamp-1 dark:text-slate-100">🍻 {bill.venueName}</h4>
                         <div className="flex items-center space-x-2 text-xs font-bold text-slate-500 mt-1">
                           <span>{formattedDate} lúc {formattedTime}</span>
                           <span>•</span>
@@ -986,12 +986,12 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
                     <div className="flex items-center space-x-4 self-end md:self-auto">
                       <div className="text-right">
                         <span className="text-xs text-slate-400 font-extrabold block">TỔNG HÓA ĐƠN</span>
-                        <span className="text-sm font-black text-slate-900 bg-yellow-100 bg-yellow-100 border-2 border-slate-900 px-2.5 py-0.5 rounded-lg inline-block shadow-sm">
+                        <span className="text-sm font-black text-slate-900 bg-yellow-100 bg-yellow-100 border-2 border-slate-900 px-2.5 py-0.5 rounded-lg inline-block shadow-sm dark:text-slate-100 dark:border-slate-700">
                           {bill.totalAmount.toLocaleString('vi-VN')} đ
                         </span>
                       </div>
                       
-                      {isExpanded ? <ChevronUp className="w-5 h-5 text-slate-900" /> : <ChevronDown className="w-5 h-5 text-slate-900" />}
+                      {isExpanded ? <ChevronUp className="w-5 h-5 text-slate-900 dark:text-slate-100" /> : <ChevronDown className="w-5 h-5 text-slate-900 dark:text-slate-100" />}
                     </div>
                   </div>
 
@@ -1025,7 +1025,7 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
                       </details>
 
                       {bill.note && (
-                        <div className="p-3 bg-yellow-50/40 text-slate-700 rounded-xl text-sm font-extrabold border-2 border-slate-900">
+                        <div className="p-3 bg-yellow-50/40 text-slate-700 rounded-xl text-sm font-extrabold border-2 border-slate-900 dark:text-slate-100 dark:border-slate-700">
                           🌟 Ghi chú cuộc nhậu: &ldquo;{bill.note}&rdquo;
                         </div>
                       )}
@@ -1062,9 +1062,9 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
                           {bill.members.map((member) => {
                             const diff = member.finalShare - member.initialPaid;
                             return (
-                              <div key={member.name} className="flex justify-between items-center text-xs p-3 bg-slate-50/50 border-2 border-slate-900 rounded-xl">
+                              <div key={member.name} className="flex justify-between items-center text-xs p-3 bg-slate-50/50 border-2 border-slate-900 rounded-xl dark:border-slate-700">
                                 <div className="space-y-0.5">
-                                  <span className="font-black text-slate-900 block">👤 {member.name}</span>
+                                  <span className="font-black text-slate-900 block dark:text-slate-100">👤 {member.name}</span>
                                   <span className="text-xs text-slate-400 font-bold block">
                                     Đã chi: {member.initialPaid.toLocaleString('vi-VN')}đ | Phải chịu: {member.finalShare.toLocaleString('vi-VN')}đ
                                   </span>
@@ -1184,11 +1184,11 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
           onClick={() => setActiveZoomImage(null)}
         >
           <div 
-            className="bg-white border-4 border-slate-900 rounded-[32px] p-5 max-w-md w-full relative space-y-4 shadow-2xl animate-scaleIn"
+            className="bg-white border-4 border-slate-900 rounded-[32px] p-5 max-w-md w-full relative space-y-4 shadow-2xl animate-scaleIn dark:bg-slate-900 dark:border-slate-700"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-center border-b-2 border-slate-200 pb-2.5">
-              <span className="text-sm font-black text-slate-700 uppercase tracking-widest flex items-center gap-1.5">
+              <span className="text-sm font-black text-slate-700 uppercase tracking-widest flex items-center gap-1.5 dark:text-slate-100">
                 🧾 BẰNG CHỨNG HÓA ĐƠN GỐC
               </span>
               <button 
@@ -1199,7 +1199,7 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
                 ĐÓNG ✕
               </button>
             </div>
-            <div className="overflow-auto max-h-[60vh] border-2 border-slate-900 rounded-2xl bg-slate-100 flex items-center justify-center p-2">
+            <div className="overflow-auto max-h-[60vh] border-2 border-slate-900 rounded-2xl bg-slate-100 flex items-center justify-center p-2 dark:border-slate-700">
               <img 
                 src={activeZoomImage} 
                 className="max-w-full max-h-full object-contain rounded-lg rounded-b-none" 
@@ -1227,7 +1227,7 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
               {/* Header/Banner decorative style */}
               <div className="bg-orange-400 border-b-4 border-slate-950 p-4 flex items-center justify-between text-slate-950">
                 <div className="flex items-center gap-2">
-                  <HelpCircle className="w-5 h-5 text-slate-950" />
+                  <HelpCircle className="w-5 h-5 text-slate-950 dark:text-slate-100" />
                   <h3 className="font-black text-xs uppercase tracking-tight">{confirmDialog.title}</h3>
                 </div>
                 <button
@@ -1236,7 +1236,7 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
                   className="rounded-full bg-white/45 hover:bg-white/60 p-1 cursor-pointer transition-all border border-slate-950"
                   title="Đóng hộp thoại"
                 >
-                  <X className="w-4 h-4 text-slate-950" />
+                  <X className="w-4 h-4 text-slate-950 dark:text-slate-100" />
                 </button>
               </div>
 
@@ -1250,7 +1250,7 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
                   <button
                     type="button"
                     onClick={() => setConfirmDialog(null)}
-                    className="bg-slate-100 hover:bg-slate-200 text-slate-800 font-black text-xs py-2.5 rounded-xl border-2 border-slate-950 shadow-5xs transition-all active:translate-y-0.5 cursor-pointer text-center"
+                    className="bg-slate-100 hover:bg-slate-200 text-slate-800 font-black text-xs py-2.5 rounded-xl border-2 border-slate-950 shadow-5xs transition-all active:translate-y-0.5 cursor-pointer text-center dark:text-slate-100"
                   >
                     Bỏ qua
                   </button>
