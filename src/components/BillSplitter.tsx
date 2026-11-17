@@ -105,7 +105,13 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
     }
 
     if (data.imageBase64) {
-      setScannedReceiptImage(data.imageBase64);
+      // Firestore documents must stay under 1 MiB, including all participant data.
+      if (data.imageBase64.length <= 450_000) {
+        setScannedReceiptImage(data.imageBase64);
+      } else {
+        setScannedReceiptImage(undefined);
+        toast('Ảnh quét quá lớn để lưu cùng hóa đơn. Số tiền vẫn được giữ lại.', { icon: '📸' });
+      }
     }
 
     if (data.venueName) {
@@ -118,13 +124,11 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
       if (matched) {
         setSelectedVenueId(matched.id);
       } else {
-        const added = onAddVenue({
-          name: data.venueName,
-          address: 'Nhận diện tự động từ máy ảnh 📸',
-          notes: 'Quét chuẩn xác 10/10',
-          rating: 4.5
-        });
-        setSelectedVenueId(added.id);
+        // OCR text is unverified; never create a fake rated venue automatically.
+        setNewVenueName(data.venueName.trim());
+        setSelectedVenueId('');
+        setShowNewVenueForm(true);
+        toast('Đã nhận diện tên quán. Vui lòng kiểm tra trước khi thêm vào quán quen.', { icon: '📍' });
       }
     }
     
@@ -426,11 +430,11 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
   return (
     <div className="space-y-6" id="bill-splitter-section">
       {savedSuccess && (
-        <div id="alert-save-success" className="bg-emerald-400 border-4 border-slate-900 dark:border-slate-700 text-slate-900 dark:text-slate-100 px-5 py-4 rounded-3xl shadow-md flex items-center justify-between animate-bounce">
+        <div id="alert-save-success" className="bg-emerald-400 border-4 border-slate-900 dark:border-slate-700 text-slate-900 dark:text-slate-100 px-5 py-4 rounded-3xl shadow-md flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <Sparkles className="w-6 h-6 text-slate-900 dark:text-slate-100" />
             <span className="text-sm font-black">
-              YÊU CẦU ĐÃ LƯU! Hóa đơn cuộc nhậu đã được chia đều & lưu lịch sử thành công sòng phẳng!
+              Đã lưu hóa đơn trên thiết bị. Dữ liệu sẽ đồng bộ lên tài khoản khi kết nối thành công.
             </span>
           </div>
         </div>
@@ -455,7 +459,7 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
             <button
               type="button"
               onClick={() => setShowScanner(true)}
-              className="flex items-center justify-center gap-2 bg-slate-950 text-white font-extrabold text-sm uppercase tracking-wide px-4 py-3 rounded-2xl hover:bg-orange-600 hover:text-slate-950 hover:-translate-y-0.5 border-2 border-slate-950 cursor-pointer shadow-md transition-all shrink-0 animate-pulse"
+              className="flex items-center justify-center gap-2 bg-slate-950 text-white font-extrabold text-sm uppercase tracking-wide px-4 py-3 rounded-2xl hover:bg-orange-600 hover:text-slate-950 hover:-translate-y-0.5 border-2 border-slate-950 cursor-pointer shadow-md transition-colors shrink-0"
             >
               <Camera className="w-4 h-4 text-orange-400" />
               <span>Quét Hóa Đơn AI 🤖</span>
@@ -874,7 +878,7 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
                 {luckyWinnerIndex !== null && !isSpinning && members[luckyWinnerIndex] && (
                   <div className="text-center p-3 bg-red-100 dark:bg-red-900/30 rounded-xl border-2 border-red-500 relative">
                     <div className="fixed inset-0 z-50 pointer-events-none">
-                      <Confetti recycle={false} numberOfPieces={300} gravity={0.3} />
+                      <Confetti recycle={false} numberOfPieces={typeof window !== 'undefined' && window.innerWidth < 640 ? 60 : 140} gravity={0.24} />
                     </div>
                     <div className="text-xs font-bold text-red-600 dark:text-red-400">Người được độ đêm nay:</div>
                     <div className="text-lg font-black text-red-700 dark:text-red-300">🚨 {members[luckyWinnerIndex].name} 🚨</div>
