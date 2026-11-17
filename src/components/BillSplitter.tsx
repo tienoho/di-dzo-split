@@ -297,7 +297,7 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
       }
     });
 
-    const shares = equalShares(netAmountToSplit, uniqueNames.length);
+    const shares = equalShares(totalAmount, uniqueNames.length); // Quick split discards old penalties.
 
     setMembers(uniqueNames.map((name, index) => {
       const isSelf = name.toLowerCase() === activeCreatorName.toLowerCase();
