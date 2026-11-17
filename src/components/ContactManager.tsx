@@ -145,9 +145,9 @@ export default function ContactManager({ contacts, onSaveContact, onDeleteContac
   return (
     <div className="space-y-6">
       {/* Tab Banner */}
-      <div className="bg-white border-4 border-slate-900 rounded-[32px] p-6 shadow-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="bg-white border-4 border-slate-900 rounded-[32px] p-6 shadow-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-4 dark:bg-slate-900 dark:border-slate-700">
         <div>
-          <h1 className="text-2xl font-black text-slate-900 flex items-center gap-2.5 tracking-tight">
+          <h1 className="text-2xl font-black text-slate-900 flex items-center gap-2.5 tracking-tight dark:text-slate-100">
             <Users className="w-7 h-7 text-indigo-500" />
             Danh Bạ Chiến Hữu
           </h1>
@@ -184,11 +184,11 @@ export default function ContactManager({ contacts, onSaveContact, onDeleteContac
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* LEFT COLUMN: Add Contact Form */}
-        <div className="lg:col-span-4 bg-white border-4 border-slate-900 rounded-[32px] shadow-lg p-6 h-fit space-y-5">
+        <div className="lg:col-span-4 bg-white border-4 border-slate-900 rounded-[32px] shadow-lg p-6 h-fit space-y-5 dark:bg-slate-900 dark:border-slate-700">
           <div className="space-y-1.5 border-b-2 border-dashed border-slate-100 pb-4">
             <div className="flex items-center gap-2">
               <span className="w-3 h-6 bg-indigo-400 rounded-full inline-block"></span>
-              <h2 className="text-lg font-black text-slate-900 flex items-center gap-2 tracking-tight">
+              <h2 className="text-lg font-black text-slate-900 flex items-center gap-2 tracking-tight dark:text-slate-100">
                 <UserPlus className="w-5 h-5 text-indigo-500" />
                 Thêm Chiến Hữu
               </h2>
@@ -207,7 +207,7 @@ export default function ContactManager({ contacts, onSaveContact, onDeleteContac
                 placeholder="Nhập tên ví dụ: Minh Quân..."
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full text-xs bg-slate-50 border-2 border-slate-900 p-3 rounded-xl text-slate-900 font-extrabold focus:border-indigo-500 outline-hidden"
+                className="w-full text-xs bg-slate-50 border-2 border-slate-900 p-3 rounded-xl text-slate-900 font-extrabold focus:border-indigo-500 outline-hidden dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700"
               />
             </div>
 
@@ -220,7 +220,7 @@ export default function ContactManager({ contacts, onSaveContact, onDeleteContac
                 placeholder="Ví dụ: 0988888888..."
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="w-full text-xs bg-slate-50 border-2 border-slate-900 p-3 rounded-xl font-mono text-slate-900 font-extrabold focus:border-indigo-500 outline-hidden"
+                className="w-full text-xs bg-slate-50 border-2 border-slate-900 p-3 rounded-xl font-mono text-slate-900 font-extrabold focus:border-indigo-500 outline-hidden dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700"
               />
               <p className="text-xs font-bold text-slate-400">Dùng để mở chat Zalo đòi nợ trực tiếp.</p>
             </div>
@@ -234,14 +234,14 @@ export default function ContactManager({ contacts, onSaveContact, onDeleteContac
                 placeholder="Ví dụ: quan.minh.99..."
                 value={messenger}
                 onChange={(e) => setMessenger(e.target.value)}
-                className="w-full text-xs bg-slate-50 border-2 border-slate-900 p-3 rounded-xl text-slate-900 font-extrabold focus:border-indigo-500 outline-hidden"
+                className="w-full text-xs bg-slate-50 border-2 border-slate-900 p-3 rounded-xl text-slate-900 font-extrabold focus:border-indigo-500 outline-hidden dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700"
               />
               <p className="text-xs font-bold text-slate-400">Username của link m.me/username chat Facebook.</p>
             </div>
 
             <button
               type="submit"
-              className="w-full bg-slate-900 hover:bg-indigo-600 text-white rounded-2xl py-3 text-xs font-black border-2 border-slate-900 hover:-translate-y-0.5 shadow-sm transition-all cursor-pointer"
+              className="w-full bg-slate-900 hover:bg-indigo-600 text-white rounded-2xl py-3 text-xs font-black border-2 border-slate-900 hover:-translate-y-0.5 shadow-sm transition-all cursor-pointer dark:border-slate-700"
             >
               Lưu Vào Danh Bạ
             </button>
@@ -249,9 +249,9 @@ export default function ContactManager({ contacts, onSaveContact, onDeleteContac
         </div>
 
         {/* RIGHT COLUMN: Contacts List */}
-        <div className="lg:col-span-8 bg-white border-4 border-slate-900 rounded-[32px] shadow-lg p-6 space-y-5">
+        <div className="lg:col-span-8 bg-white border-4 border-slate-900 rounded-[32px] shadow-lg p-6 space-y-5 dark:bg-slate-900 dark:border-slate-700">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b-2 border-dashed border-slate-100 pb-4">
-            <h2 className="text-lg font-black text-slate-900 flex items-center gap-2.5">
+            <h2 className="text-lg font-black text-slate-900 flex items-center gap-2.5 dark:text-slate-100">
               Danh sách ({filteredContacts.length})
             </h2>
             
@@ -263,7 +263,7 @@ export default function ContactManager({ contacts, onSaveContact, onDeleteContac
                 placeholder="Tìm kiếm chiến hữu..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-9 pr-4 py-2.5 text-xs font-extrabold bg-slate-50 border-2 border-slate-900 rounded-xl outline-hidden focus:border-indigo-500"
+                className="w-full pl-9 pr-4 py-2.5 text-xs font-extrabold bg-slate-50 border-2 border-slate-900 rounded-xl outline-hidden focus:border-indigo-500 dark:bg-slate-800 dark:border-slate-700"
               />
             </div>
           </div>
@@ -281,12 +281,12 @@ export default function ContactManager({ contacts, onSaveContact, onDeleteContac
                 return (
                   <div 
                     key={contactName}
-                    className="bg-slate-50 dark:bg-slate-900 border-2 border-slate-900 rounded-2xl p-4 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 transition-colors"
+                    className="bg-slate-50 dark:bg-slate-900 border-2 border-slate-900 rounded-2xl p-4 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 transition-colors dark:border-slate-700"
                   >
                     {isEditing ? (
                       // Inline editing form
                       <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        <div className="text-xs font-black text-slate-900 self-center">
+                        <div className="text-xs font-black text-slate-900 self-center dark:text-slate-100">
                           👤 {contactName}
                         </div>
                         <input
@@ -294,20 +294,20 @@ export default function ContactManager({ contacts, onSaveContact, onDeleteContac
                           placeholder="Số điện thoại Zalo"
                           value={editPhone}
                           onChange={(e) => setEditPhone(e.target.value)}
-                          className="text-sm font-bold bg-white border-2 border-slate-900 rounded-lg px-2.5 py-1.5 focus:border-indigo-500 outline-hidden"
+                          className="text-sm font-bold bg-white border-2 border-slate-900 rounded-lg px-2.5 py-1.5 focus:border-indigo-500 outline-hidden dark:bg-slate-900 dark:border-slate-700"
                         />
                         <input
                           type="text"
                           placeholder="Messenger Username"
                           value={editMessenger}
                           onChange={(e) => setEditMessenger(e.target.value)}
-                          className="text-sm font-bold bg-white border-2 border-slate-900 rounded-lg px-2.5 py-1.5 focus:border-indigo-500 outline-hidden"
+                          className="text-sm font-bold bg-white border-2 border-slate-900 rounded-lg px-2.5 py-1.5 focus:border-indigo-500 outline-hidden dark:bg-slate-900 dark:border-slate-700"
                         />
                       </div>
                     ) : (
                       // Plain text presentation
                       <div className="space-y-1.5">
-                        <h4 className="text-xs font-black text-slate-900 flex items-center gap-1.5">
+                        <h4 className="text-xs font-black text-slate-900 flex items-center gap-1.5 dark:text-slate-100">
                           👤 {contactName}
                         </h4>
                         <div className="flex flex-wrap gap-1.5">
@@ -346,7 +346,7 @@ export default function ContactManager({ contacts, onSaveContact, onDeleteContac
                           </button>
                           <button
                             onClick={handleCancelEdit}
-                            className="bg-white hover:bg-slate-100 text-slate-700 p-2 rounded-xl border-2 border-slate-900 cursor-pointer shadow-3xs hover:-translate-y-0.5 transition-all"
+                            className="bg-white hover:bg-slate-100 text-slate-700 p-2 rounded-xl border-2 border-slate-900 cursor-pointer shadow-3xs hover:-translate-y-0.5 transition-all dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700"
                             title="Hủy"
                           >
                             <X className="w-4 h-4" />
@@ -356,14 +356,14 @@ export default function ContactManager({ contacts, onSaveContact, onDeleteContac
                         <>
                           <button
                             onClick={() => handleStartEdit(contactName)}
-                            className="bg-white hover:bg-indigo-50 text-slate-700 hover:text-indigo-600 p-2 rounded-xl border-2 border-slate-900 cursor-pointer shadow-3xs hover:-translate-y-0.5 transition-all"
+                            className="bg-white hover:bg-indigo-50 text-slate-700 hover:text-indigo-600 p-2 rounded-xl border-2 border-slate-900 cursor-pointer shadow-3xs hover:-translate-y-0.5 transition-all dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700"
                             title="Sửa thông tin liên hệ"
                           >
                             <Edit3 className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => handleDelete(contactName)}
-                            className="bg-white hover:bg-red-50 text-slate-700 hover:text-red-600 p-2 rounded-xl border-2 border-slate-900 cursor-pointer shadow-3xs hover:-translate-y-0.5 transition-all"
+                            className="bg-white hover:bg-red-50 text-slate-700 hover:text-red-600 p-2 rounded-xl border-2 border-slate-900 cursor-pointer shadow-3xs hover:-translate-y-0.5 transition-all dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700"
                             title="Xóa khỏi danh bạ"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -387,11 +387,11 @@ export default function ContactManager({ contacts, onSaveContact, onDeleteContac
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white dark:bg-slate-900 border-4 border-slate-900 rounded-[32px] p-6 max-w-sm w-full space-y-4 shadow-2xl relative"
+              className="bg-white dark:bg-slate-900 border-4 border-slate-900 rounded-[32px] p-6 max-w-sm w-full space-y-4 shadow-2xl relative dark:border-slate-700"
             >
               <div className="flex items-center gap-2 border-b-2 border-dashed border-slate-100 pb-3">
                 <span className="text-xl">💡</span>
-                <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide">{confirmDialog.title}</h3>
+                <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide dark:text-slate-100">{confirmDialog.title}</h3>
               </div>
               <p className="text-xs font-bold text-slate-500 leading-relaxed">
                 {confirmDialog.message}
@@ -399,7 +399,7 @@ export default function ContactManager({ contacts, onSaveContact, onDeleteContac
               <div className="flex items-center justify-end gap-2.5 pt-2">
                 <button
                   onClick={() => setConfirmDialog(null)}
-                  className="bg-white hover:bg-slate-50 text-slate-800 font-black text-xs px-4 py-2.5 rounded-xl border-2 border-slate-900 shadow-5xs transition-transform active:translate-y-0.5 cursor-pointer"
+                  className="bg-white hover:bg-slate-50 text-slate-800 font-black text-xs px-4 py-2.5 rounded-xl border-2 border-slate-900 shadow-5xs transition-transform active:translate-y-0.5 cursor-pointer dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700"
                 >
                   Hủy
                 </button>
