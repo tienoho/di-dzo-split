@@ -545,28 +545,42 @@ export default function App() {
     });
   };
 
-  const handleMarkDebtAsPaid = (billId: string, debtorName: string) => {
+  // A debtor may owe multiple creditors; toggle only the selected transfer.
+  const handleMarkDebtAsPaid = (billId: string, debtorName: string, creditorName: string) => {
     const activeUser = currentUser || auth.currentUser;
     const userKey = activeUser ? activeUser.uid : 'guest';
 
     setBills(prevBills => {
       const updatedBills = prevBills.map(bill => {
-        if (bill.id === billId) {
-          const updatedBill = {
-            ...bill,
-            members: bill.members.map(member => 
-              member.name === debtorName ? { ...member, hasPaidDebt: !member.hasPaidDebt } : member
-            )
-          };
-          
-          if (activeUser) {
-            saveBillToCloud(activeUser.uid, updatedBill).catch(console.error);
-          }
-          return updatedBill;
-        }
-        return bill;
-      });
+        if (bill.id !== billId) return bill;
+        const transfer = getActiveDebts([bill]).find(debt =>
+          debt.debtorName === debtorName && debt.creditorName === creditorName
+        );
+        if (!transfer) return bill;
 
+        const nextBill: Bill = {
+          ...bill,
+          settledTransfers: {
+            ...bill.settledTransfers,
+            [transfer.id]: !transfer.isPaid
+          }
+        };
+        const calculatedTransfers = getActiveDebts([nextBill]);
+        nextBill.members = nextBill.members.map(member => {
+          const memberDebts = calculatedTransfers.filter(debt => debt.debtorName === member.name);
+          return {
+            ...member,
+            hasPaidDebt: memberDebts.length
+              ? memberDebts.every(debt => debt.isPaid)
+              : member.initialPaid >= member.finalShare
+          };
+        });
+
+        if (activeUser) {
+          saveBillToCloud(activeUser.uid, nextBill).catch(console.error);
+        }
+        return nextBill;
+      });
       saveStoredBills(updatedBills, userKey);
       setDebts(getActiveDebts(updatedBills));
       return updatedBills;
