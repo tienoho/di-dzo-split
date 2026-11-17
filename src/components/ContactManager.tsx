@@ -148,7 +148,7 @@ export default function ContactManager({ contacts, onSaveContact, onDeleteContac
   return (
     <div className="space-y-6">
       {/* Tab Banner */}
-      <div className="bg-white border-4 border-slate-900 rounded-[32px] p-6 shadow-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-4 dark:bg-slate-900 dark:border-slate-700">
+      <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4 dark:bg-slate-900 dark:border-slate-700">
         <div>
           <h1 className="text-2xl font-black text-slate-900 flex items-center gap-2.5 tracking-tight dark:text-slate-100">
             <Users className="w-7 h-7 text-indigo-500" />
@@ -187,7 +187,7 @@ export default function ContactManager({ contacts, onSaveContact, onDeleteContac
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* LEFT COLUMN: Add Contact Form */}
-        <div className="lg:col-span-4 bg-white border-4 border-slate-900 rounded-[32px] shadow-lg p-6 h-fit space-y-5 dark:bg-slate-900 dark:border-slate-700">
+        <div className="lg:col-span-4 bg-white border border-slate-200 rounded-3xl shadow-sm p-6 h-fit space-y-5 dark:bg-slate-900 dark:border-slate-700">
           <div className="space-y-1.5 border-b-2 border-dashed border-slate-100 pb-4">
             <div className="flex items-center gap-2">
               <span className="w-3 h-6 bg-indigo-400 rounded-full inline-block"></span>
@@ -252,7 +252,7 @@ export default function ContactManager({ contacts, onSaveContact, onDeleteContac
         </div>
 
         {/* RIGHT COLUMN: Contacts List */}
-        <div className="lg:col-span-8 bg-white border-4 border-slate-900 rounded-[32px] shadow-lg p-6 space-y-5 dark:bg-slate-900 dark:border-slate-700">
+        <div className="lg:col-span-8 bg-white border border-slate-200 rounded-3xl shadow-sm p-6 space-y-5 dark:bg-slate-900 dark:border-slate-700">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b-2 border-dashed border-slate-100 pb-4">
             <h2 className="text-lg font-black text-slate-900 flex items-center gap-2.5 dark:text-slate-100">
               Danh sách ({filteredContacts.length})
@@ -396,7 +396,7 @@ export default function ContactManager({ contacts, onSaveContact, onDeleteContac
               aria-labelledby="confirm-contact-title"
               aria-describedby="confirm-contact-description"
               tabIndex={-1}
-              className="bg-white dark:bg-slate-900 border-4 border-slate-900 rounded-[32px] p-6 max-w-sm w-full space-y-4 shadow-2xl relative dark:border-slate-700"
+              className="bg-white dark:bg-slate-900 border border-slate-200 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl relative dark:border-slate-700"
             >
               <div className="flex items-center gap-2 border-b-2 border-dashed border-slate-100 pb-3">
                 <span className="text-xl">💡</span>
