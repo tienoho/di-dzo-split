@@ -34,6 +34,7 @@ export default function DebtSettingsPanel({
 }: DebtSettingsPanelProps) {
   const [resetStep, setResetStep] = useState(0);
   const [isResetting, setIsResetting] = useState(false);
+  const [resetError, setResetError] = useState<string | null>(null);
 
   const handleHardReset = async () => {
     if (resetStep === 0) {
@@ -41,17 +42,22 @@ export default function DebtSettingsPanel({
       setTimeout(() => setResetStep(0), 4000); // reset if they don't confirm in 4 seconds
     } else {
       setIsResetting(true);
-      if (currentUser) {
-        try {
+      setResetError(null);
+      try {
+        if (currentUser) {
           const { clearUserCloudData } = await import('../../lib/firebase');
           await clearUserCloudData(currentUser.uid);
-        } catch (e) {
-          console.error("Failed to clear cloud data during hard reset:", e);
         }
+        // Only clear local data once remote deletion has been confirmed.
+        localStorage.clear();
+        sessionStorage.clear();
+        window.location.reload();
+      } catch (error) {
+        console.error('[Reset] Cloud data not cleared:', error);
+        setResetError('Chưa xóa được dữ liệu trên đám mây. Dữ liệu cục bộ được giữ nguyên; vui lòng kiểm tra kết nối rồi thử lại.');
+        setIsResetting(false);
+        setResetStep(0);
       }
-      localStorage.clear();
-      sessionStorage.clear();
-      window.location.reload();
     }
   };
 
@@ -244,6 +250,7 @@ export default function DebtSettingsPanel({
             </>
           )}
         </button>
+        {resetError && <p role="alert" className="mt-2 text-sm font-bold text-red-700 dark:text-red-300">{resetError}</p>}
         {resetStep === 1 && !isResetting && (
           <p className="text-center text-[10px] text-red-500 font-bold mt-2">
             Hành động này sẽ xóa toàn bộ hóa đơn, địa điểm và cài đặt của bạn trên cả máy và đám mây!
