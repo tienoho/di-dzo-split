@@ -616,7 +616,7 @@ export default function App() {
   // Do not render or count retained tombstones. They remain in cache solely for sync safety.
   const visibleBills = bills.filter(b => !b.deletedAt);
   const visibleVenues = venues.filter(v => !v.deletedAt);
-  const visibleContacts = Object.fromEntries(Object.entries(contacts).filter(([, entry]) => !entry.deletedAt));
+  const visibleContacts = Object.fromEntries(Object.keys(contacts).filter(name => !contacts[name]?.deletedAt).map(name => [name, contacts[name]]));
 
   // Quick stats panel
   const totalAmountSplitted = visibleBills.reduce((acc, b) => acc + b.totalAmount, 0);
