@@ -123,7 +123,7 @@ test('solo deletion is confirmed and survives reload without resurrecting a loca
   await page.getByRole('button', { name: 'Xóa bữa ăn Bữa ăn cần xóa' }).click();
   const confirm = page.getByRole('alertdialog', { name: 'Xóa bữa ăn?' });
   await expect(confirm).toBeVisible();
-  await confirm.getByRole('button', { name: 'Xác nhận' }).click();
+  await confirm.getByRole('button', { name: 'Xác nhận', exact: true }).click();
   await expect(page.getByText('Bữa ăn cần xóa', { exact: true })).toHaveCount(0);
   await page.reload();
   await nav.getByRole('button', { name: 'Thêm phân hệ' }).click();
