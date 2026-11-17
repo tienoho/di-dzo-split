@@ -31,3 +31,19 @@ jobs:
       - run: npm ci
       - run: npm install --no-save --package-lock=false @playwright/test@1.57.0
       - run: npx playwright test
+
+  firestore-rules:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: npm ci
+      - run: npm install --no-save --package-lock=false firebase-tools@14 @firebase/rules-unit-testing@5
+      - run: npx firebase emulators:exec --project demo-dzospit-rules --only firestore "npx tsx --test tests/rules/firestore.rules.test.ts"
