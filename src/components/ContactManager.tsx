@@ -385,7 +385,7 @@ export default function ContactManager({ contacts, onSaveContact, onDeleteContac
       {/* CONFIRMATION DIALOG MODAL */}
       <AnimatePresence>
         {confirmDialog && confirmDialog.isOpen && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fadeIn">
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-[200] animate-fadeIn">
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
