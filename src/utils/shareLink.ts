@@ -16,9 +16,9 @@ export function compressBillForUrl(bill: Bill): string {
       d: bill.discountAmount,
       dt: bill.date,
       n: bill.note || '',
-      bn: bill.bankName || localStorage.getItem('nhau_bank_name') || 'mbbank',
-      bno: bill.bankNo || localStorage.getItem('nhau_bank_no') || '',
-      ba: bill.bankAccountName || localStorage.getItem('nhau_bank_account_name') || '',
+      bn: bill.bankName || 'mbbank',
+      bno: bill.bankNo || '',
+      ba: bill.bankAccountName || '',
       m: bill.members.map(m => ({
         n: m.name,
         p: m.initialPaid,
@@ -128,35 +128,17 @@ export async function resolveBillFromUrl(search: string): Promise<Bill | null> {
   const paramVal = params.get('b') || params.get('bill') || params.get('billId');
   if (!paramVal) return null;
 
-  // 1. If it's a short ID (clean short link), fetch from Firestore public_bills
-  if (paramVal.length < 80) {
-    try {
-      const cloudBill = await fetchPublicBillFromCloud(paramVal);
-      if (cloudBill) return cloudBill;
-    } catch (e) {
-      console.warn("[Short Link] Cloud fetch failed, trying local fallbacks:", e);
-    }
+  // A revoked or expired short link must never fall back to local cache.
+  if (params.has('b') || params.has('billId')) {
+    if (paramVal.length > 128 || paramVal.includes('/')) return null;
+    return fetchPublicBillFromCloud(paramVal);
   }
 
-  // 2. Try decompressing base64 payload (for legacy long links)
-  try {
-    const decoded = decompressBillFromUrl(paramVal);
-    if (decoded) return decoded;
-  } catch (e) {}
-
-  // 3. Fallback: check local storage cache if available on this browser
-  try {
-    const { getStoredBills } = await import('./storage');
-    const localBills = getStoredBills();
-    const found = localBills.find(b => b.id === paramVal);
-    if (found) return found;
-  } catch (e) {}
-
-  // 4. Last try fetch from cloud in case it was a long ID
-  try {
-    const cloudBill = await fetchPublicBillFromCloud(paramVal);
-    if (cloudBill) return cloudBill;
-  } catch (e) {}
+  // Legacy portable links are self-contained and cannot be remotely revoked.
+  if (params.has('bill')) {
+    if (paramVal.length > 12000) return null;
+    return decompressBillFromUrl(paramVal);
+  }
 
   return null;
 }
