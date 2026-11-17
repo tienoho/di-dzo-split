@@ -28,6 +28,7 @@ import {
 } from 'firebase/firestore';
 import { getMessaging, getToken, isSupported } from 'firebase/messaging';
 import { Venue, Bill, SoloMeal, ContactEntry } from '../types';
+import { getActiveDebts } from '../utils/storage';
 
 // Import config directly (supported natively by Vite)
 import config from '../../firebase-applet-config.json';
@@ -442,18 +443,19 @@ export const addPublicVenueReviewCloud = async (
 
 // Shared bills are intentionally public-read, but writes require an authenticated owner.
 // Do not leak receipt images or member contact details to the shared collection.
-export const savePublicBillToCloud = async (bill: Bill): Promise<void> => {
+export const savePublicBillToCloud = async (bill: Bill, existingExpiry?: Timestamp): Promise<void> => {
   const ownerUid = auth.currentUser?.uid;
   if (!ownerUid) {
     throw new Error('Đăng nhập Google để tạo liên kết ngắn trên đám mây');
   }
   const docRef = doc(db, 'public_bills', bill.id);
+  const balances = getActiveDebts([bill]);
   const publicMembers = bill.members.map(({ name, initialPaid, finalShare, penaltyAmount, hasPaidDebt }) => ({
     name,
     initialPaid,
     finalShare,
     penaltyAmount: penaltyAmount || 0,
-    hasPaidDebt
+    hasPaidDebt: balances.filter(d => d.debtorName === name).every(d => d.isPaid) || (hasPaidDebt && !balances.some(d => d.debtorName === name))
   }));
   await setDoc(docRef, { ...sanitizeFirestoreData({
     id: bill.id,
@@ -473,8 +475,30 @@ export const savePublicBillToCloud = async (bill: Bill): Promise<void> => {
     bankNo: bill.bankNo || '',
     bankAccountName: bill.bankAccountName || '',
     members: publicMembers,
+    payments: bill.payments || {},
+    settledTransfers: bill.settledTransfers || {},
     sharedAt: new Date().toISOString()
-  }), expiresAt: Timestamp.fromDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)) });
+  }), expiresAt: existingExpiry || Timestamp.fromDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)) });
+};
+
+/**
+ * Refresh only an existing, readable, owner-created link.
+ * Never create a new public link during background cloud synchronization.
+ */
+export const refreshPublicBillIfShared = async (bill: Bill): Promise<boolean> => {
+  const uid = auth.currentUser?.uid;
+  if (!uid || bill.deletedAt) return false;
+  try {
+    const snapshot = await getDoc(doc(db, 'public_bills', bill.id));
+    if (!snapshot.exists() || snapshot.data().ownerUid !== uid) return false;
+    const expiry = snapshot.data().expiresAt as Timestamp | undefined;
+    await savePublicBillToCloud(bill, expiry);
+    return true;
+  } catch (error) {
+    // Expired/revoked/unauthorized links must not be created or reactivated.
+    console.warn('[Public bill] Refresh skipped:', error);
+    return false;
+  }
 };
 
 // Revoked links become permanently unavailable; an old URL must not revive the bill.
@@ -502,6 +526,8 @@ export const fetchPublicBillFromCloud = async (billId: string): Promise<Bill | n
         discountAmount: data.discountAmount || 0,
         date: data.date || new Date().toISOString(),
         members: Array.isArray(data.members) ? data.members : [],
+        payments: data.payments || undefined,
+        settledTransfers: data.settledTransfers || undefined,
         splitType: data.splitType || 'equal',
         note: data.note || '',
         receiptImage: data.receiptImage || undefined,
