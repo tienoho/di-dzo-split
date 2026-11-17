@@ -168,7 +168,10 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
 
   const handleSaveBudget = async () => {
     const limit = parseInt(budgetInput, 10);
-    if (isNaN(limit) || limit < 0) return;
+    if (!Number.isSafeInteger(limit) || limit < 0 || limit > 100_000_000_000) {
+      toast.error('Hạn mức phải là số nguyên VND từ 0 đến 100 tỷ đồng.');
+      return;
+    }
     
     setMonthlyBudget(limit);
     setShowBudgetForm(false);
@@ -180,11 +183,13 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
       try {
         await saveSoloBudgetToCloud(currentUser.uid, limit);
       } catch (e) {
-        console.error("Cloud Budget Save Error:", e);
+        console.warn('[Solo] Budget cloud save pending:', e);
+        toast.error('Hạn mức đã lưu trên thiết bị nhưng chưa đồng bộ lên đám mây.');
+        return;
       }
     }
 
-    setSuccessMsg("Cập nhật ngân sách ăn uống thành công! 🎉");
+    setSuccessMsg('Đã cập nhật hạn mức ăn uống.');
     setTimeout(() => setSuccessMsg(null), 3000);
   };
 
@@ -201,8 +206,9 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
 
     const total = rawAmount + drinkAmount + otherAmount;
 
-    if (total <= 0) {
-      toast.error("Tổng chi phí bữa ăn phải lớn hơn 0đ!");
+    if (!Number.isSafeInteger(total) || total <= 0 || total > 100_000_000_000 ||
+        ![rawAmount, drinkAmount, otherAmount].every(value => Number.isSafeInteger(value) && value >= 0)) {
+      toast.error('Chi phí phải là số nguyên VND hợp lệ, lớn hơn 0 và không vượt quá 100 tỷ.');
       return;
     }
 
@@ -222,15 +228,20 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
     const updated = [newMeal, ...soloMeals];
     await persistMeals(updated);
 
+    let synced = !currentUser;
     if (currentUser) {
       try {
         await saveSoloMealToCloud(currentUser.uid, newMeal);
+        synced = true;
       } catch (e) {
-        console.error("Cloud Solo Meal Save Error:", e);
+        console.warn('[Solo] Meal saved locally but cloud unavailable:', e);
+        toast.error('Đã lưu trên thiết bị. Chưa thể đồng bộ bữa ăn lên đám mây.');
       }
     }
 
-    setSuccessMsg(`Đã ghi nhận bữa ăn solo: ${total.toLocaleString('vi-VN')} đ! 🍽️`);
+    setSuccessMsg(synced
+      ? `Đã ghi nhận bữa ăn: ${total.toLocaleString('vi-VN')} đ.`
+      : `Bữa ăn ${total.toLocaleString('vi-VN')} đ đã được lưu cục bộ, chờ đồng bộ.`);
     setTimeout(() => setSuccessMsg(null), 3000);
 
     // Clear form
