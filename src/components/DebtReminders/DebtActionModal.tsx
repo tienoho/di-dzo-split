@@ -8,6 +8,7 @@ interface ConfirmDialogState {
   message: string;
   onConfirm: () => void;
   title?: string;
+  tone?: 'default' | 'danger';
 }
 
 interface DebtActionModalProps {
@@ -70,7 +71,7 @@ export default function DebtActionModal({ confirmDialog, setConfirmDialog }: Deb
                     confirmDialog.onConfirm();
                     setConfirmDialog(null);
                   }}
-                  className="bg-[#22c55e] hover:bg-[#16a34a] text-white font-black text-xs py-2.5 rounded-xl border-2 border-slate-950 shadow-sm transition-all active:translate-y-0.5 cursor-pointer text-center"
+                  className={`font-black text-sm min-h-11 py-2.5 rounded-xl border-2 border-slate-950 shadow-sm transition-colors cursor-pointer text-center text-white ${confirmDialog.tone === 'danger' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-emerald-600 hover:bg-emerald-700'}`}
                 >
                   Xác nhận
                 </button>
