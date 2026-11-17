@@ -45,6 +45,13 @@ export default function App() {
   
   // Navigation State
   const [activeTab, setActiveTab] = useState<'split' | 'venues' | 'history' | 'reminders' | 'recommendations' | 'solo' | 'contacts'>('split');
+  const [showMoreNav, setShowMoreNav] = useState(false);
+
+  const navigateTo = (tab: typeof activeTab) => {
+    setActiveTab(tab);
+    setShowMoreNav(false);
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  };
 
   // Contacts State
   const [contacts, setContacts] = useState<Record<string, { phone?: string; messenger?: string }>>(() => {
@@ -624,17 +631,17 @@ export default function App() {
       </AnimatePresence>
       
       {/* HEADER MASTER TITLE BRAND BAR - VIBRANT PALETTE */}
-      <header className="max-w-7xl mx-auto px-4 pt-8 pb-4 relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
+      <header className="max-w-7xl mx-auto px-3 sm:px-4 pt-4 sm:pt-8 pb-4 relative z-10 flex flex-col md:flex-row items-center justify-between gap-4 md:gap-6">
         <div className="flex items-center gap-4 self-start md:self-auto">
           <div className="w-14 h-14 bg-orange-500 rounded-2xl flex items-center justify-center shadow-lg transform rotate-3 hover:rotate-6 transition-all duration-300">
             <span className="text-white font-black text-3xl">Đ!</span>
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-3xl font-black tracking-tight text-slate-900">
+              <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-slate-100">
                 Dzô! <span className="text-orange-500">Split</span>
               </h1>
-              <span className="bg-orange-150 text-orange-600 text-[10px] uppercase tracking-wider font-black px-2 py-1 rounded-full border-2 border-orange-200">
+              <span className="hidden sm:inline-flex bg-orange-100 dark:bg-orange-950/60 text-orange-600 dark:text-orange-300 text-[10px] uppercase tracking-wider font-black px-2 py-1 rounded-full border-2 border-orange-200 dark:border-orange-900">
                 Lên Đồ Sòng Phẳng
               </span>
             </div>
@@ -645,7 +652,7 @@ export default function App() {
         </div>
 
         {/* Quick Profile & Dark Mode Toggle Section */}
-        <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto justify-end">
+        <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto justify-start md:justify-end">
           {/* Dark Mode toggle Button */}
           <button
             onClick={() => setIsDarkMode(!isDarkMode)}
@@ -719,12 +726,12 @@ export default function App() {
       </header>
 
       {/* HIGH CONTRAST FINANCIAL LEDGER OVERVIEW STATS */}
-      <div className="max-w-7xl mx-auto px-4 mb-6">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 mb-5">
         <div className="bg-slate-900 text-white rounded-[32px] p-6 shadow-xl relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/20 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute bottom-0 left-12 w-48 h-48 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
           
-          <div className="relative z-10 grid grid-cols-2 lg:grid-cols-4 gap-6 items-center">
+          <div className="relative z-10 grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 items-center">
             <div className="space-y-1">
               <span className="text-[10px] uppercase font-black text-slate-400 tracking-widest block">Tổng cuộc quây</span>
               <div className="flex items-center gap-2">
@@ -758,7 +765,7 @@ export default function App() {
       </div>
 
       {/* PRIMARY TAB SELECTOR CONTROLLER */}
-      <nav className="max-w-7xl mx-auto px-4 mb-8">
+      <nav aria-label="Điều hướng máy tính" className="hidden md:block max-w-7xl mx-auto px-4 mb-8">
         <div className="bg-white dark:bg-slate-900 rounded-3xl p-2 shadow-md border-2 border-yellow-100 dark:border-slate-800 flex overflow-x-auto scrollbar-none gap-2">
           
           {/* Tab: Split */}
@@ -860,8 +867,51 @@ export default function App() {
         </div>
       </nav>
 
+      {/* Compact, reachable thumb navigation on phones; all seven destinations remain accessible. */}
+      <nav aria-label="Điều hướng điện thoại" className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200 dark:border-slate-700 shadow-2xl pb-[env(safe-area-inset-bottom)]">
+        {showMoreNav && (
+          <div role="menu" aria-label="Phân hệ khác" className="absolute bottom-full inset-x-3 mb-2 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 shadow-xl rounded-2xl p-2 grid grid-cols-1 gap-1">
+            <button role="menuitem" onClick={() => navigateTo('venues')} className="min-h-11 flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl hover:bg-orange-50 dark:hover:bg-slate-800 text-slate-900 dark:text-slate-100"><Store className="w-5 h-5" /> Quán quen</button>
+            <button role="menuitem" onClick={() => navigateTo('recommendations')} className="min-h-11 flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl hover:bg-orange-50 dark:hover:bg-slate-800 text-slate-900 dark:text-slate-100"><Sparkles className="w-5 h-5" /> Gợi ý quán AI</button>
+            <button role="menuitem" onClick={() => navigateTo('solo')} className="min-h-11 flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl hover:bg-orange-50 dark:hover:bg-slate-800 text-slate-900 dark:text-slate-100"><Coins className="w-5 h-5" /> Ăn uống cá nhân</button>
+          </div>
+        )}
+        <div className="grid grid-cols-5 gap-0.5 px-1 pt-1.5">
+          {([
+            ['split', 'Chia tiền', Calculator],
+            ['reminders', 'Nhắc nợ', Bell],
+            ['history', 'Lịch sử', Calendar],
+            ['contacts', 'Bạn bè', Users]
+          ] as const).map(([tab, label, Icon]) => (
+            <button
+              key={tab}
+              type="button"
+              aria-current={activeTab === tab ? 'page' : undefined}
+              onClick={() => navigateTo(tab)}
+              className={`relative min-h-14 flex flex-col gap-1 items-center justify-center rounded-xl text-[11px] font-bold transition-colors ${activeTab === tab ? 'text-orange-700 dark:text-orange-300 bg-orange-100 dark:bg-orange-950/60' : 'text-slate-600 dark:text-slate-300'}`}
+            >
+              <Icon className="w-5 h-5" />
+              <span>{label}</span>
+              {tab === 'reminders' && unpaidDebtsLength > 0 && (
+                <span className="absolute top-0.5 right-2 min-w-4 h-4 px-0.5 text-[9px] text-white bg-red-600 rounded-full">{unpaidDebtsLength}</span>
+              )}
+            </button>
+          ))}
+          <button
+            type="button"
+            aria-expanded={showMoreNav}
+            aria-label="Thêm phân hệ"
+            onClick={() => setShowMoreNav(prev => !prev)}
+            className={`min-h-14 flex flex-col gap-1 items-center justify-center rounded-xl text-[11px] font-bold ${['venues', 'recommendations', 'solo'].includes(activeTab) || showMoreNav ? 'text-orange-700 dark:text-orange-300 bg-orange-100 dark:bg-orange-950/60' : 'text-slate-600 dark:text-slate-300'}`}
+          >
+            <Settings className="w-5 h-5" />
+            <span>Thêm</span>
+          </button>
+        </div>
+      </nav>
+
       {/* MAIN LAYOUT BODY CONTAINER WITH TRANSITIONS */}
-      <main className="max-w-7xl mx-auto px-4">
+      <main className="max-w-7xl mx-auto px-3 sm:px-4 pb-24 md:pb-0">
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
@@ -938,7 +988,7 @@ export default function App() {
       </main>
 
       {/* FOOTER */}
-      <footer className="bg-transparent border-t-2 border-slate-200 dark:border-slate-800 py-6 text-center mt-12 text-slate-500 dark:text-slate-400 text-xs font-semibold">
+      <footer className="hidden md:block bg-transparent border-t-2 border-slate-200 dark:border-slate-800 py-6 text-center mt-12 text-slate-500 dark:text-slate-400 text-xs font-semibold">
         <p>© 2026 Chia Tiền Nhậu - Built with ❤️ for Vietnam drinking communities.</p>
         <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">Giải pháp sòng phẳng tối thượng, giữ trọn chân tình anh em.</p>
       </footer>
@@ -969,7 +1019,7 @@ export default function App() {
       </AnimatePresence>
 
       <Toaster 
-        position="bottom-center"
+        position="top-center"
         toastOptions={{
           style: {
             background: 'white',
