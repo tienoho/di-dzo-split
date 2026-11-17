@@ -62,6 +62,25 @@ export default function App() {
   // Navigation State
   const [activeTab, setActiveTab] = useState<'split' | 'venues' | 'history' | 'reminders' | 'recommendations' | 'solo' | 'contacts'>('split');
   const [showMoreNav, setShowMoreNav] = useState(false);
+  const mobileNavigationRef = useRef<HTMLElement>(null);
+  const moreMenuFirstItemRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!showMoreNav) return;
+    moreMenuFirstItemRef.current?.focus();
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setShowMoreNav(false);
+    };
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      if (!mobileNavigationRef.current?.contains(event.target as Node)) setShowMoreNav(false);
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    document.addEventListener('pointerdown', closeOnOutsideClick);
+    return () => {
+      window.removeEventListener('keydown', closeOnEscape);
+      document.removeEventListener('pointerdown', closeOnOutsideClick);
+    };
+  }, [showMoreNav]);
 
   const navigateTo = (tab: typeof activeTab) => {
     setActiveTab(tab);
@@ -695,9 +714,9 @@ export default function App() {
       </AnimatePresence>
       
       {/* HEADER MASTER TITLE BRAND BAR - VIBRANT PALETTE */}
-      <header className="max-w-7xl mx-auto px-3 sm:px-4 pt-4 sm:pt-8 pb-4 relative z-10 flex flex-col md:flex-row items-center justify-between gap-4 md:gap-6">
+      <header className="max-w-7xl mx-auto px-3 sm:px-4 pt-4 sm:pt-8 pb-4 relative z-10 flex flex-col md:flex-row items-start justify-between gap-4 md:gap-6">
         <div className="flex items-center gap-4 self-start md:self-auto">
-          <div className="w-14 h-14 bg-orange-500 rounded-2xl flex items-center justify-center shadow-lg transform rotate-3 hover:rotate-6 transition-all duration-300">
+          <div className="shrink-0 w-12 h-12 sm:w-14 sm:h-14 bg-orange-500 rounded-2xl flex items-center justify-center shadow-lg transform rotate-3 hover:rotate-6 transition-all duration-300">
             <span className="text-white font-black text-3xl">Đ!</span>
           </div>
           <div>
@@ -709,7 +728,7 @@ export default function App() {
                 Lên Đồ Sòng Phẳng
               </span>
             </div>
-            <p className="text-xs font-bold text-slate-500 mt-1">
+            <p className="text-xs font-bold text-slate-600 dark:text-slate-300 mt-1">
               Phần mềm chia tiền mồi nước và phục vụ cực chuẩn cho cuộc vui sướng 🍻
             </p>
           </div>
@@ -720,7 +739,9 @@ export default function App() {
           {/* Dark Mode toggle Button */}
           <button
             onClick={() => setIsDarkMode(!isDarkMode)}
-            className="p-3 bg-white dark:bg-slate-900 border-2 border-slate-900 dark:border-slate-700 rounded-full shadow-sm hover:bg-yellow-100 dark:hover:bg-slate-800 transition-all cursor-pointer flex items-center justify-center text-slate-800 dark:text-yellow-400 group flex-shrink-0"
+            aria-label={isDarkMode ? "Chuyển sang Giao diện Sáng" : "Chuyển sang Giao diện Tối"}
+            aria-pressed={isDarkMode}
+            className="min-w-11 min-h-11 p-3 bg-white dark:bg-slate-900 border-2 border-slate-900 dark:border-slate-700 rounded-full shadow-sm hover:bg-yellow-100 dark:hover:bg-slate-800 transition-all cursor-pointer flex items-center justify-center text-slate-800 dark:text-yellow-400 group flex-shrink-0"
             title={isDarkMode ? "Chuyển sang Giao diện Sáng ☀️" : "Chuyển sang Giao diện Tối 🌙"}
           >
             {isDarkMode ? (
@@ -742,7 +763,8 @@ export default function App() {
               </div>
               <button
                 onClick={() => signOut(auth)}
-                className="p-1 px-1.5 ml-1 bg-slate-200 dark:bg-slate-800 hover:bg-red-200 dark:hover:bg-red-900/60 rounded-full hover:text-red-600 transition-all cursor-pointer border border-transparent dark:border-slate-700"
+                aria-label="Đăng xuất tài khoản"
+                className="min-w-9 min-h-9 flex items-center justify-center p-1 px-1.5 ml-1 bg-slate-200 dark:bg-slate-800 hover:bg-red-200 dark:hover:bg-red-900/60 rounded-full hover:text-red-600 transition-all cursor-pointer border border-transparent dark:border-slate-700"
                 title="Đăng xuất tài khoản"
               >
                 <LogOut className="w-3 h-3 text-slate-600 dark:text-slate-300" />
@@ -797,28 +819,28 @@ export default function App() {
           
           <div className="relative z-10 grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 items-center">
             <div className="space-y-1">
-              <span className="text-[10px] uppercase font-black text-slate-400 tracking-widest block">Tổng cuộc quây</span>
+              <span className="text-[10px] uppercase font-black text-slate-400 tracking-widest block">Tổng hóa đơn</span>
               <div className="flex items-center gap-2">
                 <Wine className="w-4 h-4 text-amber-400" />
                 <span className="text-lg font-black text-white">{visibleBills.length} cuộc nhậu</span>
               </div>
             </div>
             <div className="space-y-1">
-              <span className="text-[10px] uppercase font-black text-slate-400 tracking-widest block">Địa bàn quán ngon</span>
+              <span className="text-[10px] uppercase font-black text-slate-400 tracking-widest block">Quán đã lưu</span>
               <div className="flex items-center gap-2">
                 <Store className="w-4 h-4 text-teal-400" />
                 <span className="text-lg font-black text-white">{visibleVenues.length} quán tủ</span>
               </div>
             </div>
             <div className="space-y-1">
-              <span className="text-[10px] uppercase font-black text-slate-400 tracking-widest block">F1 chưa trả nợ</span>
+              <span className="text-[10px] uppercase font-black text-slate-400 tracking-widest block">Khoản chưa thanh toán</span>
               <div className="flex items-center gap-2">
                 <Bell className="w-4 h-4 text-orange-400 animate-swing" />
-                <span className="text-lg font-black text-orange-400">{unpaidDebtsLength} đồng chí</span>
+                <span className="text-lg font-black text-orange-400">{unpaidDebtsLength} khoản</span>
               </div>
             </div>
             <div className="space-y-1">
-              <span className="text-[10px] uppercase font-black text-slate-400 tracking-widest block">Dư nợ tồn đọng</span>
+              <span className="text-[10px] uppercase font-black text-slate-400 tracking-widest block">Tổng tiền còn nợ</span>
               <div className="flex items-center gap-2">
                 <TrendingUp className="w-4 h-4 text-emerald-400" />
                 <span className="text-lg font-black text-emerald-400">{totalUnpaidDebtsAmount.toLocaleString('vi-VN')} đ</span>
@@ -830,11 +852,11 @@ export default function App() {
 
       {/* PRIMARY TAB SELECTOR CONTROLLER */}
       <nav aria-label="Điều hướng máy tính" className="hidden md:block max-w-7xl mx-auto px-4 mb-8">
-        <div className="bg-white dark:bg-slate-900 rounded-3xl p-2 shadow-md border-2 border-yellow-100 dark:border-slate-800 flex overflow-x-auto scrollbar-none gap-2">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-2 shadow-md border-2 border-yellow-100 dark:border-slate-800 flex overflow-x-auto scrollbar-none gap-2 overscroll-x-contain">
           
           {/* Tab: Split */}
           <button
-            onClick={() => setActiveTab('split')}
+            onClick={() => navigateTo('split')}
             className={`flex items-center gap-2 py-3 px-5 rounded-2xl text-xs md:text-sm font-black transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'split' 
                 ? 'bg-orange-500 text-white shadow-md shadow-orange-200 dark:shadow-none' 
@@ -847,7 +869,7 @@ export default function App() {
 
           {/* Tab: Reminders */}
           <button
-            onClick={() => setActiveTab('reminders')}
+            onClick={() => navigateTo('reminders')}
             className={`relative flex items-center gap-2 py-3 px-5 rounded-2xl text-xs md:text-sm font-black transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'reminders' 
                 ? 'bg-blue-500 text-white shadow-md shadow-blue-200 dark:shadow-none' 
@@ -865,7 +887,7 @@ export default function App() {
 
           {/* Tab: History */}
           <button
-            onClick={() => setActiveTab('history')}
+            onClick={() => navigateTo('history')}
             className={`flex items-center gap-2 py-3 px-5 rounded-2xl text-xs md:text-sm font-black transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'history' 
                 ? 'bg-purple-500 text-white shadow-md shadow-purple-200 dark:shadow-none' 
@@ -878,7 +900,7 @@ export default function App() {
 
           {/* Tab: Contacts */}
           <button
-            onClick={() => setActiveTab('contacts')}
+            onClick={() => navigateTo('contacts')}
             className={`flex items-center gap-2 py-3 px-5 rounded-2xl text-xs md:text-sm font-black transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'contacts' 
                 ? 'bg-indigo-500 text-white shadow-md shadow-indigo-200 dark:shadow-none' 
@@ -891,7 +913,7 @@ export default function App() {
 
           {/* Tab: Venues */}
           <button
-            onClick={() => setActiveTab('venues')}
+            onClick={() => navigateTo('venues')}
             className={`flex items-center gap-2 py-3 px-5 rounded-2xl text-xs md:text-sm font-black transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'venues' 
                 ? 'bg-pink-500 text-white shadow-md shadow-pink-200 dark:shadow-none' 
@@ -904,7 +926,7 @@ export default function App() {
 
           {/* Tab: Recommendations */}
           <button
-            onClick={() => setActiveTab('recommendations')}
+            onClick={() => navigateTo('recommendations')}
             className={`flex items-center gap-2 py-3 px-5 rounded-2xl text-xs md:text-sm font-black transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'recommendations' 
                 ? 'bg-amber-500 text-white shadow-md shadow-amber-200 dark:shadow-none animate-pulse' 
@@ -917,7 +939,7 @@ export default function App() {
 
           {/* Tab: Solo eating expenditure tracker */}
           <button
-            onClick={() => setActiveTab('solo')}
+            onClick={() => navigateTo('solo')}
             className={`flex items-center gap-2 py-3 px-5 rounded-2xl text-xs md:text-sm font-black transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'solo' 
                 ? 'bg-emerald-500 text-white shadow-md shadow-emerald-200 dark:shadow-none' 
@@ -932,10 +954,10 @@ export default function App() {
       </nav>
 
       {/* Compact, reachable thumb navigation on phones; all seven destinations remain accessible. */}
-      <nav aria-label="Điều hướng điện thoại" className="md:hidden fixed bottom-0 inset-x-0 z-[100] isolate bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200 dark:border-slate-700 shadow-2xl pb-[env(safe-area-inset-bottom)]">
+      <nav ref={mobileNavigationRef} aria-label="Điều hướng điện thoại" className="md:hidden fixed bottom-0 inset-x-0 z-[100] isolate bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200 dark:border-slate-700 shadow-2xl pb-[env(safe-area-inset-bottom)]">
         {showMoreNav && (
-          <div role="menu" aria-label="Phân hệ khác" className="absolute bottom-full inset-x-3 mb-2 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 shadow-xl rounded-2xl p-2 grid grid-cols-1 gap-1">
-            <button role="menuitem" onClick={() => navigateTo('venues')} className="min-h-11 flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl hover:bg-orange-50 dark:hover:bg-slate-800 text-slate-900 dark:text-slate-100"><Store className="w-5 h-5" /> Quán quen</button>
+          <div id="more-mobile-sections" role="menu" aria-label="Phân hệ khác" className="absolute bottom-full inset-x-3 mb-2 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 shadow-xl rounded-2xl p-2 grid grid-cols-1 gap-1">
+            <button ref={moreMenuFirstItemRef} role="menuitem" onClick={() => navigateTo('venues')} className="min-h-11 flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl hover:bg-orange-50 dark:hover:bg-slate-800 text-slate-900 dark:text-slate-100"><Store className="w-5 h-5" /> Quán quen</button>
             <button role="menuitem" onClick={() => navigateTo('recommendations')} className="min-h-11 flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl hover:bg-orange-50 dark:hover:bg-slate-800 text-slate-900 dark:text-slate-100"><Sparkles className="w-5 h-5" /> Gợi ý quán AI</button>
             <button role="menuitem" onClick={() => navigateTo('solo')} className="min-h-11 flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl hover:bg-orange-50 dark:hover:bg-slate-800 text-slate-900 dark:text-slate-100"><Coins className="w-5 h-5" /> Ăn uống cá nhân</button>
           </div>
@@ -964,6 +986,7 @@ export default function App() {
           <button
             type="button"
             aria-expanded={showMoreNav}
+            aria-controls="more-mobile-sections"
             aria-label="Thêm phân hệ"
             onClick={() => setShowMoreNav(prev => !prev)}
             className={`min-h-14 flex flex-col gap-1 items-center justify-center rounded-xl text-[11px] font-bold ${['venues', 'recommendations', 'solo'].includes(activeTab) || showMoreNav ? 'text-orange-700 dark:text-orange-300 bg-orange-100 dark:bg-orange-950/60' : 'text-slate-600 dark:text-slate-300'}`}
