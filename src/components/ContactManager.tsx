@@ -15,6 +15,7 @@ import {
   HelpCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useDialogA11y } from '../hooks/useDialogA11y';
 
 interface ContactManagerProps {
   contacts: Record<string, { phone?: string; messenger?: string }>;
@@ -48,6 +49,8 @@ export default function ContactManager({ contacts, onSaveContact, onDeleteContac
     message: string;
     onConfirm: () => void;
   } | null>(null);
+
+  const confirmRef = useDialogA11y<HTMLDivElement>(!!confirmDialog?.isOpen, () => setConfirmDialog(null));
 
   const triggerConfirm = (message: string, onConfirm: () => void, title: string = "Xác nhận") => {
     setConfirmDialog({
@@ -387,13 +390,19 @@ export default function ContactManager({ contacts, onSaveContact, onDeleteContac
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
+              ref={confirmRef}
+              role="alertdialog"
+              aria-modal="true"
+              aria-labelledby="confirm-contact-title"
+              aria-describedby="confirm-contact-description"
+              tabIndex={-1}
               className="bg-white dark:bg-slate-900 border-4 border-slate-900 rounded-[32px] p-6 max-w-sm w-full space-y-4 shadow-2xl relative dark:border-slate-700"
             >
               <div className="flex items-center gap-2 border-b-2 border-dashed border-slate-100 pb-3">
                 <span className="text-xl">💡</span>
-                <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide dark:text-slate-100">{confirmDialog.title}</h3>
+                <h3 id="confirm-contact-title" className="text-sm font-black text-slate-900 uppercase tracking-wide dark:text-slate-100">{confirmDialog.title}</h3>
               </div>
-              <p className="text-xs font-bold text-slate-500 leading-relaxed">
+              <p id="confirm-contact-description" className="text-sm font-bold text-slate-600 dark:text-slate-300 leading-relaxed">
                 {confirmDialog.message}
               </p>
               <div className="flex items-center justify-end gap-2.5 pt-2">
