@@ -5,6 +5,7 @@ import {
   fetchVenuesFromCloud,
   fetchBillsFromCloud,
   fetchContactsFromCloud,
+  getUserResetEpoch,
   saveBillToCloud,
   saveVenueToCloud,
   refreshPublicBillIfShared,
@@ -80,12 +81,22 @@ export function useCloudSync({
       setContacts(readContacts(`nhau_contacts_${user.uid}`));
 
       try {
-        const [cloudVenues, cloudBills, cloudContacts] = await Promise.all([
+        const [cloudVenues, cloudBills, cloudContacts, resetEpoch] = await Promise.all([
           fetchVenuesFromCloud(user.uid),
           fetchBillsFromCloud(user.uid),
-          fetchContactsFromCloud(user.uid)
+          fetchContactsFromCloud(user.uid),
+          getUserResetEpoch(user.uid)
         ]);
         if (!live()) return;
+
+        const epochKey = `nhau_seen_reset_${user.uid}`;
+        const seenEpoch = Number(localStorage.getItem(epochKey) || 0);
+        if (resetEpoch > seenEpoch) {
+          saveStoredBills([], user.uid);
+          saveStoredVenues([], user.uid);
+          localStorage.setItem(`nhau_contacts_${user.uid}`, '{}');
+          localStorage.setItem(epochKey, String(resetEpoch));
+        }
 
         // Read local cache *after* remote I/O to include edits made during fetching.
         const mergedBills = mergeVersioned(cloudBills, getStoredBills(user.uid));
