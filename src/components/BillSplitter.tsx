@@ -626,7 +626,7 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
                         onChange={(e) => setTipPercent(Number(e.target.value))}
                         className="w-full h-2 bg-slate-300 rounded-lg appearance-none cursor-pointer accent-orange-500"
                       />
-                      <span className="text-xs font-black text-slate-900 dark:text-slate-100 w-10 text-right bg-white dark:bg-slate-900 px-1.5 py-0.5 rounded border border-slate-350">{tipPercent}%</span>
+                      <span className="text-xs font-black text-slate-900 dark:text-slate-100 w-10 text-right bg-white dark:bg-slate-900 px-1.5 py-0.5 rounded border border-slate-300">{tipPercent}%</span>
                     </div>
                     <p className="text-xs font-bold text-slate-500 dark:text-slate-400">Quy đổi: +{tipAmount.toLocaleString('vi-VN')} đ</p>
                   </div>
@@ -771,7 +771,7 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
             </div>
 
             {/* Split Strategy Choice */}
-            <div className="grid grid-cols-4 gap-1.5 bg-yellow-105 bg-yellow-100 border-2 border-slate-900 dark:border-slate-700 p-1.5 rounded-2xl">
+            <div className="grid grid-cols-4 gap-1.5 bg-yellow-100 bg-yellow-100 border-2 border-slate-900 dark:border-slate-700 p-1.5 rounded-2xl">
               <button
                 type="button"
                 onClick={() => setSplitType('equal')}
@@ -1003,7 +1003,7 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
                             suffix="đ"
                             className={`w-full text-xs p-2 rounded-xl text-slate-900 dark:text-slate-100 font-black ${
                               splitType === 'equal' 
-                                ? 'bg-slate-150 text-slate-450 border-2 border-slate-200 dark:border-slate-700 cursor-not-allowed text-center'
+                                ? 'bg-slate-100 text-slate-400 border-2 border-slate-200 dark:border-slate-700 cursor-not-allowed text-center'
                                 : 'bg-white dark:bg-slate-900 border-2 border-orange-500'
                             }`}
                           />
@@ -1011,7 +1011,7 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
                       )}
                     </div>
 
-                    <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-2 rounded-xl border border-slate-250 text-xs font-bold">
+                    <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-2 rounded-xl border border-slate-200 text-xs font-bold">
                       <span className="text-slate-500 dark:text-slate-400">Cân đối ví tiền:</span>
                       {owes > 0 ? (
                         <span className="font-extrabold text-red-600">Cần đóng: +{owes.toLocaleString('vi-VN')} đ</span>
@@ -1031,9 +1031,9 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
           {/* Validation indicators */}
           <div className="pt-4 border-t-2 border-slate-100 space-y-3">
             {splitType === 'percentage' && sumPercentages !== 100 && (
-              <div className="text-sm bg-red-100 text-red-950 p-3.5 rounded-2xl border-2 border-red-350 font-extrabold space-y-2">
+              <div className="text-sm bg-red-100 text-red-950 p-3.5 rounded-2xl border-2 border-red-300 font-extrabold space-y-2">
                 <div>
-                  ⚠️ Tổng tỷ lệ phần trăm phân chi đang là <strong className="text-red-650 font-black text-xs">{sumPercentages}%</strong>. Cần điều chỉnh về đúng <strong className="text-teal-600 font-black text-xs">100%</strong> (Lệch {100 - sumPercentages}%).
+                  ⚠️ Tổng tỷ lệ phần trăm phân chi đang là <strong className="text-red-600 font-black text-xs">{sumPercentages}%</strong>. Cần điều chỉnh về đúng <strong className="text-teal-600 font-black text-xs">100%</strong> (Lệch {100 - sumPercentages}%).
                 </div>
                 <button
                   type="button"
