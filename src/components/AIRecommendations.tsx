@@ -190,16 +190,16 @@ export default function AIRecommendations({ savedVenues, onAddVenue }: AIRecomme
         <div className="lg:col-span-5 bg-white dark:bg-slate-900 border-4 border-slate-900 rounded-[32px] p-6 shadow-lg h-fit space-y-5">
           <div className="space-y-1.5 border-b-2 border-dashed border-slate-100 dark:border-slate-800 pb-4">
             <h3 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
-              <Compass className="w-5 h-5 text-orange-550" />
+              <Compass className="w-5 h-5 text-orange-500" />
               Cấu hình vị trí & nhu cầu
             </h3>
-            <p className="text-xs font-bold text-slate-505 text-slate-500">Giới hạn khu vực để AI nhặt quán chuẩn quanh bạn.</p>
+            <p className="text-xs font-bold text-slate-500 text-slate-500">Giới hạn khu vực để AI nhặt quán chuẩn quanh bạn.</p>
           </div>
 
           <div className="space-y-4">
             {/* Location Query input */}
             <div className="space-y-3">
-              <label className="text-xs font-black text-slate-700 dark:text-slate-350 block uppercase tracking-wider">
+              <label className="text-xs font-black text-slate-700 dark:text-slate-300 block uppercase tracking-wider">
                 📍 Nhắm mục tiêu vị trí cụ thể
               </label>
               <div className="relative">
@@ -227,7 +227,7 @@ export default function AIRecommendations({ savedVenues, onAddVenue }: AIRecomme
                   className={`w-full text-xs font-black uppercase tracking-wider py-3 px-4.5 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-center gap-2 ${
                     gpsActive 
                       ? 'bg-rose-500 hover:bg-rose-600 text-white border-rose-600 shadow-md shadow-rose-200 dark:shadow-rose-950/35 animate-pulse'
-                      : 'bg-indigo-50 hover:bg-indigo-100 dark:bg-slate-850 dark:hover:bg-slate-750 text-indigo-700 dark:text-indigo-400 border-indigo-200 dark:border-slate-800'
+                      : 'bg-indigo-50 hover:bg-indigo-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-indigo-700 dark:text-indigo-400 border-indigo-200 dark:border-slate-800'
                   }`}
                 >
                   <span className={`relative flex h-2 w-2 ${gpsActive ? 'inline-block' : 'hidden'}`}>
@@ -237,7 +237,7 @@ export default function AIRecommendations({ savedVenues, onAddVenue }: AIRecomme
                   <span>📍 {gpsActive ? 'Đang bật định vị GPS của bạn' : 'Quét địa phận & tìm quán quanh tôi với GPS'}</span>
                 </button>
                 {gpsActive && (
-                  <div className="text-[10.5px] font-extrabold text-rose-550 dark:text-rose-400 flex items-center gap-1 justify-center bg-rose-50 dark:bg-rose-950/20 py-1.5 px-3 rounded-lg border border-rose-200 dark:border-rose-900/40">
+                  <div className="text-[10.5px] font-extrabold text-rose-500 dark:text-rose-400 flex items-center gap-1 justify-center bg-rose-50 dark:bg-rose-950/20 py-1.5 px-3 rounded-lg border border-rose-200 dark:border-rose-900/40">
                     <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
                     Đã cập nhật toạ độ hiện tại: <span className="font-mono text-xs text-rose-600 dark:text-rose-300 underline">{locationInput}</span>
                   </div>
@@ -254,7 +254,7 @@ export default function AIRecommendations({ savedVenues, onAddVenue }: AIRecomme
                     key={district.id}
                     type="button"
                     onClick={() => handlePresetClick(district.query)}
-                    className="text-[11px] font-bold px-2.5 py-1.5 bg-slate-100 hover:bg-orange-100 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-800 dark:text-slate-200 hover:text-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg transition-all cursor-pointer"
+                    className="text-[11px] font-bold px-2.5 py-1.5 bg-slate-100 hover:bg-orange-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 hover:text-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg transition-all cursor-pointer"
                   >
                     {district.label}
                   </button>
@@ -274,7 +274,7 @@ export default function AIRecommendations({ savedVenues, onAddVenue }: AIRecomme
                     className={`flex items-center gap-2 p-2.5 text-xs text-left font-extrabold rounded-xl border-2 transition-all cursor-pointer ${
                       selectedCategory === cat.id
                         ? 'border-orange-500 bg-orange-50 dark:bg-orange-950/20 text-orange-700 dark:text-orange-400'
-                        : 'border-slate-200 dark:border-slate-800 hover:border-slate-400 text-slate-650 dark:text-slate-350'
+                        : 'border-slate-200 dark:border-slate-800 hover:border-slate-400 text-slate-600 dark:text-slate-300'
                     }`}
                   >
                     <span className="text-base">{cat.icon}</span>
@@ -286,7 +286,7 @@ export default function AIRecommendations({ savedVenues, onAddVenue }: AIRecomme
 
             {/* SYNERGY WITH SAVED VENUES PREFERENCES */}
             {highRatedSaved.length > 0 && (
-              <div className="bg-yellow-50/40 dark:bg-slate-950/30 p-3 border-2 border-dashed border-yellow-250 dark:border-slate-800 rounded-2xl space-y-2">
+              <div className="bg-yellow-50/40 dark:bg-slate-950/30 p-3 border-2 border-dashed border-yellow-200 dark:border-slate-800 rounded-2xl space-y-2">
                 <label className="flex items-start gap-2.5 cursor-pointer">
                   <input
                     type="checkbox"
@@ -306,7 +306,7 @@ export default function AIRecommendations({ savedVenues, onAddVenue }: AIRecomme
 
             {/* AI MODEL SELECTOR FOR RECOMMENDATIONS */}
             <div className="bg-orange-50/50 dark:bg-orange-950/20 p-3.5 rounded-2xl border-2 border-slate-900 space-y-1.5">
-              <span className="text-[10px] font-black text-orange-850 dark:text-orange-400 block uppercase tracking-wider">
+              <span className="text-[10px] font-black text-orange-800 dark:text-orange-400 block uppercase tracking-wider">
                 🤖 ĐỘNG CƠ TRUY VẤN & TÌM TỤ ĐIỂM:
               </span>
               <div className="grid grid-cols-2 gap-2">
@@ -332,7 +332,7 @@ export default function AIRecommendations({ savedVenues, onAddVenue }: AIRecomme
                   }}
                   className={`py-1.5 px-2 text-[11px] font-black rounded-lg border-2 transition-all cursor-pointer flex items-center justify-center gap-1 ${
                     aiProvider === 'deepseek'
-                      ? 'bg-indigo-650 text-white border-slate-900 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] translate-x-[-1px] translate-y-[-1px]'
+                      ? 'bg-indigo-600 text-white border-slate-900 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] translate-x-[-1px] translate-y-[-1px]'
                       : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-300 dark:border-slate-800 hover:bg-slate-50'
                   }`}
                 >
@@ -345,7 +345,7 @@ export default function AIRecommendations({ savedVenues, onAddVenue }: AIRecomme
             <button
               onClick={() => fetchRecommendations()}
               disabled={loading || !locationInput.trim()}
-              className="w-full bg-slate-900 dark:bg-orange-550 hover:bg-orange-500 hover:text-slate-950 text-white rounded-2xl py-4 text-xs font-black border-2 border-slate-950 cursor-pointer shadow-md transition-all hover:scale-[1.01] active:translate-y-0.5 flex items-center justify-center gap-2"
+              className="w-full bg-slate-900 dark:bg-orange-500 hover:bg-orange-500 hover:text-slate-950 text-white rounded-2xl py-4 text-xs font-black border-2 border-slate-950 cursor-pointer shadow-md transition-all hover:scale-[1.01] active:translate-y-0.5 flex items-center justify-center gap-2"
               style={{ backgroundColor: selectedCategory === 'all' ? '#1e293b' : undefined }}
             >
               <Search className="w-4 h-4" />
@@ -361,7 +361,7 @@ export default function AIRecommendations({ savedVenues, onAddVenue }: AIRecomme
               <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
               <div className="space-y-1">
                 <span className="text-xs font-black text-red-800 dark:text-red-300 block">Có lỗi xảy ra khi truy vấn dữ liệu nhậu</span>
-                <p className="text-[11px] font-bold text-red-650 dark:text-red-450 leading-relaxed">{errorMsg}</p>
+                <p className="text-[11px] font-bold text-red-600 dark:text-red-400 leading-relaxed">{errorMsg}</p>
               </div>
             </div>
           )}
@@ -371,7 +371,7 @@ export default function AIRecommendations({ savedVenues, onAddVenue }: AIRecomme
               <div className="relative w-20 h-20 mx-auto">
                 {/* Visual pulsating search waves */}
                 <span className="absolute top-0 left-0 w-20 h-20 border-4 border-dashed border-orange-500 rounded-full animate-spin"></span>
-                <span className="absolute top-2.5 left-2.5 w-15 h-15 bg-yellow-105 rounded-full flex items-center justify-center font-bold text-3xl animate-pulse">🍻</span>
+                <span className="absolute top-2.5 left-2.5 w-15 h-15 bg-yellow-100 rounded-full flex items-center justify-center font-bold text-3xl animate-pulse">🍻</span>
               </div>
               <div className="space-y-1">
                 <h4 className="text-sm font-black text-slate-800 dark:text-white">Đang tổng hợp dữ liệu Google Search...</h4>
@@ -425,21 +425,21 @@ export default function AIRecommendations({ savedVenues, onAddVenue }: AIRecomme
                       <div className="flex-1 space-y-2.5 text-left">
                         <div>
                           <div className="flex items-center gap-2">
-                            <h4 className="text-base font-black text-slate-920 dark:text-orange-300 leading-tight">🍢 {rec.name}</h4>
-                            <div className="flex items-center gap-0.5 bg-amber-50 dark:bg-amber-950/30 px-1.5 py-0.5 rounded border border-amber-200 text-[10px] font-black text-amber-600 dark:text-amber-350">
+                            <h4 className="text-base font-black text-slate-900 dark:text-orange-300 leading-tight">🍢 {rec.name}</h4>
+                            <div className="flex items-center gap-0.5 bg-amber-50 dark:bg-amber-950/30 px-1.5 py-0.5 rounded border border-amber-200 text-[10px] font-black text-amber-600 dark:text-amber-300">
                               <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
                               <span>{rec.rating ? rec.rating.toFixed(1) : '4.5'}</span>
                             </div>
                           </div>
                           
-                          <p className="text-[11px] leading-tight font-bold text-slate-500 dark:text-slate-450 flex items-start gap-1 mt-1">
+                          <p className="text-[11px] leading-tight font-bold text-slate-500 dark:text-slate-400 flex items-start gap-1 mt-1">
                             <MapPin className="w-3.5 h-3.5 text-slate-400 flex-shrink-0 mt-0.5" />
                             <span>{rec.address}</span>
                           </p>
                         </div>
 
                         {rec.highlights && (
-                          <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-850 p-2.5 rounded-xl">
+                          <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-2.5 rounded-xl">
                             <span className="text-[9px] font-black uppercase text-orange-500 block leading-none mb-0.5">Mồi đặc trưng / Điểm cộng:</span>
                             <p className="text-[11px] text-slate-700 dark:text-slate-300 font-bold leading-normal italic">
                               &ldquo;{rec.highlights}&rdquo;
@@ -459,7 +459,7 @@ export default function AIRecommendations({ savedVenues, onAddVenue }: AIRecomme
                           href={rec.sourceUrl || "https://www.google.com"}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center justify-center gap-1.5 text-[10.5px] font-black text-slate-700 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 p-2.5 rounded-xl border border-slate-350 dark:border-slate-700 flex-1 sm:flex-initial text-center cursor-pointer"
+                          className="flex items-center justify-center gap-1.5 text-[10.5px] font-black text-slate-700 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 flex-1 sm:flex-initial text-center cursor-pointer"
                         >
                           Xem Bản Đồ <ExternalLink className="w-3.5 h-3.5" />
                         </a>
