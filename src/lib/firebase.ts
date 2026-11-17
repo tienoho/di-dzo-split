@@ -22,7 +22,9 @@ import {
   query, 
   where,
   writeBatch,
-  arrayUnion
+  arrayUnion,
+  serverTimestamp,
+  Timestamp
 } from 'firebase/firestore';
 import { getMessaging, getToken, isSupported } from 'firebase/messaging';
 import { Venue, Bill, SoloMeal } from '../types';
@@ -440,7 +442,7 @@ export const savePublicBillToCloud = async (bill: Bill): Promise<void> => {
     penaltyAmount: penaltyAmount || 0,
     hasPaidDebt
   }));
-  await setDoc(docRef, sanitizeFirestoreData({
+  await setDoc(docRef, { ...sanitizeFirestoreData({
     id: bill.id,
     ownerUid,
     venueId: bill.venueId,
@@ -459,7 +461,13 @@ export const savePublicBillToCloud = async (bill: Bill): Promise<void> => {
     bankAccountName: bill.bankAccountName || '',
     members: publicMembers,
     sharedAt: new Date().toISOString()
-  }));
+  }), expiresAt: Timestamp.fromDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)) });
+};
+
+// Revoked links become permanently unavailable; an old URL must not revive the bill.
+export const revokePublicBillFromCloud = async (billId: string): Promise<void> => {
+  if (!auth.currentUser) throw new Error('Đăng nhập với tài khoản chủ hóa đơn để thu hồi liên kết.');
+  await updateDoc(doc(db, 'public_bills', billId), { revokedAt: serverTimestamp() });
 };
 
 // Fetch a public bill by ID from public_bills collection
