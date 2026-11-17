@@ -4,10 +4,12 @@ import toast from 'react-hot-toast';
 import { Bell, Check, MessageSquare, AlertCircle, Share2, Copy, CheckCheck, QrCode, Smile } from 'lucide-react';
 import DebtSettingsPanel from './DebtReminders/DebtSettingsPanel';
 import DebtActionModal from './DebtReminders/DebtActionModal';
+import MoneyInput from './common/MoneyInput';
 
 interface DebtRemindersProps {
   debts: Debt[];
   onMarkDebtAsPaid: (billId: string, debtorName: string, creditorName: string) => void;
+  onRecordPartialPayment: (billId: string, debtorName: string, creditorName: string, amount: number) => void;
   activeCreatorName: string;
   currentUser?: any;
   contacts: Record<string, { phone?: string; messenger?: string }>;
@@ -69,7 +71,7 @@ const bankCodeMap: Record<string, string> = {
   sacombank: 'STB'
 };
 
-export default function DebtReminders({ debts, onMarkDebtAsPaid, activeCreatorName, currentUser, contacts, onSaveContact }: DebtRemindersProps) {
+export default function DebtReminders({ debts, onMarkDebtAsPaid, onRecordPartialPayment, activeCreatorName, currentUser, contacts, onSaveContact }: DebtRemindersProps) {
   const defaultBank = 'mbbank';
   const defaultNo = '';
   const defaultAccountName = '';
@@ -258,6 +260,9 @@ export default function DebtReminders({ debts, onMarkDebtAsPaid, activeCreatorNa
 
   // Active modal / Panel expansion
   const [selectedDebt, setSelectedDebt] = useState<Debt | null>(null);
+  const [partialFor, setPartialFor] = useState<Debt | null>(null);
+  const [partialAmount, setPartialAmount] = useState<number>(0);
+  const payable = (debt: Debt) => debt.remainingAmount ?? debt.amount;
   const [copiedNotification, setCopiedNotification] = useState<string | null>(null);
 
   // Message customization & stickers template states
@@ -365,7 +370,7 @@ export default function DebtReminders({ debts, onMarkDebtAsPaid, activeCreatorNa
   const getReminderMessage = (debt: Debt, style: 'friendly' | 'formal' | 'funny') => {
     const dObj = new Date(debt.billDate);
     const friendlyDate = `${dObj.getDate()}/${dObj.getMonth() + 1}`;
-    const amountStr = `${debt.amount.toLocaleString('vi-VN')}đ`;
+    const amountStr = `${payable(debt).toLocaleString('vi-VN')}đ`;
     
     const removeVietnameseTones = (str: string): string => {
       return str
@@ -376,7 +381,7 @@ export default function DebtReminders({ debts, onMarkDebtAsPaid, activeCreatorNa
         .replace(/[^a-zA-Z0-9]/g, '');
     };
 
-    const formattedAmount = Math.round(debt.amount);
+    const formattedAmount = Math.round(payable(debt));
     const debtorTag = removeVietnameseTones(debt.debtorName);
     const venueTag = removeVietnameseTones(debt.venueName.substring(0, 8));
     const paymentMemo = `${debtorTag} tra tien ${venueTag}`.trim();
@@ -532,7 +537,7 @@ Xin chân thành cảm ơn!`;
                       </div>
                       <div className="flex items-center gap-2 self-stretch sm:self-auto justify-between sm:justify-end">
                         <span className="text-xs font-black text-red-600 bg-red-100 bg-red-100 border border-red-200 px-3 py-1.5 rounded-xl">
-                          {debt.amount.toLocaleString('vi-VN')} đ
+                          {payable(debt).toLocaleString('vi-VN')} đ
                         </span>
                         <button
                           onClick={() => {
@@ -666,6 +671,15 @@ Xin chân thành cảm ơn!`;
                                     className="bg-[#22c55e] hover:bg-[#16a34a] border-2 border-slate-900 text-white text-xs font-black px-3 py-2.5 rounded-xl transition-all hover:-translate-y-0.5 shadow-sm cursor-pointer flex items-center justify-center gap-1 w-full sm:w-auto text-center"
                                   >
                                     <Check className="w-3.5 h-3.5 shrink-0" /> Trả Xong
+                                  </button>
+
+                                  {/* Partial payment creates a separate ledger event. */}
+                                  <button
+                                    type="button"
+                                    onClick={() => { setPartialFor(debt); setPartialAmount(0); }}
+                                    className="bg-white dark:bg-slate-800 border-2 border-orange-400 text-orange-700 dark:text-orange-300 text-xs font-bold px-3 py-2.5 rounded-xl min-h-11"
+                                  >
+                                    Ghi nhận trả một phần
                                   </button>
 
                                   {/* Quick Copier with VietQR */}
@@ -982,6 +996,57 @@ Xin chân thành cảm ơn!`;
 
         </div>
       </div>
+
+      {/* PARTIAL SETTLEMENT INPUT */}
+      {partialFor && (
+        <div className="fixed inset-0 z-[90] bg-slate-950/80 flex items-center justify-center p-4">
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              const limit = payable(partialFor);
+              if (!Number.isSafeInteger(partialAmount) || partialAmount <= 0 || partialAmount > limit) {
+                toast.error(`Số tiền cần lớn hơn 0 và không vượt quá ${limit.toLocaleString('vi-VN')}đ.`);
+                return;
+              }
+              onRecordPartialPayment(partialFor.billId, partialFor.debtorName, partialFor.creditorName, partialAmount);
+              toast.success('Đã ghi nhận khoản thanh toán vào lịch sử.');
+              setPartialFor(null);
+              setPartialAmount(0);
+            }}
+            className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl p-5 w-full max-w-sm space-y-4"
+          >
+            <h3 className="font-black text-lg text-slate-900 dark:text-white">Ghi nhận thanh toán một phần</h3>
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              {partialFor.debtorName} → {partialFor.creditorName}
+              <span className="block font-bold mt-1">Còn phải trả: {payable(partialFor).toLocaleString('vi-VN')}đ</span>
+              {(partialFor.paidAmount || 0) > 0 && (
+                <span className="block text-emerald-700 dark:text-emerald-300">
+                  Đã ghi nhận: {(partialFor.paidAmount || 0).toLocaleString('vi-VN')}đ
+                </span>
+              )}
+            </p>
+            <label className="block text-sm font-bold text-slate-900 dark:text-white">
+              Số tiền thực nhận
+              <MoneyInput
+                value={partialAmount}
+                onChange={setPartialAmount}
+                autoFocus
+                placeholder="Nhập số tiền"
+                className="mt-2 w-full min-h-12 rounded-xl border-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white p-3 pr-10"
+              />
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button type="button" onClick={() => setPartialFor(null)}
+                className="min-h-11 rounded-xl border-2 border-slate-300 text-slate-700 dark:text-white">
+                Hủy
+              </button>
+              <button type="submit" className="min-h-11 rounded-xl bg-emerald-600 text-white font-bold">
+                Ghi nhận
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {/* CUSTOM CONFIRMATION DIALOG MODAL */}
       <DebtActionModal 
