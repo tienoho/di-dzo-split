@@ -85,7 +85,7 @@ export const getActiveDebts = (bills: Bill[]): Debt[] => {
   const debts: Debt[] = [];
   
   // Filter out archived bills from active debt calculations
-  const activeBills = bills.filter(b => !b.isArchived);
+  const activeBills = bills.filter(b => !b.isArchived && !b.deletedAt);
   
   activeBills.forEach((bill) => {
     // Calculate net balance for each member: balance = initialPaid - finalShare
