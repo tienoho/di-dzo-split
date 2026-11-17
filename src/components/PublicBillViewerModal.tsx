@@ -28,6 +28,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { generateShareableBillUrl } from '../utils/shareLink';
+import { getActiveDebts } from '../utils/storage';
 
 interface PublicBillViewerModalProps {
   bill: Bill;
@@ -88,7 +89,11 @@ export default function PublicBillViewerModal({ bill, onClose }: PublicBillViewe
   const [showBankEdit, setShowBankEdit] = useState<boolean>(false);
   
   // Selected debtor for main VietQR panel
-  const debtors = bill.members.filter(m => m.finalShare > m.initialPaid);
+  const transfers = getActiveDebts([bill]);
+  const remainingFor = (member: Member) =>
+    transfers.filter(debt => debt.debtorName === member.name)
+      .reduce((sum, debt) => sum + (debt.remainingAmount ?? debt.amount), 0);
+  const debtors = bill.members.filter(member => remainingFor(member) > 0);
   const [activeDebtorForPanel, setActiveDebtorForPanel] = useState<Member | null>(() => debtors[0] || null);
 
   const dateObj = new Date(bill.date);
@@ -131,7 +136,8 @@ export default function PublicBillViewerModal({ bill, onClose }: PublicBillViewe
     text += `👥 CHI TIẾT CHIA TIỀN TỪNG NGƯỜI:\n`;
     
     bill.members.forEach(m => {
-      const diff = m.finalShare - m.initialPaid;
+      const gross = m.finalShare - m.initialPaid;
+      const diff = gross > 0 ? remainingFor(m) : gross;
       text += `- ${m.name}: Gánh ${m.finalShare.toLocaleString('vi-VN')} đ `;
       if (m.penaltyAmount && m.penaltyAmount > 0) {
         text += `(Phạt ${m.penaltyAmount.toLocaleString('vi-VN')}đ) `;
@@ -177,8 +183,9 @@ export default function PublicBillViewerModal({ bill, onClose }: PublicBillViewe
 
   // Generate VietQR URL for a specific member
   const getMemberVietQRUrl = (member: Member) => {
-    const diff = member.finalShare - member.initialPaid;
-    if (diff <= 0 || !bankNo) return '';
+    const diff = remainingFor(member);
+    const payees = transfers.filter(debt => debt.debtorName === member.name && !debt.isPaid);
+    if (diff <= 0 || !bankNo || payees.length !== 1 || payees[0].creditorName !== primaryPayer.name) return '';
     const formattedAmount = Math.round(diff);
     const debtorTag = removeVietnameseTones(member.name);
     const venueTag = removeVietnameseTones(bill.venueName.substring(0, 8));
@@ -301,19 +308,12 @@ export default function PublicBillViewerModal({ bill, onClose }: PublicBillViewe
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setShowBankEdit(!showBankEdit)}
-                className="text-[11px] font-black text-indigo-700 dark:text-indigo-300 bg-white dark:bg-slate-700 hover:bg-indigo-50 px-2.5 py-1 rounded-xl border border-indigo-300 dark:border-slate-600 flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
-              >
-                <Edit2 className="w-3 h-3" />
-                {bankNo ? 'Sửa thông tin STK' : '+ Nhập STK nhận tiền'}
-              </button>
+
             </div>
 
             {/* Quick Bank Configuration Form (if expanded or missing) */}
             <AnimatePresence>
-              {(showBankEdit || !bankNo) && (
+              {false && (showBankEdit || !bankNo) && (
                 <motion.form 
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
@@ -382,7 +382,7 @@ export default function PublicBillViewerModal({ bill, onClose }: PublicBillViewe
             {/* Display Active QR Code if bankNo is ready */}
             {bankNo ? (
               <div className="flex flex-col sm:flex-row items-center gap-4 bg-white dark:bg-slate-900 p-4 rounded-2xl border-2 border-indigo-200 dark:border-slate-700">
-                {activeDebtorForPanel ? (
+                {activeDebtorForPanel && getMemberVietQRUrl(activeDebtorForPanel) ? (
                   <>
                     <div 
                       onClick={() => setSelectedMemberForQR(activeDebtorForPanel)}
@@ -491,7 +491,8 @@ export default function PublicBillViewerModal({ bill, onClose }: PublicBillViewe
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900 font-bold">
                   {bill.members.map((member, idx) => {
-                    const diff = member.finalShare - member.initialPaid;
+                    const gross = member.finalShare - member.initialPaid;
+                    const diff = gross > 0 ? remainingFor(member) : gross;
                     const isDebtor = diff > 0;
                     const isCreditor = diff < 0;
 
@@ -560,7 +561,8 @@ export default function PublicBillViewerModal({ bill, onClose }: PublicBillViewe
             {/* MOBILE CARD LIST VIEW (sm and below) */}
             <div className="block sm:hidden space-y-2.5">
               {bill.members.map((member, idx) => {
-                const diff = member.finalShare - member.initialPaid;
+                const gross = member.finalShare - member.initialPaid;
+                    const diff = gross > 0 ? remainingFor(member) : gross;
                 const isDebtor = diff > 0;
                 const isCreditor = diff < 0;
 
