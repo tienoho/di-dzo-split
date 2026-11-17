@@ -10,7 +10,7 @@ test('switching tabs never destroys an in-progress bill draft', async ({ page })
     .getByRole('button', { name: 'Lịch sử' }).click();
   await page.getByRole('navigation', { name: 'Điều hướng điện thoại' })
     .getByRole('button', { name: 'Chia tiền' }).click();
-  await expect(amount).toHaveValue('123456');
+  await expect(amount).toHaveValue('123.456'); // locale-formatted VND after blur and tab switch
 });
 
 test('mobile More menu closes on Escape and outside click', async ({ page }) => {
@@ -33,6 +33,15 @@ test('scanner can be dismissed by Escape and restores focus', async ({ page }) =
   await trigger.click();
   await expect(page.getByRole('dialog', { name: /Quét Hóa Đơn AI/ })).toBeVisible();
   await expect(page.getByRole('dialog', { name: /Quét Hóa Đơn AI/ })).toBeFocused();
+  const navCovered = await page.evaluate(() => {
+    const nav = document.querySelector('nav[aria-label="Điều hướng điện thoại"]');
+    const more = nav?.querySelector('button[aria-label="Thêm phân hệ"]');
+    if (!nav || !more) return true;
+    const rect = more.getBoundingClientRect();
+    const hit = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2);
+    return !nav.contains(hit);
+  });
+  expect(navCovered).toBeTruthy();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog', { name: /Quét Hóa Đơn AI/ })).toHaveCount(0);
   await expect(trigger).toBeFocused();
