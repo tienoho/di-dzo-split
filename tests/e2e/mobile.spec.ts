@@ -20,6 +20,19 @@ for (const width of sizes) {
     const overflow = await page.evaluate(() => {
       return document.documentElement.scrollWidth - window.innerWidth;
     });
+    if (overflow > 2) {
+      const offenders = await page.evaluate(() => [...document.querySelectorAll('body *')]
+        .map(element => ({ element, box: element.getBoundingClientRect() }))
+        .filter(({ box }) => box.width > 0 && (box.right > innerWidth + 2 || box.left < -2))
+        .slice(0, 20)
+        .map(({ element, box }) => ({
+          tag: element.tagName.toLowerCase(),
+          className: String(element.className).slice(0, 80),
+          right: Math.round(box.right),
+          left: Math.round(box.left)
+        })));
+      console.log('MOBILE_OVERFLOW', width, JSON.stringify(offenders));
+    }
     expect(overflow).toBeLessThanOrEqual(2);
   });
 }
