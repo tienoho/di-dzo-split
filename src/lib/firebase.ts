@@ -27,7 +27,7 @@ import {
   Timestamp
 } from 'firebase/firestore';
 import { getMessaging, getToken, isSupported } from 'firebase/messaging';
-import { Venue, Bill, SoloMeal } from '../types';
+import { Venue, Bill, SoloMeal, ContactEntry } from '../types';
 
 // Import config directly (supported natively by Vite)
 import config from '../../firebase-applet-config.json';
@@ -637,16 +637,18 @@ export const fetchSoloBudgetFromCloud = async (userId: string): Promise<number |
   return null;
 };
 
-export const fetchContactsFromCloud = async (userId: string): Promise<Record<string, { phone?: string; messenger?: string }>> => {
+export const fetchContactsFromCloud = async (userId: string): Promise<Record<string, ContactEntry>> => {
   try {
     const q = query(collection(db, 'users', userId, 'contacts'));
     const querySnapshot = await getDocs(q);
-    const contactsMap: Record<string, { phone?: string; messenger?: string }> = {};
+    const contactsMap: Record<string, ContactEntry> = {};
     querySnapshot.forEach((doc) => {
       const data = doc.data();
       contactsMap[doc.id] = {
         phone: data.phone || '',
-        messenger: data.messenger || ''
+        messenger: data.messenger || '',
+        updatedAt: data.updatedAt || undefined,
+        deletedAt: data.deletedAt || undefined
       };
     });
     return contactsMap;
@@ -655,13 +657,13 @@ export const fetchContactsFromCloud = async (userId: string): Promise<Record<str
   }
 };
 
-export const saveContactToCloud = async (userId: string, name: string, phone: string, messenger: string) => {
+export const saveContactToCloud = async (userId: string, name: string, phone: string, messenger: string, updatedAt = new Date().toISOString()) => {
   try {
     const contactRef = doc(db, 'users', userId, 'contacts', name);
     await setDoc(contactRef, sanitizeFirestoreData({
       phone: phone.trim(),
       messenger: messenger.trim(),
-      updatedAt: new Date().toISOString()
+      updatedAt
     }));
     console.log(`[Firestore] Successfully saved contact ${name}`);
   } catch (error) {
@@ -669,10 +671,10 @@ export const saveContactToCloud = async (userId: string, name: string, phone: st
   }
 };
 
-export const deleteContactFromCloud = async (userId: string, name: string) => {
+export const deleteContactFromCloud = async (userId: string, name: string, deletedAt = new Date().toISOString()) => {
   try {
     const contactRef = doc(db, 'users', userId, 'contacts', name);
-    await deleteDoc(contactRef);
+    await setDoc(contactRef, { deletedAt, updatedAt: deletedAt });
     console.log(`[Firestore] Successfully deleted contact ${name}`);
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, `users/${userId}/contacts/${name}`);
