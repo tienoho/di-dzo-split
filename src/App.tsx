@@ -1,14 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { getStoredVenues, saveStoredVenues, getStoredBills, saveStoredBills, getActiveDebts } from './utils/storage';
 import { Bill, Venue, Debt, ContactEntry } from './types';
 import BillSplitter from './components/BillSplitter';
-import VenueManager from './components/VenueManager';
-import HistoryAndReports from './components/HistoryAndReports';
-import DebtReminders from './components/DebtReminders';
-import AIRecommendations from './components/AIRecommendations';
-import SoloDining from './components/SoloDining';
-import ContactManager from './components/ContactManager';
-import PublicBillViewerModal from './components/PublicBillViewerModal';
+// Keep the primary splitter in memory; defer less common screens until selected.
+const VenueManager = React.lazy(() => import('./components/VenueManager'));
+const HistoryAndReports = React.lazy(() => import('./components/HistoryAndReports'));
+const DebtReminders = React.lazy(() => import('./components/DebtReminders'));
+const AIRecommendations = React.lazy(() => import('./components/AIRecommendations'));
+const SoloDining = React.lazy(() => import('./components/SoloDining'));
+const ContactManager = React.lazy(() => import('./components/ContactManager'));
+const PublicBillViewerModal = React.lazy(() => import('./components/PublicBillViewerModal'));
 import { resolveBillFromUrl } from './utils/shareLink';
 import { useCloudSync } from './hooks/useCloudSync';
 import { useFCM } from './hooks/useFCM';
@@ -33,7 +34,20 @@ import {
   refreshPublicBillIfShared,
   revokePublicBillFromCloud
 } from './lib/firebase';
-import AuthModal from './components/AuthModal';
+const AuthModal = React.lazy(() => import('./components/AuthModal'));
+
+function FeatureLoading() {
+  return (
+    <div role="status" aria-live="polite" className="animate-pulse bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-3xl p-5 sm:p-8 shadow-sm space-y-5">
+      <span className="sr-only">Đang tải phân hệ…</span>
+      <div className="h-6 bg-slate-200 dark:bg-slate-700 rounded-xl w-2/5" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="h-32 bg-slate-100 dark:bg-slate-800 rounded-2xl" />
+        <div className="h-32 bg-slate-100 dark:bg-slate-800 rounded-2xl" />
+      </div>
+    </div>
+  );
+}
 
 export default function App() {
   const [venues, setVenues] = useState<Venue[]>(() => getStoredVenues('guest'));
@@ -961,25 +975,26 @@ export default function App() {
       </nav>
 
       {/* MAIN LAYOUT BODY CONTAINER WITH TRANSITIONS */}
-      <main className="max-w-7xl mx-auto px-3 sm:px-4 pb-24 md:pb-0">
+      <main id="main-content" tabIndex={-1} className="max-w-7xl mx-auto px-3 sm:px-4 pb-28 md:pb-0">
+        {/* Keep an in-progress bill intact while visiting other screens. */}
+        <div className={activeTab === 'split' ? 'block' : 'hidden'} aria-hidden={activeTab !== 'split'}>
+          <BillSplitter
+            venues={visibleVenues}
+            onAddVenue={handleAddVenue}
+            onSaveBill={handleSaveBill}
+            activeCreatorName={activeCreatorName}
+            contacts={visibleContacts}
+          />
+        </div>
+        <Suspense fallback={<FeatureLoading />}>
         <AnimatePresence mode="wait">
-          <motion.div
+          {activeTab !== 'split' && <motion.div
             key={activeTab}
             initial={{ opacity: 0, scale: 0.98, y: 8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.98, y: -8 }}
             transition={{ duration: 0.2 }}
           >
-            {activeTab === 'split' && (
-              <BillSplitter 
-                venues={visibleVenues} 
-                onAddVenue={handleAddVenue} 
-                onSaveBill={handleSaveBill} 
-                activeCreatorName={activeCreatorName}
-                contacts={visibleContacts}
-              />
-            )}
-
             {activeTab === 'venues' && (
               <VenueManager 
                 venues={visibleVenues} 
@@ -1034,8 +1049,9 @@ export default function App() {
                 bills={visibleBills}
               />
             )}
-          </motion.div>
+          </motion.div>}
         </AnimatePresence>
+        </Suspense>
       </main>
 
       {/* FOOTER */}
@@ -1047,7 +1063,7 @@ export default function App() {
       {/* AUTH SYSTEM POPUP/MODAL */}
       <AnimatePresence>
         {showAuthModal && (
-          <AuthModal 
+          <Suspense fallback={null}><AuthModal 
             currentUser={currentUser}
             onClose={() => setShowAuthModal(false)}
             onSuccess={(user, name) => {
@@ -1055,17 +1071,17 @@ export default function App() {
               setActiveCreatorName(name);
               setShowAuthModal(false);
             }}
-          />
+          /></Suspense>
         )}
       </AnimatePresence>
 
       {/* PUBLIC SHARED BILL VIEWER MODAL */}
       <AnimatePresence>
         {publicViewingBill && (
-          <PublicBillViewerModal 
+          <Suspense fallback={null}><PublicBillViewerModal 
             bill={publicViewingBill}
             onClose={handleClosePublicBillModal}
-          />
+          /></Suspense>
         )}
       </AnimatePresence>
 
