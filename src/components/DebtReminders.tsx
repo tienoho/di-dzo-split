@@ -83,7 +83,7 @@ export default function DebtReminders({ debts, onMarkDebtAsPaid, onRecordPartial
   const [settingsSaved, setSettingsSaved] = useState<boolean>(false);
 
   // Periodic Browser Push Notification settings state
-  const [pushEnabled, setPushEnabled] = useState<boolean>(() => localStorage.getItem('nhau_push_enabled') !== 'false');
+  const [pushEnabled, setPushEnabled] = useState<boolean>(() => localStorage.getItem('nhau_push_enabled') === 'true');
   const [pushInterval, setPushInterval] = useState<string>(() => localStorage.getItem('nhau_push_interval') || '24h');
 
   // FCM Real settings and client token status variables
@@ -97,11 +97,7 @@ export default function DebtReminders({ debts, onMarkDebtAsPaid, onRecordPartial
       setLocalFcmToken(localStorage.getItem('nhau_my_fcm_token') || '');
     };
     window.addEventListener('storage', handleStorageChange);
-    const intervalId = setInterval(handleStorageChange, 1000);
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      clearInterval(intervalId);
-    };
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
   // Custom modal-based confirmation dialog to bypass sandbox iframe bugs
