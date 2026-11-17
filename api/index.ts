@@ -8,14 +8,73 @@ import { getApp as getAdminApp } from 'firebase-admin/app';
 import { getAuth as getAdminAuth } from 'firebase-admin/auth';
 import { getMessaging as getAdminMessaging } from 'firebase-admin/messaging';
 import fs from 'fs';
+import { createHash } from 'node:crypto';
 
 dotenv.config();
 
 const app = express();
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.disable('x-powered-by');
+app.set('trust proxy', 1);
+app.use(express.json({ limit: '12mb' }));
+app.use(express.urlencoded({ limit: '1mb', extended: true }));
+
+// Per-client AI budget control. Production uses a Firestore transaction so
+// separate serverless instances observe the same quota.
+const localAiQuota = new Map<string, { startsAt: number; count: number }>();
+const AI_WINDOW_MS = 60 * 60 * 1000;
+const AI_MAX_PER_HOUR = 20;
+
+app.use(['/api/scan-receipt', '/api/recommendations', '/api/predict-budget'], async (req, res, next) => {
+  if (req.method !== 'POST') return next();
+  const rawClient = req.ip || req.socket.remoteAddress || 'unknown';
+  const salt = process.env.AI_RATE_LIMIT_SALT || process.env.GEMINI_API_KEY || 'dev-only';
+  const bucket = createHash('sha256').update(`${salt}:${rawClient}`).digest('hex');
+  const now = Date.now();
+
+  // On production, fail closed if the distributed limiter is unavailable.
+  if (process.env.VERCEL || process.env.AI_RATE_LIMIT_MODE === 'firestore') {
+    try {
+      if (!initFirebaseAdmin()) throw new Error('Firebase Admin unavailable');
+      const dbId = process.env.FIRESTORE_DATABASE_ID || process.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID || '(default)';
+      const database = getAdminFirestore(getAdminApp(), dbId);
+      const reference = database.doc(`ai_rate_limits/${bucket}`);
+      const permitted = await database.runTransaction(async transaction => {
+        const snap = await transaction.get(reference);
+        const current = snap.data();
+        const withinWindow = typeof current?.startsAt === 'number' && now - current.startsAt < AI_WINDOW_MS;
+        const count = withinWindow ? (Number(current?.count) || 0) : 0;
+        if (count >= AI_MAX_PER_HOUR) return false;
+        transaction.set(reference, {
+          startsAt: withinWindow ? current.startsAt : now,
+          count: count + 1,
+          updatedAt: now
+        });
+        return true;
+      });
+      if (!permitted) return res.status(429).json({ success: false, error: 'Đã hết hạn mức sử dụng AI trong giờ này.' });
+      return next();
+    } catch (error) {
+      console.error('[AI quota] Distributed verification failed:', error);
+      return res.status(503).json({ success: false, error: 'Dịch vụ AI đang được bảo vệ hạn mức. Vui lòng thử lại sau.' });
+    }
+  }
+
+  const previous = localAiQuota.get(bucket);
+  const inWindow = previous && now - previous.startsAt < AI_WINDOW_MS;
+  const count = inWindow ? previous.count : 0;
+  if (count >= AI_MAX_PER_HOUR) {
+    return res.status(429).json({ success: false, error: 'Đã hết hạn mức AI trên thiết bị này.' });
+  }
+  localAiQuota.set(bucket, { startsAt: inWindow ? previous.startsAt : now, count: count + 1 });
+  if (localAiQuota.size > 2000) {
+    for (const [key, value] of localAiQuota) {
+      if (now - value.startsAt >= AI_WINDOW_MS) localAiQuota.delete(key);
+    }
+  }
+  return next();
+});
 
 // Lazy-initialized Gemini client safe against missing API key crashes at startup
 let aiClient: GoogleGenAI | null = null;
@@ -157,6 +216,15 @@ app.post('/api/recommendations', async (req, res) => {
   try {
     const { location, category, savedVenues, provider } = req.body;
 
+    if (typeof location !== 'undefined' && (typeof location !== 'string' || location.length > 200)) {
+      return res.status(400).json({ success: false, error: 'Vị trí không hợp lệ.' });
+    }
+    if (typeof category !== 'undefined' && (typeof category !== 'string' || category.length > 200)) {
+      return res.status(400).json({ success: false, error: 'Loại quán không hợp lệ.' });
+    }
+    if (savedVenues !== undefined && (!Array.isArray(savedVenues) || savedVenues.length > 30)) {
+      return res.status(400).json({ success: false, error: 'Danh sách quán không hợp lệ.' });
+    }
     const targetLocation = location ? location.trim() : 'Hà Nội';
     const targetCategory = category ? category.trim() : 'Bia hơi, Lẩu nướng, Quán ăn nhậu ngon';
     const isDeepSeek = provider === 'deepseek';
@@ -306,8 +374,11 @@ app.post('/api/scan-receipt', async (req, res) => {
   const isDeepSeek = provider === 'deepseek';
   try {
     const { image } = req.body;
-    if (!image) {
+    if (!image || typeof image !== 'string') {
       return res.status(400).json({ success: false, error: 'Không tìm thấy dữ liệu ảnh để quét.' });
+    }
+    if (image.length > 10_000_000 || !/^(data:image\/(?:jpeg|png|webp);base64,)?[A-Za-z0-9+/=]+$/.test(image)) {
+      return res.status(413).json({ success: false, error: 'Ảnh quá lớn hoặc định dạng không hợp lệ.' });
     }
 
     let base64Data = image;
