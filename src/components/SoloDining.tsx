@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Venue, Bill, SoloMeal } from '../types';
+import { mergeVersioned, visibleEntities } from '../utils/syncMerge';
 import toast from 'react-hot-toast';
 import MoneyInput from './common/MoneyInput';
 import { 
@@ -74,92 +75,80 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [monthFilter, setMonthFilter] = useState<string>('all'); // 'all' or 'YYYY-MM'
 
-  // Load initial solo meals & budget settings
+  // Private account-scoped caches: never implicitly upload guest data on sign-in.
+  const readSoloCache = (userKey: string): SoloMeal[] => {
+    try {
+      const raw = localStorage.getItem(`nhau_solo_meals_${userKey}`) ||
+        (userKey === 'guest' ? localStorage.getItem('nhau_solo_meals') : null);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+      console.warn('[Solo] Invalid local cache:', error);
+      return [];
+    }
+  };
+
   useEffect(() => {
-    const userKey = currentUser ? currentUser.uid : 'guest';
+    let cancelled = false;
+    const uid = currentUser?.uid as string | undefined;
+    const userKey = uid || 'guest';
+    const cachedMeals = readSoloCache(userKey);
+    setSoloMeals(visibleEntities(cachedMeals));
 
-    const loadLocalData = () => {
-      const cachedMeals = localStorage.getItem(`nhau_solo_meals_${userKey}`) || localStorage.getItem('nhau_solo_meals');
-      if (cachedMeals) {
-        try {
-          setSoloMeals(JSON.parse(cachedMeals));
-        } catch (e) {
-          console.error(e);
-        }
-      }
-      const cachedBudget = localStorage.getItem(`nhau_solo_budget_${userKey}`) || localStorage.getItem('nhau_solo_budget');
-      if (cachedBudget) {
-        setMonthlyBudget(parseInt(cachedBudget, 10));
-        setBudgetInput(cachedBudget);
-      } else {
-        setBudgetInput(String(monthlyBudget));
-      }
-    };
+    const cachedBudget = localStorage.getItem(`nhau_solo_budget_${userKey}`) ||
+      (uid ? null : localStorage.getItem('nhau_solo_budget'));
+    const localBudget = cachedBudget !== null ? Number(cachedBudget) : 3_000_000;
+    const safeBudget = Number.isSafeInteger(localBudget) && localBudget >= 0 ? localBudget : 3_000_000;
+    setMonthlyBudget(safeBudget);
+    setBudgetInput(String(safeBudget));
 
-    const loadSoloData = async () => {
-      setLoading(true);
-      // Fast load from local storage first
-      loadLocalData();
-
-      if (currentUser) {
-        try {
-          const cloudMeals = await fetchSoloMealsFromCloud(currentUser.uid);
-          
-          // Intelligent Merge: keep local & cloud meals
-          const cachedMealsRaw = localStorage.getItem(`nhau_solo_meals_${currentUser.uid}`);
-          const localMeals: SoloMeal[] = cachedMealsRaw ? JSON.parse(cachedMealsRaw) : [];
-          const mealMap = new Map<string, SoloMeal>();
-          
-          cloudMeals.forEach(m => mealMap.set(m.id, m));
-          localMeals.forEach(m => {
-            if (!mealMap.has(m.id)) {
-              mealMap.set(m.id, m);
-              saveSoloMealToCloud(currentUser.uid, m).catch(console.error);
-            }
-          });
-
-          let mergedMeals = Array.from(mealMap.values()).sort(
-            (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-          );
-
-          // If new cloud account has no solo meals, migrate guest meals
-          if (mergedMeals.length === 0) {
-            const guestMealsRaw = localStorage.getItem('nhau_solo_meals_guest') || localStorage.getItem('nhau_solo_meals');
-            if (guestMealsRaw) {
-              try {
-                const guestMeals: SoloMeal[] = JSON.parse(guestMealsRaw);
-                if (guestMeals.length > 0) {
-                  guestMeals.forEach(m => saveSoloMealToCloud(currentUser.uid, m).catch(console.error));
-                  mergedMeals = guestMeals;
-                }
-              } catch (e) {}
-            }
-          }
-
-          setSoloMeals(mergedMeals);
-          localStorage.setItem(`nhau_solo_meals_${currentUser.uid}`, JSON.stringify(mergedMeals));
-
-          const cloudBudget = await fetchSoloBudgetFromCloud(currentUser.uid);
-          if (cloudBudget !== null) {
-            setMonthlyBudget(cloudBudget);
-            setBudgetInput(String(cloudBudget));
-            localStorage.setItem(`nhau_solo_budget_${currentUser.uid}`, String(cloudBudget));
-          }
-        } catch (e) {
-          console.error("Failed to fetch cloud solo dining data, retaining local cache:", e);
-        }
-      }
+    if (!uid) {
       setLoading(false);
+      return () => { cancelled = true; };
+    }
+
+    const loadCloudData = async () => {
+      setLoading(true);
+      try {
+        const [cloudMeals, cloudBudget] = await Promise.all([
+          fetchSoloMealsFromCloud(uid),
+          fetchSoloBudgetFromCloud(uid)
+        ]);
+        if (cancelled) return;
+        // Re-read cache after I/O to capture offline edits made during fetch.
+        const merged = mergeVersioned(cloudMeals, readSoloCache(uid));
+        localStorage.setItem(`nhau_solo_meals_${uid}`, JSON.stringify(merged.entities));
+        setSoloMeals(visibleEntities(merged.entities).sort((a,b) => b.date.localeCompare(a.date)));
+
+        if (cloudBudget !== null && Number.isSafeInteger(cloudBudget) && cloudBudget >= 0) {
+          setMonthlyBudget(cloudBudget);
+          setBudgetInput(String(cloudBudget));
+          localStorage.setItem(`nhau_solo_budget_${uid}`, String(cloudBudget));
+        }
+        if (merged.toUpload.length) {
+          const results = await Promise.allSettled(merged.toUpload.map(meal => saveSoloMealToCloud(uid, meal)));
+          if (results.some(result => result.status === 'rejected')) {
+            toast.error('Một số bữa ăn chưa đồng bộ. Dữ liệu trên thiết bị vẫn được giữ.');
+          }
+        }
+      } catch (error) {
+        console.warn('[Solo] Cloud unavailable; retaining account cache:', error);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     };
+    void loadCloudData();
+    return () => { cancelled = true; };
+  }, [currentUser?.uid]);
 
-    loadSoloData();
-  }, [currentUser]);
-
-  // Sync to local storage always (Optimistic Offline-First)
   const persistMeals = async (updatedMeals: SoloMeal[]) => {
-    setSoloMeals(updatedMeals);
-    const userKey = currentUser ? currentUser.uid : 'guest';
-    localStorage.setItem(`nhau_solo_meals_${userKey}`, JSON.stringify(updatedMeals));
+    const userKey = currentUser?.uid || 'guest';
+    const tombstones = readSoloCache(userKey).filter(meal =>
+      meal.deletedAt && !updatedMeals.some(active => active.id === meal.id)
+    );
+    const all = [...updatedMeals, ...tombstones];
+    localStorage.setItem(`nhau_solo_meals_${userKey}`, JSON.stringify(all));
+    setSoloMeals(visibleEntities(updatedMeals));
   };
 
   const handleSaveBudget = async () => {
@@ -203,7 +192,8 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
     }
 
     const newMeal: SoloMeal = {
-      id: 'solo-' + Date.now(),
+      id: `solo-${crypto.randomUUID()}`,
+      updatedAt: new Date().toISOString(),
       name: mealName.trim(),
       venueName: venueNameUsed || 'Tự túc',
       date: mealDate,
@@ -239,20 +229,26 @@ export default function SoloDining({ venues, currentUser, activeCreatorName, bil
   };
 
   const handleDeleteMeal = async (mealId: string) => {
-    if (!window.confirm("Bạn có chắc chắn muốn xoá bữa ăn solo này khỏi lịch sử chi tiêu?")) return;
-
-    const filtered = soloMeals.filter(m => m.id !== mealId);
-    await persistMeals(filtered);
+    const target = soloMeals.find(meal => meal.id === mealId);
+    if (!target) return;
+    const deletedAt = new Date().toISOString();
+    const tombstone: SoloMeal = { ...target, deletedAt, updatedAt: deletedAt };
+    const userKey = currentUser?.uid || 'guest';
+    const remaining = soloMeals.filter(meal => meal.id !== mealId);
+    const retained = readSoloCache(userKey).filter(meal => meal.id !== mealId);
+    localStorage.setItem(`nhau_solo_meals_${userKey}`, JSON.stringify([...retained, tombstone]));
+    setSoloMeals(remaining);
 
     if (currentUser) {
       try {
         await deleteSoloMealFromCloud(currentUser.uid, mealId);
-      } catch (e) {
-        console.error("Cloud Solo Meal Delete Error:", e);
+      } catch (error) {
+        console.warn('[Solo] Deletion not synced:', error);
+        toast.error('Đã xóa trên thiết bị, nhưng chưa đồng bộ xóa lên đám mây.');
+        return;
       }
     }
-
-    setSuccessMsg("Đã xoá thành công bữa ăn!");
+    setSuccessMsg('Đã xóa bữa ăn khỏi lịch sử.');
     setTimeout(() => setSuccessMsg(null), 3000);
   };
 
