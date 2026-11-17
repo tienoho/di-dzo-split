@@ -1,6 +1,9 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700;900&family=JetBrains+Mono:wght@400;700&display=swap');
 @import "tailwindcss";
 
+/* Tailwind 4 otherwise binds dark: to OS media preference, not the app toggle. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
@@ -41,3 +44,27 @@
   Removed manual !important dark mode hacks. 
   We will use native Tailwind dark: classes directly in the React components. 
 */
+
+/* Responsive primitives shared by every feature screen. */
+html { color-scheme: light; }
+html.dark { color-scheme: dark; }
+body { min-width: 320px; overflow-x: clip; }
+button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+:where(button, a, input, select, textarea):focus-visible {
+  outline: 3px solid #f97316;
+  outline-offset: 3px;
+}
+
+@media (max-width: 767px) {
+  /* Prevent iOS Safari from zooming the entire screen when entering money. */
+  input, select, textarea { font-size: 16px !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
