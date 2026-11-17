@@ -542,7 +542,7 @@ Xin chân thành cảm ơn!`;
                         <button
                           onClick={() => {
                             triggerConfirm(
-                              `Bạn đã chuyển khoản trả nợ thành công ${debt.amount.toLocaleString('vi-VN')}đ cho ${debt.creditorName} rồi đúng không?`,
+                              `Bạn đã chuyển khoản trả hết ${payable(debt).toLocaleString('vi-VN')}đ còn lại cho ${debt.creditorName} rồi đúng không?`,
                               () => onMarkDebtAsPaid(debt.billId, debt.debtorName, debt.creditorName),
                               "Xác nhận chuyển khoản"
                             );
@@ -594,7 +594,7 @@ Xin chân thành cảm ơn!`;
                       
                       const mappedBankCode = bankCodeMap[bankName] || bankName;
                       // Bank QR generator link from VietQR
-                      const formattedAmount = Math.round(debt.amount);
+                      const formattedAmount = Math.round(payable(debt));
                       const paymentMemo = `${debt.debtorName.replace(/\s+/g, '')} guitennhau ${debt.venueName.substring(0, 5).replace(/\s+/g, '')}`;
                       const vietQrUrl = `https://img.vietqr.io/image/${mappedBankCode}-${bankNo}-compact2.png?amount=${formattedAmount}&addInfo=${encodeURIComponent(paymentMemo)}&accountName=${encodeURIComponent(bankAccountName)}`;
 
@@ -618,7 +618,7 @@ Xin chân thành cảm ơn!`;
                                   </span>
                                 ) : (
                                   <span className="text-sm bg-orange-100 text-orange-600 border-2 border-orange-200 px-2.5 py-0.5 rounded-full font-black">
-                                    {debt.amount.toLocaleString('vi-VN')} đ
+                                    {payable(debt).toLocaleString('vi-VN')} đ
                                   </span>
                                 )}
                               </div>
@@ -663,7 +663,7 @@ Xin chân thành cảm ơn!`;
                                   <button
                                     onClick={() => {
                                       triggerConfirm(
-                                        `Bạn xác nhận chiến hữu ${debt.debtorName} đã chuyển khoản thanh toán đủ ${debt.amount.toLocaleString('vi-VN')}đ chứ?`,
+                                        `Bạn xác nhận ${debt.debtorName} đã thanh toán đủ ${payable(debt).toLocaleString('vi-VN')}đ còn lại chứ?`,
                                         () => onMarkDebtAsPaid(debt.billId, debt.debtorName, debt.creditorName),
                                         "Xác nhận Trả Xong"
                                       );
@@ -977,7 +977,7 @@ Xin chân thành cảm ơn!`;
                                     </div>
                                     
                                     <span className="text-xs text-slate-500 font-bold text-center leading-relaxed">
-                                      Gửi ảnh QR này để đối phương tự điền số tiền <strong className="text-slate-900">{debt.amount.toLocaleString('vi-VN')} đ</strong> và chính xác thông tin thụ hưởng của bạn.
+                                      Gửi ảnh QR này để đối phương tự điền số tiền <strong className="text-slate-900">{payable(debt).toLocaleString('vi-VN')} đ</strong> và chính xác thông tin thụ hưởng của bạn.
                                     </span>
                                   </>
                                 )}
