@@ -57,3 +57,43 @@ test('receipt scanner rejects incompatible files before processing', async ({ pa
   });
   await expect(page.getByRole('alert')).toContainText('Chỉ hỗ trợ ảnh JPG, PNG hoặc WebP');
 });
+
+
+test('contact form rejects invalid phone numbers without a false saved state', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await page.getByRole('navigation', { name: 'Điều hướng điện thoại' })
+    .getByRole('button', { name: 'Bạn bè' }).click();
+  await page.locator('#contact-new-name').fill('Minh Quân');
+  await page.locator('#contact-new-phone').fill('abc123');
+  await page.getByRole('button', { name: 'Lưu vào danh bạ' }).click();
+  await expect(page.getByRole('alert')).toContainText('Số điện thoại phải có');
+});
+
+test('history pages large datasets without losing total reports', async ({ page }) => {
+  const bills = Array.from({ length: 23 }, (_, i) => ({
+    id: `bill-${i}`,
+    venueId: 'test',
+    venueName: `Quán thử ${i}`,
+    date: new Date(Date.UTC(2026, 10, i + 1)).toISOString(),
+    rawAmount: 200000,
+    tipPercent: 0,
+    tipAmount: 0,
+    additionalFee: 0,
+    discountAmount: 0,
+    totalAmount: 200000,
+    splitType: 'equal',
+    members: [{ name: 'An', initialPaid: 200000, finalShare: 200000, hasPaidDebt: true }]
+  }));
+  await page.addInitScript((initialBills) => {
+    localStorage.setItem('nhau_bills_guest', JSON.stringify(initialBills));
+  }, bills);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await page.getByRole('navigation', { name: 'Điều hướng điện thoại' })
+    .getByRole('button', { name: 'Lịch sử' }).click();
+  await expect(page.getByRole('navigation', { name: 'Phân trang hóa đơn' })).toContainText('Trang 1/2');
+  await page.getByRole('navigation', { name: 'Phân trang hóa đơn' })
+    .getByRole('button', { name: 'Tiếp' }).click();
+  await expect(page.getByRole('navigation', { name: 'Phân trang hóa đơn' })).toContainText('Trang 2/2');
+});
