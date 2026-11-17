@@ -12,6 +12,15 @@
     <meta name="author" content="Chia Tiền Nhậu Team" />
     <meta name="robots" content="index, follow" />
     
+    <!-- Apply saved theme before React mounts to avoid light/dark flashing. -->
+    <script>
+      try {
+        if (localStorage.getItem('nhau_dark_mode') === 'true') {
+          document.documentElement.classList.add('dark');
+        }
+      } catch (_) {}
+    </script>
+
     <!-- Theme & Mobile Branding -->
     <meta name="theme-color" content="#f8fafc" />
     <meta name="mobile-web-app-capable" content="yes" />
