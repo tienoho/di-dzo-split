@@ -404,7 +404,7 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         {/* FIELD A: SƠ ĐỒ CHI PHÍ 6 THÁNG QUA */}
-        <div className="lg:col-span-7 bg-white border-4 border-slate-900 rounded-[32px] shadow-lg p-6 space-y-4 flex flex-col justify-between dark:bg-slate-900 dark:border-slate-700">
+        <div className="lg:col-span-7 bg-white border border-slate-200 rounded-3xl shadow-sm p-6 space-y-4 flex flex-col justify-between dark:bg-slate-900 dark:border-slate-700">
           <div className="space-y-4">
             <div className="flex justify-between items-center border-b-2 border-slate-900 pb-3 dark:border-slate-700">
               <div className="flex items-center gap-2">
@@ -472,7 +472,7 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
         </div>
 
         {/* FIELD B: BIỂU ĐỒ TRÒN TỶ LỆ THEO ĐỊA ĐIỂM (PIE CHART) */}
-        <div className="lg:col-span-5 bg-white border-4 border-slate-900 rounded-[32px] shadow-lg p-6 space-y-4 flex flex-col justify-between dark:bg-slate-900 dark:border-slate-700">
+        <div className="lg:col-span-5 bg-white border border-slate-200 rounded-3xl shadow-sm p-6 space-y-4 flex flex-col justify-between dark:bg-slate-900 dark:border-slate-700">
           <div>
             <div className="flex justify-between items-center border-b-2 border-slate-900 pb-3 dark:border-slate-700">
               <div className="flex items-center gap-2">
@@ -557,7 +557,7 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
             ) : (
               <div className="flex flex-col items-center justify-center p-8 text-center space-y-3 min-h-44">
                 <div className="bg-purple-50 p-3 rounded-2xl border-2 border-dashed border-purple-200 text-purple-400">
-                  <PieChart className="w-8 h-8 animate-pulse" />
+                  <PieChart className="w-8 h-8" />
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs font-black text-slate-700 dark:text-slate-100">Chưa có quán nhậu nào được lọc</p>
@@ -586,7 +586,7 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b-2 border-slate-900 pb-3 dark:border-slate-700">
           <div className="space-y-1">
             <h3 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-              <Sparkles className="w-6 h-6 text-orange-500 animate-pulse" />
+              <Sparkles className="w-6 h-6 text-orange-500" />
               Dự Báo Ngân Sách Cuối Tuần Tới
             </h3>
             <p className="text-xs text-slate-500 font-bold leading-tight">
@@ -822,7 +822,7 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
       </div>
 
       {/* SEARCH AND BILL DETAILS CONTAINER */}
-      <div className="bg-white border-4 border-slate-900 rounded-[32px] p-6 space-y-5 shadow-lg dark:bg-slate-900 dark:border-slate-700">
+      <div className="bg-white border border-slate-200 rounded-3xl p-6 space-y-5 shadow-sm dark:bg-slate-900 dark:border-slate-700">
         {/* TAB CHOOSER: HOẠT ĐỘNG / LƯU TRỮ */}
         <div className="flex flex-wrap gap-3 border-b-2 border-slate-100 pb-4">
           <button
@@ -1184,7 +1184,7 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
           onClick={() => setActiveZoomImage(null)}
         >
           <div 
-            className="bg-white border-4 border-slate-900 rounded-[32px] p-5 max-w-md w-full relative space-y-4 shadow-2xl animate-scaleIn dark:bg-slate-900 dark:border-slate-700"
+            className="bg-white border border-slate-200 rounded-3xl p-5 max-w-md w-full relative space-y-4 shadow-2xl animate-scaleIn dark:bg-slate-900 dark:border-slate-700"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-center border-b-2 border-slate-200 pb-2.5">
