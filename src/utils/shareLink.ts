@@ -104,15 +104,20 @@ export async function generateShareableBillUrl(bill: Bill): Promise<string> {
     bankAccountName: bill.bankAccountName || localStorage.getItem('nhau_bank_account_name') || ''
   };
 
-  // Asynchronously save to public collection on Firebase for 100% cloud availability
+  // A short link is valid only after Firestore acknowledges the write.
   try {
     await savePublicBillToCloud(enrichedBill);
-  } catch (e) {
-    console.warn("Public cloud save skipped, falling back:", e);
+    return `${origin}?b=${encodeURIComponent(enrichedBill.id)}`;
+  } catch (error) {
+    // Guests and offline users can still share a self-contained legacy URL.
+    // Do not claim that a short cloud link exists when the write failed.
+    console.warn('[Share link] Cloud unavailable; using portable URL fallback:', error);
+    const encoded = compressBillForUrl(enrichedBill);
+    if (!encoded) {
+      throw new Error('Không thể tạo liên kết hóa đơn. Vui lòng thử lại.');
+    }
+    return `${origin}?bill=${encoded}`;
   }
-
-  // Return clean, short link
-  return `${origin}?b=${enrichedBill.id}`;
 }
 
 /**
