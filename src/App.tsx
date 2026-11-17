@@ -220,7 +220,7 @@ export default function App() {
 
   // Monitor debts to trigger push notification when user has an outstanding debt
   useEffect(() => {
-    if (debts.length === 0) return;
+    if (debts.length === 0 || localStorage.getItem('nhau_push_enabled') !== 'true') return;
 
     // Check if user has outstanding debts
     const myOutstanding = debts.filter(d => 
@@ -242,58 +242,15 @@ export default function App() {
       if (unnotified.length > 0) {
         unnotified.forEach((debt) => {
           const title = `🚨 Nhắc Nợ: Bạn có khoản nợ chưa trả!`;
-          const body = `Hóa đơn ${debt.venueName} còn thiếu ${debt.amount.toLocaleString('vi-VN')} đ chưa thanh toán cho ${debt.creditorName}.`;
+          const body = `Hóa đơn ${debt.venueName} còn thiếu ${(debt.remainingAmount ?? debt.amount).toLocaleString('vi-VN')} đ chưa thanh toán cho ${debt.creditorName}.`;
 
-          // 1. Browser Native Push Notification
-          if ('Notification' in window) {
-            if (Notification.permission === 'granted') {
-              try {
-                new Notification(title, {
-                  body: body,
-                  icon: 'https://cdn-icons-png.flaticon.com/512/3135/3135706.png',
-                });
-              } catch (e) {
-                console.error("Error creating Notification: ", e);
-              }
-            } else if (Notification.permission !== 'denied') {
-              Notification.requestPermission().then(permission => {
-                if (permission === 'granted') {
-                  new Notification(title, {
-                    body: body,
-                    icon: 'https://cdn-icons-png.flaticon.com/512/3135/3135706.png',
-                  });
-                }
-              });
-            }
+          // Respect the user's existing browser permission; request only via settings.
+          if ('Notification' in window && Notification.permission === 'granted') {
+            try { new Notification(title, { body }); }
+            catch (error) { console.warn('[Notifications] Native display unavailable:', error); }
           }
 
-          // 2. Play double-ding sound
-          try {
-            const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-            const osc = ctx.createOscillator();
-            const gainSym = ctx.createGain();
-            osc.connect(gainSym);
-            gainSym.connect(ctx.destination);
-            
-            osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
-            gainSym.gain.setValueAtTime(0.06, ctx.currentTime);
-            osc.start();
-            osc.stop(ctx.currentTime + 0.1);
-            
-            setTimeout(() => {
-              const osc2 = ctx.createOscillator();
-              const gainSym2 = ctx.createGain();
-              osc2.connect(gainSym2);
-              gainSym2.connect(ctx.destination);
-              osc2.frequency.setValueAtTime(783.99, ctx.currentTime); // G5
-              gainSym2.gain.setValueAtTime(0.06, ctx.currentTime);
-              osc2.start();
-              osc2.stop(ctx.currentTime + 0.18);
-            }, 100);
-          } catch (e) {
-            console.log('Audio chime blocked or unsupported');
-          }
-
+          // No automatic Web Audio contexts: autoplay can be blocked and leaks resources.
           // 3. Set visual toast
           setSystAlert({
             title: 'THÔNG BÁO TỨ THÌ (PUSH) 📬',
@@ -316,8 +273,8 @@ export default function App() {
     let initialTimeoutId: NodeJS.Timeout;
 
     const checkUnpaidReminders = () => {
-      const isEnabled = localStorage.getItem('nhau_push_enabled') !== 'false';
-      if (!isEnabled) return;
+      const isEnabled = localStorage.getItem('nhau_push_enabled') === 'true';
+      if (!isEnabled || document.hidden) return;
 
       const intervalType = localStorage.getItem('nhau_push_interval') || '24h';
       let intervalMs = 24 * 60 * 60 * 1000; // default 24h
@@ -339,33 +296,32 @@ export default function App() {
         // Verify if the bill is > 24 hours old
         if (ageMs < twentyFourHours) return;
 
-        // Find members who haven't paid their share (owes > 0 and hasPaidDebt is false)
-        const unpaidDebtors = bill.members.filter(m => m.initialPaid < m.finalShare && !m.hasPaidDebt);
-        if (unpaidDebtors.length === 0) return; // Perfect, all settled
-
-        // Find the host / creditor (who paid for this bill)
-        const creditors = bill.members.filter(m => m.initialPaid > m.finalShare);
-        const creditor = creditors[0] || { name: 'Chủ bàn' };
+        const unpaidTransfers = getActiveDebts([bill]).filter(debt => !debt.isPaid);
+        if (!unpaidTransfers.length) return;
 
         const userClean = activeCreatorName.toLowerCase().trim();
-        const isUserCreditor = creditor.name.toLowerCase().trim() === userClean;
-        const matchingDebtor = unpaidDebtors.find(d => d.name.toLowerCase().trim() === userClean);
+        const myCreditorTransfers = unpaidTransfers.filter(debt =>
+          debt.creditorName.toLowerCase().trim() === userClean
+        );
+        const myDebtorTransfers = unpaidTransfers.filter(debt =>
+          debt.debtorName.toLowerCase().trim() === userClean
+        );
 
         let title = '';
         let body = '';
         let trackingKey = '';
 
-        if (isUserCreditor) {
-          // Current user is the creditor reminding them of friends who haven't paid
-          const unpaidNames = unpaidDebtors.map(d => d.name).join(', ');
+        if (myCreditorTransfers.length) {
+          // Display only the outstanding transfers owed to the current user.
+          const unpaidNames = [...new Set(myCreditorTransfers.map(debt => debt.debtorName))].join(', ');
           title = `⏱️ Quá 24 Giờ: Hóa Đơn Trễ Hạn!`;
           body = `Cuộc nhậu "${bill.venueName}" còn chiến hữu (${unpaidNames}) chưa trả tiền. Click để hối đòi sòng phẳng!`;
           trackingKey = `creditor_remind_24h_${bill.id}`;
-        } else if (matchingDebtor) {
-          // Current user is the debtor who hasn't paid
-          const owedAmount = matchingDebtor.finalShare - matchingDebtor.initialPaid;
+        } else if (myDebtorTransfers.length) {
+          const owedAmount = myDebtorTransfers.reduce((sum, debt) => sum + (debt.remainingAmount ?? debt.amount), 0);
+          const creditorNames = [...new Set(myDebtorTransfers.map(debt => debt.creditorName))].join(', ');
           title = `⏳ Chưa Trả Tiền: Cuộc Nhậu >24h!`;
-          body = `Bạn còn thiếu ${owedAmount.toLocaleString('vi-VN')} đ tại "${bill.venueName}" chưa gửi trả cho ${creditor.name}.`;
+          body = `Bạn còn thiếu ${owedAmount.toLocaleString('vi-VN')} đ tại "${bill.venueName}" chưa gửi trả cho ${creditorNames}.`;
           trackingKey = `debtor_remind_24h_${bill.id}`;
         } else {
           return; // User is not involved or has paid their share
@@ -376,47 +332,12 @@ export default function App() {
         const lastNotifiedTime = lastNotified ? parseInt(lastNotified, 10) : 0;
 
         if (now - lastNotifiedTime >= intervalMs) {
-          // 1. Desktop Notification
-          if ('Notification' in window) {
-            if (Notification.permission === 'granted') {
-              try {
-                new Notification(title, {
-                  body: body,
-                  icon: 'https://cdn-icons-png.flaticon.com/512/3135/3135706.png',
-                  tag: trackingKey // merge identical notices on system tray
-                });
-              } catch (e) {
-                console.error("Error creating Notification: ", e);
-              }
-            }
+          if ('Notification' in window && Notification.permission === 'granted') {
+            try { new Notification(title, { body, tag: trackingKey }); }
+            catch (error) { console.warn('[Notifications] Native display unavailable:', error); }
           }
 
-          // 2. Play alert chime
-          try {
-            const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-            const osc = ctx.createOscillator();
-            const gainSym = ctx.createGain();
-            osc.connect(gainSym);
-            gainSym.connect(ctx.destination);
-            osc.type = 'triangle';
-            osc.frequency.setValueAtTime(440, ctx.currentTime); // A4
-            gainSym.gain.setValueAtTime(0.05, ctx.currentTime);
-            osc.start();
-            osc.stop(ctx.currentTime + 0.15);
-            
-            setTimeout(() => {
-              const osc2 = ctx.createOscillator();
-              const gainSym2 = ctx.createGain();
-              osc2.connect(gainSym2);
-              gainSym2.connect(ctx.destination);
-              osc2.type = 'triangle';
-              osc2.frequency.setValueAtTime(554.37, ctx.currentTime); // C#5
-              gainSym2.gain.setValueAtTime(0.05, ctx.currentTime);
-              osc2.start();
-              osc2.stop(ctx.currentTime + 0.25);
-            }, 120);
-          } catch (e) {}
-
+          // Quiet reminders avoid autoplay sound, unnecessary CPU use and disruption.
           // 3. Set visual toast
           setSystAlert({
             title: 'NHẮC NỢ ĐỊNH KỲ (>24H) ⏰',
@@ -438,11 +359,13 @@ export default function App() {
 
     // Listen to local 'storage' events to immediately apply changes
     window.addEventListener('storage', checkUnpaidReminders);
+    document.addEventListener('visibilitychange', checkUnpaidReminders);
 
     return () => {
       clearTimeout(initialTimeoutId);
       clearInterval(timerId);
       window.removeEventListener('storage', checkUnpaidReminders);
+      document.removeEventListener('visibilitychange', checkUnpaidReminders);
     };
   }, [bills, activeCreatorName]);
 
