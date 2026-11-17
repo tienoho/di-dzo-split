@@ -3,6 +3,7 @@ import path from 'path';
 import dotenv from 'dotenv';
 import { GoogleGenAI } from '@google/genai';
 import admin from 'firebase-admin';
+import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
 import fs from 'fs';
 
 dotenv.config();
@@ -145,11 +146,7 @@ const fallbackRecommendations = [
 app.get('/api/fcm-vapid', (req, res) => {
   const key = process.env.VITE_FCM_VAPID_KEY || process.env.FCM_VAPID_KEY || process.env.VAPID_KEY || process.env.FIREBASE_VAPID_KEY || null;
   res.setHeader('Content-Type', 'application/json');
-  res.json({
-    success: true,
-    key: key,
-    envKeys: Object.keys(process.env).filter(k => k.toLowerCase().includes('vapid') || k.toLowerCase().includes('fcm'))
-  });
+  res.json({ success: true, key });
 });
 
 // API endpoint for AI-powered venues recommendations with Google Search Grounding
@@ -776,71 +773,73 @@ app.get('/firebase-messaging-sw.js', (req, res) => {
   `);
 });
 
-// Endpoint to dispatch FCM push notification
+// Authenticated, owner-device-only push dispatch. Arbitrary device tokens,
+// custom notification content and recipient-name lookups are intentionally forbidden.
 app.post('/api/send-fcm', async (req, res) => {
+  const authHeader = req.header('authorization') || '';
+  const match = /^Bearer ([A-Za-z0-9._-]+)$/.exec(authHeader);
+  if (!match) return res.status(401).json({ success: false, error: 'Yêu cầu đăng nhập Firebase.' });
+
+  if (!initFirebaseAdmin()) {
+    return res.status(503).json({ success: false, error: 'FCM server chưa được cấu hình.' });
+  }
+
+  let uid: string;
   try {
-    const { tokens, title, body, data } = req.body;
-    if (!tokens || !Array.isArray(tokens) || tokens.length === 0) {
-      return res.status(400).json({ success: false, error: 'Danh sách tokens không hợp lệ.' });
+    const decoded = await admin.auth().verifyIdToken(match[1], true);
+    uid = decoded.uid;
+  } catch (err) {
+    return res.status(401).json({ success: false, error: 'Phiên xác thực không hợp lệ hoặc đã hết hạn.' });
+  }
+
+  const tokens = req.body?.tokens;
+  if (!Array.isArray(tokens) || tokens.length !== 1 ||
+      typeof tokens[0] !== 'string' || tokens[0].length < 12 || tokens[0].length > 4096) {
+    return res.status(400).json({ success: false, error: 'Chỉ hỗ trợ kiểm thử một thiết bị đã liên kết.' });
+  }
+
+  try {
+    const databaseId = process.env.FIRESTORE_DATABASE_ID ||
+      process.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID || '(default)';
+    const database = getAdminFirestore(admin.app(), databaseId);
+    const userTokens = await database.doc(`users/${uid}/fcm/tokens`).get();
+    const registered = userTokens.data()?.tokens;
+    if (!Array.isArray(registered) || !registered.includes(tokens[0])) {
+      return res.status(403).json({ success: false, error: 'Thiết bị chưa thuộc tài khoản được xác thực.' });
     }
 
-    const cleanTokens = tokens.filter(t => typeof t === 'string' && t.trim() !== '');
-    if (cleanTokens.length === 0) {
-      return res.status(400).json({ success: false, error: 'Không tìm thấy token dạng chuỗi hợp lệ.' });
-    }
-
-    const isReady = initFirebaseAdmin();
-    if (!isReady) {
-      return res.status(503).json({
-        success: false,
-        isSimulated: false,
-        error: 'FCM chưa được cấu hình hoặc chưa sẵn sàng. Chưa gửi thông báo.'
+    // Distributed per-account quota, safe across separate serverless instances.
+    const limitRef = database.doc(`push_rate_limits/${uid}`);
+    const now = Date.now();
+    const allowed = await database.runTransaction(async transaction => {
+      const snapshot = await transaction.get(limitRef);
+      const previous = snapshot.data();
+      const inWindow = typeof previous?.windowStart === 'number' && (now - previous.windowStart) < 60_000;
+      const attempts = inWindow ? (Number(previous?.attempts) || 0) : 0;
+      if (attempts >= 3) return false;
+      transaction.set(limitRef, {
+        attempts: attempts + 1,
+        windowStart: inWindow ? previous.windowStart : now,
+        updatedAt: new Date(now).toISOString()
       });
-    }
-
-
-    const payload = {
-      notification: {
-        title: title || 'Chia Tiền Nhậu 🍻',
-        body: body || 'Có nhắc nhở mới liên quan đến cuộc nhậu của bạn!'
-      },
-      data: data || {},
-      tokens: cleanTokens
-    };
-
-    console.log(`[FCM Backend] Dispatching Multicast Notification to ${cleanTokens.length} devices...`);
-    try {
-      const result = await (admin as any).messaging().sendEachForMulticast(payload);
-      console.log(`[FCM Backend] Success: ${result.successCount}, Fail: ${result.failureCount}`);
-
-      const responsesParsed = result.responses.map((resp: any, i: number) => ({
-        token: cleanTokens[i],
-        success: resp.success,
-        error: resp.error ? resp.error.message : null
-      }));
-
-      return res.json({
-        success: true,
-        isSimulated: false,
-        successCount: result.successCount,
-        failureCount: result.failureCount,
-        results: responsesParsed
-      });
-    } catch (sendErr: any) {
-      console.error('[FCM Backend] Delivery failed:', sendErr);
-      return res.status(502).json({
-        success: false,
-        isSimulated: false,
-        error: 'Không gửi được thông báo FCM. Vui lòng thử lại.'
-      });
-    }
-
-  } catch (err: any) {
-    console.error('FCM Core error:', err);
-    return res.status(500).json({
-      success: false,
-      error: err.message || 'Lỗi truyền tải Firebase Cloud Messaging.'
+      return true;
     });
+    if (!allowed) return res.status(429).json({ success: false, error: 'Vượt hạn mức 3 lần kiểm thử mỗi phút.' });
+
+    const result = await admin.messaging().sendEachForMulticast({
+      tokens: [tokens[0]],
+      notification: {
+        title: 'Dzô! Split — Kiểm thử thông báo',
+        body: 'Thiết bị của bạn đã nhận thông báo kiểm thử thành công.'
+      }
+    });
+    if (result.successCount !== 1) {
+      return res.status(502).json({ success: false, error: 'FCM không xác nhận giao thông báo.', successCount: 0 });
+    }
+    return res.json({ success: true, successCount: 1, failureCount: 0, isSimulated: false });
+  } catch (error) {
+    console.error('[FCM] Authenticated dispatch error:', error);
+    return res.status(503).json({ success: false, error: 'Không gửi được thông báo. Kiểm tra cấu hình Firebase Admin.' });
   }
 });
 
