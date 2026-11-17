@@ -220,7 +220,7 @@ export default function PublicBillViewerModal({ bill, onClose }: PublicBillViewe
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.94, y: 15 }}
         transition={{ type: "spring", stiffness: 350, damping: 25 }}
-        className="bg-white dark:bg-slate-900 border-4 border-slate-900 dark:border-slate-700 rounded-[32px] max-w-3xl w-full shadow-2xl overflow-hidden my-auto"
+        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-3xl max-w-3xl w-full shadow-2xl overflow-hidden my-auto"
       >
         {/* MODAL HEADER */}
         <div className="bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-400 p-5 sm:p-6 border-b-4 border-slate-900 dark:border-slate-800 text-slate-950 relative">
@@ -723,7 +723,7 @@ export default function PublicBillViewerModal({ bill, onClose }: PublicBillViewe
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white dark:bg-slate-900 border-4 border-slate-900 dark:border-slate-700 rounded-[28px] max-w-sm w-full p-6 text-center space-y-4 shadow-2xl relative"
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-[28px] max-w-sm w-full p-6 text-center space-y-4 shadow-2xl relative"
             >
               <button 
                 onClick={() => setSelectedMemberForQR(null)}
