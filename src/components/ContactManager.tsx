@@ -270,7 +270,7 @@ export default function ContactManager({ contacts, onSaveContact, onDeleteContac
 
           <div className="space-y-3">
             {filteredContacts.length === 0 ? (
-              <div className="text-center py-12 bg-slate-50 dark:bg-slate-805 dark:bg-slate-800 rounded-2xl border-2 border-dashed border-slate-200">
+              <div className="text-center py-12 bg-slate-50 dark:bg-slate-800 dark:bg-slate-800 rounded-2xl border-2 border-dashed border-slate-200">
                 <Users className="w-10 h-10 text-slate-300 mx-auto mb-2.5" />
                 <p className="text-xs font-black text-slate-400">Không tìm thấy chiến hữu nào.</p>
                 <p className="text-xs font-bold text-slate-400 mt-1">Hãy nhập thông tin ở cột trái để thêm mới danh bạ nhậu!</p>
@@ -363,7 +363,7 @@ export default function ContactManager({ contacts, onSaveContact, onDeleteContac
                           </button>
                           <button
                             onClick={() => handleDelete(contactName)}
-                            className="bg-white hover:bg-red-50 text-slate-750 hover:text-red-600 p-2 rounded-xl border-2 border-slate-900 cursor-pointer shadow-3xs hover:-translate-y-0.5 transition-all"
+                            className="bg-white hover:bg-red-50 text-slate-700 hover:text-red-600 p-2 rounded-xl border-2 border-slate-900 cursor-pointer shadow-3xs hover:-translate-y-0.5 transition-all"
                             title="Xóa khỏi danh bạ"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -408,7 +408,7 @@ export default function ContactManager({ contacts, onSaveContact, onDeleteContac
                     confirmDialog.onConfirm();
                     setConfirmDialog(null);
                   }}
-                  className="bg-red-500 hover:bg-red-655 hover:bg-red-600 text-white font-black text-xs px-4 py-2.5 rounded-xl border-2 border-slate-900 shadow-5xs transition-transform active:translate-y-0.5 cursor-pointer"
+                  className="bg-red-500 hover:bg-red-600 hover:bg-red-600 text-white font-black text-xs px-4 py-2.5 rounded-xl border-2 border-slate-900 shadow-5xs transition-transform active:translate-y-0.5 cursor-pointer"
                 >
                   Xác Nhận Xóa
                 </button>
