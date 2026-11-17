@@ -20,6 +20,8 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
   const [expandedBillId, setExpandedBillId] = useState<string | null>(null);
   const [activeZoomImage, setActiveZoomImage] = useState<string | null>(null);
   const [archiveFilter, setArchiveFilter] = useState<'active' | 'archived'>('active');
+  const [listPage, setListPage] = useState(1);
+  const BILL_PAGE_SIZE = 20;
 
   // AI Budget Predictor States
   const [predicting, setPredicting] = useState<boolean>(false);
@@ -165,7 +167,12 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
     }
 
     return true;
-  }), [bills, archiveFilter, searchTerm, timeFilterType, selectedMonth]);
+  }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()), [bills, archiveFilter, searchTerm, timeFilterType, selectedMonth]);
+
+  React.useEffect(() => setListPage(1), [archiveFilter, searchTerm, timeFilterType, selectedMonth]);
+  const totalPages = Math.max(1, Math.ceil(filteredBills.length / BILL_PAGE_SIZE));
+  const safePage = Math.min(listPage, totalPages);
+  const pagedBills = filteredBills.slice((safePage - 1) * BILL_PAGE_SIZE, safePage * BILL_PAGE_SIZE);
 
   // Toggle accordion expand
   const toggleExpand = (id: string) => {
@@ -955,7 +962,7 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
             </div>
           ) : (
             <AnimatePresence>
-              {filteredBills.map((bill, index) => {
+              {pagedBills.map((bill) => {
               const isExpanded = expandedBillId === bill.id;
               const dateObj = new Date(bill.date);
               const formattedDate = `${dateObj.getDate()} Thg ${dateObj.getMonth() + 1}, ${dateObj.getFullYear()}`;
@@ -971,8 +978,7 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
                   initial={{ opacity: 0, y: 30 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ duration: 0.3, delay: index * 0.05, type: "spring", stiffness: 300, damping: 25 }}
-                  whileHover={{ y: -4 }}
+                  transition={{ duration: 0.2 }}
                   className={`border-3 border-slate-900 rounded-[24px] overflow-hidden transition-all duration-300 ${isExpanded ? 'bg-orange-50/15 shadow-sm' : 'bg-slate-50/30'}`}
                 >
                   {/* Collapsible Trigger Row */}
@@ -1188,6 +1194,25 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
             </AnimatePresence>
           )}
         </div>
+        {totalPages > 1 && (
+          <nav aria-label="Phân trang hóa đơn" className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-200 dark:border-slate-700">
+            <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">
+              Trang {safePage}/{totalPages} · Hiển thị {Math.min(filteredBills.length, safePage * BILL_PAGE_SIZE)} trong {filteredBills.length} hóa đơn
+            </p>
+            <div className="flex gap-2">
+              <button type="button" disabled={safePage <= 1}
+                onClick={() => setListPage(Math.max(1, safePage - 1))}
+                className="min-h-11 px-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-100 font-bold disabled:opacity-40 disabled:cursor-not-allowed">
+                Trước
+              </button>
+              <button type="button" disabled={safePage >= totalPages}
+                onClick={() => setListPage(Math.min(totalPages, safePage + 1))}
+                className="min-h-11 px-4 rounded-xl bg-slate-900 dark:bg-orange-500 text-white dark:text-slate-950 font-bold disabled:opacity-40 disabled:cursor-not-allowed">
+                Tiếp
+              </button>
+            </div>
+          </nav>
+        )}
       </div>
 
       {/* Enlarged Receipt Image Lightbox Zoom Modal */}
