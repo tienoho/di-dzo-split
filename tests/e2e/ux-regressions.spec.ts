@@ -97,3 +97,36 @@ test('history pages large datasets without losing total reports', async ({ page 
     .getByRole('button', { name: 'Tiếp' }).click();
   await expect(page.getByRole('navigation', { name: 'Phân trang hóa đơn' })).toContainText('Trang 2/2');
 });
+
+
+test('solo deletion is confirmed and survives reload without resurrecting a local record', async ({ page }) => {
+  const meal = {
+    id: 'solo-existing',
+    name: 'Bữa ăn cần xóa',
+    venueName: 'Quán thử',
+    date: '2026-11-17',
+    rawAmount: 45000,
+    drinkAmount: 5000,
+    otherAmount: 0,
+    totalAmount: 50000,
+    updatedAt: '2026-11-17T07:00:00Z'
+  };
+  await page.addInitScript(item => {
+    localStorage.setItem('nhau_solo_meals_guest', JSON.stringify([item]));
+  }, meal);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  const nav = page.getByRole('navigation', { name: 'Điều hướng điện thoại' });
+  await nav.getByRole('button', { name: 'Thêm phân hệ' }).click();
+  await page.getByRole('menuitem', { name: 'Ăn uống cá nhân' }).click();
+  await expect(page.getByText('Bữa ăn cần xóa', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Xóa bữa ăn Bữa ăn cần xóa' }).click();
+  const confirm = page.getByRole('alertdialog', { name: 'Xóa bữa ăn?' });
+  await expect(confirm).toBeVisible();
+  await confirm.getByRole('button', { name: 'Xác nhận' }).click();
+  await expect(page.getByText('Bữa ăn cần xóa', { exact: true })).toHaveCount(0);
+  await page.reload();
+  await nav.getByRole('button', { name: 'Thêm phân hệ' }).click();
+  await page.getByRole('menuitem', { name: 'Ăn uống cá nhân' }).click();
+  await expect(page.getByText('Bữa ăn cần xóa', { exact: true })).toHaveCount(0);
+});
