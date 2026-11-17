@@ -678,7 +678,7 @@ export default function App() {
               </div>
               <button
                 onClick={() => signOut(auth)}
-                className="p-1 px-1.5 ml-1 bg-slate-200 dark:bg-slate-800 hover:bg-red-200 dark:hover:bg-red-900/60 rounded-full hover:text-red-650 transition-all cursor-pointer border border-transparent dark:border-slate-700"
+                className="p-1 px-1.5 ml-1 bg-slate-200 dark:bg-slate-800 hover:bg-red-200 dark:hover:bg-red-900/60 rounded-full hover:text-red-600 transition-all cursor-pointer border border-transparent dark:border-slate-700"
                 title="Đăng xuất tài khoản"
               >
                 <LogOut className="w-3 h-3 text-slate-600 dark:text-slate-300" />
@@ -695,7 +695,7 @@ export default function App() {
           )}
 
           {/* Quick Profile config info - Vibrant Palette Styled */}
-          <div className="flex items-center space-x-3 bg-white dark:bg-slate-900 px-4 py-2 rounded-full shadow-sm border-2 border-yellow-105 dark:border-slate-800 w-full sm:w-auto flex-1 md:flex-initial">
+          <div className="flex items-center space-x-3 bg-white dark:bg-slate-900 px-4 py-2 rounded-full shadow-sm border-2 border-yellow-100 dark:border-slate-800 w-full sm:w-auto flex-1 md:flex-initial">
             <div className="w-8 h-8 bg-teal-400 rounded-full border-2 border-white flex items-center justify-center text-slate-900 font-extrabold text-xs shadow-inner">
               👤
             </div>
@@ -717,7 +717,7 @@ export default function App() {
                   }
                 }}
                 placeholder="Nhập tên"
-                className="text-xs font-black text-teal-600 dark:text-teal-400 bg-transparent outline-none w-full sm:w-28 border-b border-dashed border-teal-200 focus:border-teal-450 pb-0.5"
+                className="text-xs font-black text-teal-600 dark:text-teal-400 bg-transparent outline-none w-full sm:w-28 border-b border-dashed border-teal-200 focus:border-teal-400 pb-0.5"
                 title="Thay đổi tên chủ phòng để các thông báo nhắc nợ gán đúng STK của bạn!"
               />
             </div>
@@ -856,7 +856,7 @@ export default function App() {
             onClick={() => setActiveTab('solo')}
             className={`flex items-center gap-2 py-3 px-5 rounded-2xl text-xs md:text-sm font-black transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'solo' 
-                ? 'bg-emerald-500 text-white shadow-md shadow-emerald-250 dark:shadow-none' 
+                ? 'bg-emerald-500 text-white shadow-md shadow-emerald-200 dark:shadow-none' 
                 : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'
             }`}
           >
