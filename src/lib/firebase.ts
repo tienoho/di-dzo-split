@@ -644,7 +644,9 @@ export const fetchSoloMealsFromCloud = async (userId: string): Promise<SoloMeal[
         drinkAmount: data.drinkAmount || 0,
         otherAmount: data.otherAmount || 0,
         totalAmount: data.totalAmount || 0,
-        note: data.note || ''
+        note: data.note || '',
+        updatedAt: data.updatedAt || undefined,
+        deletedAt: data.deletedAt || undefined
       });
     });
     return meals;
@@ -666,8 +668,9 @@ export const saveSoloMealToCloud = async (userId: string, meal: SoloMeal) => {
 export const deleteSoloMealFromCloud = async (userId: string, mealId: string) => {
   try {
     const mealRef = doc(db, 'users', userId, 'solo_meals', mealId);
-    await deleteDoc(mealRef);
-    console.log(`[Firestore] Successfully deleted solo meal ${mealId}`);
+    const deletedAt = new Date().toISOString();
+    await setDoc(mealRef, { id: mealId, deletedAt, updatedAt: deletedAt, userId });
+    console.log(`[Firestore] Retained deletion tombstone for solo meal ${mealId}`);
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, `users/${userId}/solo_meals/${mealId}`);
   }
