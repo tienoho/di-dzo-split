@@ -7,7 +7,7 @@ import DebtActionModal from './DebtReminders/DebtActionModal';
 
 interface DebtRemindersProps {
   debts: Debt[];
-  onMarkDebtAsPaid: (billId: string, debtorName: string) => void;
+  onMarkDebtAsPaid: (billId: string, debtorName: string, creditorName: string) => void;
   activeCreatorName: string;
   currentUser?: any;
   contacts: Record<string, { phone?: string; messenger?: string }>;
@@ -590,7 +590,7 @@ Xin chân thành cảm ơn!`;
                           onClick={() => {
                             triggerConfirm(
                               `Bạn đã chuyển khoản trả nợ thành công ${debt.amount.toLocaleString('vi-VN')}đ cho ${debt.creditorName} rồi đúng không?`,
-                              () => onMarkDebtAsPaid(debt.billId, debt.debtorName),
+                              () => onMarkDebtAsPaid(debt.billId, debt.debtorName, debt.creditorName),
                               "Xác nhận chuyển khoản"
                             );
                           }}
@@ -695,7 +695,7 @@ Xin chân thành cảm ơn!`;
                                   onClick={() => {
                                     triggerConfirm(
                                       `Hủy ghi nhận "Đã trả" của ${debt.debtorName} cho cuộc nhậu này?`,
-                                      () => onMarkDebtAsPaid(debt.billId, debt.debtorName),
+                                      () => onMarkDebtAsPaid(debt.billId, debt.debtorName, debt.creditorName),
                                       "Báo chưa thanh toán"
                                     );
                                   }}
@@ -711,7 +711,7 @@ Xin chân thành cảm ơn!`;
                                     onClick={() => {
                                       triggerConfirm(
                                         `Bạn xác nhận chiến hữu ${debt.debtorName} đã chuyển khoản thanh toán đủ ${debt.amount.toLocaleString('vi-VN')}đ chứ?`,
-                                        () => onMarkDebtAsPaid(debt.billId, debt.debtorName),
+                                        () => onMarkDebtAsPaid(debt.billId, debt.debtorName, debt.creditorName),
                                         "Xác nhận Trả Xong"
                                       );
                                     }}
