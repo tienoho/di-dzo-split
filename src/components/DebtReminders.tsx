@@ -999,7 +999,7 @@ Xin chân thành cảm ơn!`;
 
       {/* PARTIAL SETTLEMENT INPUT */}
       {partialFor && (
-        <div className="fixed inset-0 z-[90] bg-slate-950/80 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[200] bg-slate-950/80 flex items-center justify-center p-4">
           <form
             onSubmit={(event) => {
               event.preventDefault();
