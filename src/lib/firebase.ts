@@ -458,7 +458,7 @@ export const savePublicBillToCloud = async (bill: Bill, existingExpiry?: Timesta
     throw new Error('Đăng nhập Google để tạo liên kết ngắn trên đám mây');
   }
   const docRef = doc(db, 'public_bills', bill.id);
-  const balances = getActiveDebts([bill]);
+  const balances = getActiveDebts([{ ...bill, isArchived: false }]);
   const publicMembers = bill.members.map(({ name, initialPaid, finalShare, penaltyAmount, hasPaidDebt }) => ({
     name,
     initialPaid,
