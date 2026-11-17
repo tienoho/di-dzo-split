@@ -4,6 +4,7 @@ import { Calendar, Search, FileDown, TrendingUp, DollarSign, Users, Store, Trash
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { generateShareableBillUrl } from '../utils/shareLink';
+import { auth, revokePublicBillFromCloud } from '../lib/firebase';
 
 interface HistoryAndReportsProps {
   bills: Bill[];
@@ -288,6 +289,19 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
       toast.success("Đã sao chép Link Web xem hóa đơn! 🔗");
     } catch (err) {
       toast.error("Không thể sao chép link.");
+    }
+  };
+
+  const handleRevokeLink = async (bill: Bill) => {
+    if (!auth.currentUser) {
+      toast.error('Chỉ chủ hóa đơn đã đăng nhập mới thu hồi được link ngắn.');
+      return;
+    }
+    try {
+      await revokePublicBillFromCloud(bill.id);
+      toast.success('Đã thu hồi link chia sẻ của hóa đơn này.');
+    } catch (error) {
+      toast.error('Chưa thể thu hồi link. Kiểm tra quyền sở hữu hoặc kết nối.');
     }
   };
 
@@ -1100,6 +1114,21 @@ export default function HistoryAndReports({ bills, onDeleteBill, onArchiveBill }
                         >
                           <Share2 className="w-4 h-4" />
                           <span className="hidden sm:inline">Chia sẻ tin nhắn</span>
+                        </button>
+                        <button
+                          type="button"
+                          title="Thu hồi link ngắn đã chia sẻ (không ảnh hưởng link ngoại tuyến cũ)"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            triggerConfirm(
+                              'Thu hồi link ngắn? Sau khi thu hồi, link đã gửi sẽ không mở được và không thể kích hoạt lại.',
+                              () => { void handleRevokeLink(bill); },
+                              'Thu hồi liên kết'
+                            );
+                          }}
+                          className="mr-3 text-xs font-black flex items-center gap-1.5 p-3 px-4 rounded-xl border-2 border-rose-300 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/30"
+                        >
+                          <X className="w-4 h-4" /> Thu hồi link
                         </button>
                         <button
                           onClick={(e) => {
