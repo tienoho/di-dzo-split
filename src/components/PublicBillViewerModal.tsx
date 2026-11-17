@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
-import { generateShareableBillUrl } from '../utils/shareLink';
+
 import { getActiveDebts } from '../utils/storage';
 
 interface PublicBillViewerModalProps {
@@ -118,10 +118,10 @@ export default function PublicBillViewerModal({ bill, onClose }: PublicBillViewe
 
   const handleCopyLink = async () => {
     try {
-      const shortUrl = await generateShareableBillUrl(bill);
+      const shortUrl = window.location.href; // Viewers share the existing link without rewriting the bill.
       await navigator.clipboard.writeText(shortUrl);
       setCopiedLink(true);
-      toast.success("Đã sao chép Link rút gọn xem hóa đơn! 🔗");
+      toast.success("Đã sao chép liên kết hóa đơn! 🔗");
       setTimeout(() => setCopiedLink(false), 2500);
     } catch (e) {
       toast.error("Không thể sao chép link.");
@@ -129,7 +129,7 @@ export default function PublicBillViewerModal({ bill, onClose }: PublicBillViewe
   };
 
   const handleShareText = async () => {
-    const shortUrl = await generateShareableBillUrl(bill);
+    const shortUrl = window.location.href; // Viewers share the existing link without rewriting the bill.
     let text = `🍻 HÓA ĐƠN CUỘC NHẬU: ${bill.venueName}\n`;
     text += `📅 Thời gian: ${friendlyDate} ${friendlyTime ? `lúc ${friendlyTime}` : ''}\n`;
     text += `💰 Tổng hóa đơn: ${bill.totalAmount.toLocaleString('vi-VN')} đ\n\n`;
