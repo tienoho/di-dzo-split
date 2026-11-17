@@ -813,11 +813,11 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
                 value={newMemberName}
                 onChange={(e) => setNewMemberName(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleAddMember(newMemberName)}
-                className="flex-1 text-xs bg-slate-50 border-2 border-slate-900 dark:border-slate-700 outline-hidden focus:border-orange-500 rounded-xl p-3 text-slate-900 dark:text-slate-100 font-extrabold"
+                className="flex-1 min-w-0 text-xs bg-slate-50 border-2 border-slate-900 dark:border-slate-700 outline-hidden focus:border-orange-500 rounded-xl p-3 text-slate-900 dark:text-slate-100 font-extrabold"
               />
               <button
                 onClick={() => handleAddMember(newMemberName)}
-                className="px-4 py-2 bg-slate-900 hover:bg-teal-500 text-white rounded-xl text-xs font-black border-2 border-slate-900 dark:border-slate-700 hover:-translate-y-0.5 transition-all flex items-center gap-1 cursor-pointer"
+                className="shrink-0 px-3 sm:px-4 py-2 bg-slate-900 hover:bg-teal-500 text-white rounded-xl text-xs font-black border-2 border-slate-900 dark:border-slate-700 hover:-translate-y-0.5 transition-all flex items-center gap-1 cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" /> Thêm
               </button>
@@ -907,7 +907,7 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
                           <summary className="list-none text-[10px] bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 font-bold px-2.5 py-0.5 rounded-full border border-red-200 dark:border-red-800 flex items-center gap-1 cursor-pointer hover:bg-red-200 dark:hover:bg-red-900/60 shadow-xs transition-colors">
                             🍺 Phạt {member.penaltyAmount ? `(+${member.penaltyAmount.toLocaleString('vi-VN')})` : ''}
                           </summary>
-                          <div className="absolute left-0 top-full mt-2 bg-white dark:bg-slate-800 border-2 border-slate-900 dark:border-slate-700 rounded-xl p-2 w-48 shadow-[4px_4px_0px_0px_rgba(15,23,42,1)] dark:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                          <div className="absolute right-0 top-full mt-2 bg-white dark:bg-slate-800 border-2 border-slate-900 dark:border-slate-700 rounded-xl p-2 w-48 shadow-[4px_4px_0px_0px_rgba(15,23,42,1)] dark:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
                             <div className="text-[10px] font-black text-slate-500 dark:text-slate-400 mb-1">Cộng tiền phạt mồi:</div>
                             <button onClick={() => { handleAddPenalty(index, 20000); }} className="w-full text-left text-xs font-bold p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-700 dark:text-slate-200 cursor-pointer">📱 Bấm đt (+20k)</button>
                             <button onClick={() => { handleAddPenalty(index, 50000); }} className="w-full text-left text-xs font-bold p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-700 dark:text-slate-200 cursor-pointer">🐌 Tới trễ (+50k)</button>
