@@ -20,8 +20,23 @@ This register distinguishes **implemented source code**, **automated test covera
 | Reset | Chunked private collection deletion, revocation attempt of known cloud links, no local wipe if cloud deletion fails, durable account reset epoch |
 | Quality | Unit tests for money, debts, payment ledger and versioned sync; Playwright Chromium mobile/desktop tests (320/375/390/430/768/1024px), Firebase Firestore emulator authorization tests, automated lint/test/build via Actions |
 
+## UI/UX refinement — continued pass on 2026-11-17
+- **Navigation/performance**: on-demand loading of secondary screens with a skeleton; the active split form remains mounted when browsing other tabs, preventing draft loss. Mobile More menu supports outside-click/Escape/focus, and all top-level navigation uses the same scroll reset.
+- **Visual system**: softened neutral card borders/shadows across all feature screens; repaired dark backgrounds, text and input contrast in Contacts, History, Debt and Settings. Removed perpetual pulsing in non-loading elements; normalized touch areas, browser viewport and reduced-motion support.
+- **Dialogs and scanner**: blocking dialogs stack above the fixed bottom navigation and fit short mobile screens. Focus trap, Escape and focus return for auth, OCR, confirmation and shared bill; scanner stops orphaned camera streams, revokes image URLs, validates MIME/size, cancels stale OCR and avoids submitting oversized embedded images.
+- **Billing**: OCR-detected restaurant names are prefilled for user verification rather than instantly added with an invented 4.5-star rating. Success copy distinguishes local save from confirmed cloud sync; fewer confetti particles on mobile.
+- **Reminders**: all automatic notifications now require explicit opt-in and existing OS permission; no unsolicited permission prompts, autoplay audio or 1s settings polling. Calculations use outstanding transfer balances rather than stale member booleans.
+- **Contacts**: proper visible names/aria labels for inputs/actions, phone and messenger validation, saving feedback, non-misleading empty states and explicit cloud sync failure feedback.
+- **Reports/history**: page long histories into 20 records, remove staggered render animation, sanitize formula-injection CSV values, quote separators/newlines and clean up temporary download URL.
+- **AI recommendations**: abort superseded queries, validate result shape, label fallback/unverified data, avoid fabricated scores, disallow arbitrary outgoing links and omit hardcoded claims of source quality.
+- **Solo**: synchronize per-user meals using timestamps/tombstones, fence stale clients after full account reset, remove automatic guest-to-account imports, provide a confirmation before deletion, prevent cross-user fuzzy name matches in grouped spending and show local-only save state.
+- **Auth**: no artificial 1.5-second delay after successful login, better browser autofill.
+- **New regressions**: Playwright coverage for preserving draft across tabs, modal focus/stacking, Escape/outside closing, invalid image uploads/contact input, history paging and Solo deletion after reload; CSV sanitizer unit tests.
+
+**Still open**: iOS/Android physical-device UAT, actual Firebase staging multi-account transactions, concurrency/financial-grade audit, app release metrics (LCP/INP/CLS), production data migration/rules/permissions and reachable dependency advisories. Browser tests run in CI but are not a physical device or production validation.
+
 ## Release gates requiring external access
-1. **Merge only after current GitHub Actions statuses are green.** Earlier failures were during iterative changes; consult the HEAD SHA rather than historical runs. Frontend CI covers typecheck/unit/build; Playwright runs 16 browser checks, and the Rules Emulator checks access control. None replaces physical-device/production UAT.
+1. **Merge only after current GitHub Actions statuses are green.** Earlier failures were during iterative changes; consult the HEAD SHA rather than historical runs. Frontend CI covers typecheck/unit/build; Playwright runs an expanded browser suite, and the Rules Emulator checks access control. None replaces physical-device/production UAT.
 2. **Deploy Firestore rules explicitly** against the *correct project/database*, review them with two real authenticated accounts. Automated Firestore Rules Emulator tests cover public bill list/get/create/update/revoke, private token access, private user data, and venue review ownership. GitHub/Vercel builds do not deploy Firebase rules. Security will remain open in production until verified.
 3. **Migrate old public bills** after taking a Firestore backup. `scripts/migrate-public-bills.ts` is DRY RUN by default and requires Firebase Admin ADC; `MIGRATION_APPLY=yes` enables writes. Existing documents without owner IDs are revoked; owner-backed old documents receive expiry. Review dry-run counts and notification to users before applying.
 4. **Purge legacy name-indexed FCM tokens** using `scripts/migrate-legacy-fcm-tokens.ts`, with Firebase Admin credentials, backup and approved `MIGRATION_APPLY=yes` only after reviewing DRY RUN counts. Firestore rules alone leave old records at rest.
@@ -36,12 +51,12 @@ This register distinguishes **implemented source code**, **automated test covera
 - **Payment ledger is client-authored** in user-scoped Firestore; unit tests are not proof of multi-device transactional consistency or financial-grade immutable audit. Real-money reconciliation needs idempotent server-side transactions, payment provider confirmations, and an append-only storage model.
 - **Versioned sync is last-write-wins**, with tombstones and account reset fencing. It is not full per-field CRDT merge; conflicting concurrent edits across devices can still overwrite one another.
 - **Cloud reset is not guaranteed atomic** across subcollections and public documents; it requires an operational deletion job and evidence for privacy/legal deletion guarantees.
-- **Remaining large components** still merit extraction, virtualization, route-level code splitting and performance profiling; Playwright navigation tests do not measure production Core Web Vitals.
+- **Remaining large components** still merit extraction, virtualization and performance profiling; secondary feature-level dynamic imports and history pagination are in place, but Playwright navigation tests do not measure production Core Web Vitals.
 - **External services and device tests** cannot be marked passed from source review or a simulated browser alone.
 
 ## Review checklist
 - `npm ci && npm run lint && npm test && npm run build`.
-- `npx playwright test` in the pinned Playwright container on CI; review 16 browser cases.
+- `npx playwright test` in the pinned Playwright container on CI; review mobile and desktop browser cases.
 - Run `npx firebase emulators:exec --only firestore --project demo-dzospit-rules "npx tsx --test tests/rules/firestore.rules.test.ts"` using Firebase CLI and `@firebase/rules-unit-testing` (the CI job installs them).
 - Same payment record is never over-counted; check 1đ rounding, split across 3/7 people, multi-payer/partial/refund reset, double-click concurrency.
 - Revoke a short link, then attempt re-share/update/access from a second account; no revival.
