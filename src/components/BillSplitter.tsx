@@ -7,6 +7,7 @@ import ReceiptScanner from './ReceiptScanner';
 import Confetti from 'react-confetti';
 import MoneyInput from './common/MoneyInput';
 import { parseCurrencyInput } from '../utils/currency';
+import { equalShares, percentageShares, rouletteShares } from '../utils/splitMath';
 interface BillSplitterProps {
   venues: Venue[];
   onAddVenue: (venue: Omit<Venue, 'id' | 'visitsCount'>) => Venue;
@@ -76,23 +77,22 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
   const [scannedReceiptImage, setScannedReceiptImage] = useState<string | undefined>(undefined);
 
   // Calculations that depend on inputs
-  const totalAmount = Math.max(0, rawAmount + tipAmount + additionalFee - discountAmount);
+  const totalAmount = Math.max(0, Math.round(rawAmount + tipAmount + additionalFee - discountAmount));
   const totalPenalties = members.reduce((acc, m) => acc + (m.penaltyAmount || 0), 0);
   const netAmountToSplit = Math.max(0, totalAmount - totalPenalties);
 
-  // Helper function to distribute percentages as evenly as imaginable
+  // Rebalance percentages and shares deterministically, preserving each đồng.
   const autoDistributePercentages = (currentMembers: Member[]): Member[] => {
     if (currentMembers.length === 0) return currentMembers;
     const basePercent = Math.floor(100 / currentMembers.length);
     const remainder = 100 - basePercent * currentMembers.length;
-    return currentMembers.map((m, idx) => {
-      const pct = idx === 0 ? basePercent + remainder : basePercent;
-      return {
-        ...m,
-        percentage: pct,
-        finalShare: Math.round((netAmountToSplit * pct) / 100) + (m.penaltyAmount || 0)
-      };
-    });
+    const percentages = currentMembers.map((_, idx) => idx === 0 ? basePercent + remainder : basePercent);
+    const shares = percentageShares(netAmountToSplit, percentages);
+    return currentMembers.map((member, index) => ({
+      ...member,
+      percentage: percentages[index],
+      finalShare: shares[index] + (member.penaltyAmount || 0)
+    }));
   };
 
   const handleScanComplete = (data: { venueName: string; totalAmount: number; note: string; imageBase64?: string }) => {
@@ -134,7 +134,7 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
   // Synchronize tip percent and raw tip amount
   useEffect(() => {
     if (useTipPercent) {
-      setTipAmount((rawAmount * tipPercent) / 100);
+      setTipAmount(Math.round(rawAmount * tipPercent / 100));
     } else {
       if (rawAmount > 0) {
         setTipPercent(Math.round((tipAmount / rawAmount) * 100));
@@ -144,54 +144,21 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
     }
   }, [rawAmount, tipPercent, tipAmount, useTipPercent]);
 
-  // Recalculate shares based on split type, penalties, and roulette
+  // Recalculate all system-controlled shares whenever the bill or member count changes.
   useEffect(() => {
-    if (members.length === 0) return;
-    
+    if (members.length === 0 || splitType === 'unequal') return;
+    let shares: number[];
     if (splitType === 'equal') {
-      const perCapitaShare = netAmountToSplit / members.length;
-      setMembers(prev => prev.map(m => ({
-        ...m,
-        finalShare: Math.round(perCapitaShare) + (m.penaltyAmount || 0)
-      })));
+      shares = equalShares(netAmountToSplit, members.length);
     } else if (splitType === 'percentage') {
-      setMembers(prev => prev.map(m => {
-        const pct = m.percentage !== undefined ? m.percentage : 0;
-        return {
-          ...m,
-          percentage: pct,
-          finalShare: Math.round((netAmountToSplit * pct) / 100) + (m.penaltyAmount || 0)
-        };
-      }));
-    } else if (splitType === 'roulette') {
-      setMembers(prev => prev.map((m, idx) => {
-        if (luckyWinnerIndex === null || luckyWinnerIndex === -1) {
-          // If no winner yet, distribute equally as a placeholder
-          const perCapitaShare = netAmountToSplit / members.length;
-          return {
-            ...m,
-            finalShare: Math.round(perCapitaShare) + (m.penaltyAmount || 0)
-          };
-        }
-
-        if (idx === luckyWinnerIndex) {
-          const victimShare = (netAmountToSplit * roulettePenaltyPercent) / 100;
-          return {
-            ...m,
-            finalShare: Math.round(victimShare) + (m.penaltyAmount || 0)
-          };
-        } else {
-          // The remaining amount is split among the others
-          const remainingAmount = netAmountToSplit - ((netAmountToSplit * roulettePenaltyPercent) / 100);
-          const othersCount = members.length > 1 ? members.length - 1 : 1;
-          const otherShare = remainingAmount / othersCount;
-          return {
-            ...m,
-            finalShare: Math.round(otherShare) + (m.penaltyAmount || 0)
-          };
-        }
-      }));
+      shares = percentageShares(netAmountToSplit, members.map(member => member.percentage || 0));
+    } else {
+      shares = rouletteShares(netAmountToSplit, members.length, luckyWinnerIndex, roulettePenaltyPercent);
     }
+    setMembers(prev => prev.map((member, index) => ({
+      ...member,
+      finalShare: shares[index] + (member.penaltyAmount || 0)
+    })));
   }, [totalAmount, totalPenalties, splitType, members.length, luckyWinnerIndex, roulettePenaltyPercent, netAmountToSplit]);
 
   const handleAddMember = (name: string) => {
@@ -275,17 +242,15 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
   };
 
   const handlePercentageChange = (index: number, val: number) => {
-    const pct = Math.max(0, Math.min(100, val));
-    setMembers(prev => prev.map((m, i) => {
-      if (i === index) {
-        return {
-          ...m,
-          percentage: pct,
-          finalShare: Math.round((totalAmount * pct) / 100)
-        };
-      }
-      return m;
-    }));
+    const pct = Number.isFinite(val) ? Math.max(0, Math.min(100, val)) : 0;
+    setMembers(prev => {
+      const updated = prev.map((member, i) => i === index ? { ...member, percentage: pct } : member);
+      const shares = percentageShares(netAmountToSplit, updated.map(member => member.percentage || 0));
+      return updated.map((member, i) => ({
+        ...member,
+        finalShare: shares[i] + (member.penaltyAmount || 0)
+      }));
+    });
   };
 
   // Helper calculation validators
@@ -332,15 +297,15 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
       }
     });
 
-    const perCapita = Math.round(totalAmount / uniqueNames.length);
+    const shares = equalShares(netAmountToSplit, uniqueNames.length);
 
-    setMembers(uniqueNames.map(name => {
+    setMembers(uniqueNames.map((name, index) => {
       const isSelf = name.toLowerCase() === activeCreatorName.toLowerCase();
       return {
         name,
         // Host typically pays the full dining bill upfront, others owe debt
         initialPaid: isSelf ? totalAmount : 0,
-        finalShare: perCapita,
+        finalShare: shares[index],
         hasPaidDebt: isSelf
       };
     }));
@@ -372,29 +337,36 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
         ...finalProcessedMembers[targetIdx],
         initialPaid: totalAmount
       };
-    } else if (Math.abs(discrepancyPaid) > 100) {
+    } else if (discrepancyPaid !== 0) {
       toast.error(`Tổng số tiền các thành viên đã thanh toán trên bàn ăn là ${sumInitialPaid.toLocaleString('vi-VN')}đ, nhưng tổng hóa đơn là ${totalAmount.toLocaleString('vi-VN')}đ.\n\nVui lòng điều chỉnh lại cho khớp!`);
       return;
     }
 
-    if (splitType === 'unequal' && Math.abs(discrepancyShare) > 100) {
-      toast.error(`Bạn chọn chia tùy chỉnh nhưng tổng tiền mọi người gánh (${sumFinalShare.toLocaleString('vi-VN')}đ) chưa khớp hóa đơn (${totalAmount.toLocaleString('vi-VN')}đ).\n\nChênh lệch: ${discrepancyShare.toLocaleString('vi-VN')}đ.`);
+    if (splitType === 'percentage' && Math.abs(sumPercentages - 100) > 1e-8) {
+      toast.error(`Tổng tỷ lệ phần trăm là ${sumPercentages}%. Cần đúng 100% trước khi lưu.`);
       return;
     }
-    if (splitType === 'percentage' && sumPercentages !== 100) {
-      toast.error(`Tổng tỷ lệ phần trăm hiện tại là ${sumPercentages}%. Phải bằng đúng 100%!`);
-      return;
-    }
-    if (splitType === 'percentage') {
-      const calculatedSum = finalProcessedMembers.reduce((acc, m) => acc + m.finalShare, 0);
-      const moneyDiff = totalAmount - calculatedSum;
-      if (moneyDiff !== 0 && finalProcessedMembers.length > 0) {
-        // Adjust host or first member to match exact money amount
-        finalProcessedMembers[0] = {
-          ...finalProcessedMembers[0],
-          finalShare: finalProcessedMembers[0].finalShare + moneyDiff
-        };
+
+    // Recalculate from current state at submit time; never persist stale or rounded-away differences.
+    if (splitType !== 'unequal') {
+      let shares: number[];
+      if (splitType === 'equal') {
+        shares = equalShares(netAmountToSplit, finalProcessedMembers.length);
+      } else if (splitType === 'percentage') {
+        shares = percentageShares(netAmountToSplit, finalProcessedMembers.map(m => m.percentage || 0));
+      } else {
+        shares = rouletteShares(netAmountToSplit, finalProcessedMembers.length, luckyWinnerIndex, roulettePenaltyPercent);
       }
+      finalProcessedMembers = finalProcessedMembers.map((member, index) => ({
+        ...member,
+        finalShare: shares[index] + (member.penaltyAmount || 0)
+      }));
+    }
+
+    const processedShareTotal = finalProcessedMembers.reduce((sum, member) => sum + member.finalShare, 0);
+    if (processedShareTotal !== totalAmount) {
+      toast.error(`Tổng phần chia (${processedShareTotal.toLocaleString('vi-VN')}đ) phải khớp chính xác với hóa đơn (${totalAmount.toLocaleString('vi-VN')}đ).`);
+      return;
     }
 
     const matchedVenue = venues.find(v => v.id === selectedVenueId);
@@ -416,11 +388,10 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
       bankAccountName: localStorage.getItem('nhau_bank_account_name') || undefined,
       members: finalProcessedMembers.map(m => {
         // Creditors are marked paid, and debtors start as unpaid unless they paid their full debt initial share
-        const isSelf = m.name === activeCreatorName;
         const owes = m.finalShare - m.initialPaid;
         return {
           ...m,
-          hasPaidDebt: owes <= 0 || isSelf
+          hasPaidDebt: owes <= 0
         };
       }),
       receiptImage: scannedReceiptImage
@@ -440,7 +411,9 @@ export default function BillSplitter({ venues, onAddVenue, onSaveBill, activeCre
     setScannedReceiptImage(undefined);
     
     // Reset members of choice
-    setMembers([{ name: activeCreatorName, initialPaid: 0, finalShare: 0, hasPaidDebt: true }]);
+    setMembers([{ name: activeCreatorName, initialPaid: 0, finalShare: 0, hasPaidDebt: true, percentage: 100 }]);
+    setSplitType('equal');
+    setLuckyWinnerIndex(null);
 
     setTimeout(() => {
       setSavedSuccess(false);
