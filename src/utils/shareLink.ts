@@ -1,5 +1,5 @@
 import { Bill } from '../types';
-import { savePublicBillToCloud, fetchPublicBillFromCloud } from '../lib/firebase';
+import { auth, savePublicBillToCloud, fetchPublicBillFromCloud } from '../lib/firebase';
 
 /**
  * Encode compact bill details into a base64 string safe for URLs (legacy/offline fallback)
@@ -111,6 +111,8 @@ export async function generateShareableBillUrl(bill: Bill): Promise<string> {
   } catch (error) {
     // Guests and offline users can still share a self-contained legacy URL.
     // Do not claim that a short cloud link exists when the write failed.
+    // Signed-in owners should not silently bypass revocation with a public portable link.
+    if (auth.currentUser) throw error;
     console.warn('[Share link] Cloud unavailable; using portable URL fallback:', error);
     const encoded = compressBillForUrl(enrichedBill);
     if (!encoded) {
